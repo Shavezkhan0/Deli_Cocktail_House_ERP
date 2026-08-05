@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  WAREHOUSE_MANAGER
+  SITE_MANAGER
+  EMPLOYEE
+}
+
+enum EventStatus {
+  PLANNED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ItemStatus {
+  PENDING
+  APPROVED
+  PARTIAL
+  REJECTED
+}
+
+model User {
+  id                 String  @id @default(cuid())
+  email              String  @unique
+  name               String
+  role               Role    @default(EMPLOYEE)
+  managedEvents      Event[] @relation("WarehouseManager")
+  siteManagedEvents  Event[] @relation("SiteManager")
+}
+
+model Event {
+  id                 String      @id @default(cuid())
+  name               String
+  clientName         String
+  date               DateTime
+  status             EventStatus @default(PLANNED)
+  warehouseManagerId String?
+  siteManagerId      String?
+  warehouseManager   User?       @relation("WarehouseManager", fields: [warehouseManagerId], references: [id])
+  siteManager        User?       @relation("SiteManager", fields: [siteManagerId], references: [id])
+  items              EventItem[]
+}
+
+model EventItem {
+  id           String     @id @default(cuid())
+  eventId      String
+  event        Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  itemName     String
+  requestedQty Int
+  approvedQty  Int?
+  status       ItemStatus @default(PENDING)
+}
+
+model InventoryItem {
+  id                String   @id @default(cuid())
+  name              String
+  category          String
+  totalQuantity     Int
+  availableQuantity Int
+  reservedQuantity  Int
+  dispatchedQuantity Int
+  damagedQuantity   Int
+  lostQuantity      Int
+  minStockLevel     Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

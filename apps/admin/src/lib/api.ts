@@ -1,0 +1,100 @@
+import {
+  clearStoredAuth,
+  getStoredAuth,
+  saveStoredAuth,
+  type AuthUser,
+} from "./session";
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
+type ApiFetchOptions = {
+  token?: string | null;
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: unknown;
+};
+
+type RefreshResponse = {
+  token: string;
+  user: AuthUser;
+};
+
+type RefreshResult = "refreshed" | "expired" | "unreachable";
+
+async function refreshAccessToken(): Promise<RefreshResult> {
+  const stored = getStoredAuth();
+  if (!stored?.token) {
+    return "expired";
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${stored.token}`,
+      },
+    });
+
+    if (!res.ok) {
+      return "expired";
+    }
+
+    const data = (await res.json()) as RefreshResponse;
+    saveStoredAuth(data.token, data.user);
+    return "refreshed";
+  } catch {
+    return "unreachable";
+  }
+}
+
+function doFetch(
+  path: string,
+  method: string,
+  token: string | null | undefined,
+  body: unknown,
+): Promise<Response> {
+  return fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<T> {
+  const { token, method = "GET", body } = options;
+
+  let res = await doFetch(path, method, token, body);
+
+  if (res.status === 401 && (token ?? getStoredAuth()?.token)) {
+    const result = await refreshAccessToken();
+
+    if (result === "refreshed") {
+      res = await doFetch(path, method, getStoredAuth()?.token, body);
+    } else if (result === "expired") {
+      clearStoredAuth();
+      throw new Error("Session expired. Please sign in again.");
+    }
+  }
+
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+    try {
+      const data = (await res.json()) as { message?: string };
+      if (data.message) {
+        message = data.message;
+      }
+    } catch {
+      // Response body was not JSON; fall back to the generic message.
+    }
+    throw new Error(message);
+  }
+
+  return res.json() as Promise<T>;
+}
