@@ -14,64 +14,116 @@ enum Role {
   EMPLOYEE
 }
 
+enum ItemCategory {
+  SETUP
+  UNIFORM
+  GLASSWARE
+  DISPOSALS
+  CONSUMABLE
+}
+
+enum ItemUnit {
+  PCS
+  BOX
+}
+
 enum EventStatus {
-  PLANNED
-  CONFIRMED
-  IN_PROGRESS
+  UPCOMING
+  ONGOING
   COMPLETED
   CANCELLED
 }
 
-enum ItemStatus {
-  PENDING
-  APPROVED
-  PARTIAL
-  REJECTED
+model User {
+  id         String @id @default(cuid())
+  email      String @unique
+  name       String
+  role       Role   @default(EMPLOYEE)
+  employeeId String? @unique
 }
 
-model User {
-  id                 String  @id @default(cuid())
-  email              String  @unique
-  name               String
-  role               Role    @default(EMPLOYEE)
-  managedEvents      Event[] @relation("WarehouseManager")
-  siteManagedEvents  Event[] @relation("SiteManager")
+model Item {
+  id             String               @id @default(cuid())
+  sku            String               @unique
+  itemName       String
+  category       ItemCategory
+  subCategory    String?
+  brand          String?
+  vendor         String?
+  unit           ItemUnit
+  openingStock   Int
+  currentStock   Int
+  availableStock Int
+  status         String
+  expiryDate     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  inventory      EventInventory[]
+  returns        EventReturnSummary[]
 }
 
 model Event {
-  id                 String      @id @default(cuid())
-  name               String
-  clientName         String
-  date               DateTime
-  status             EventStatus @default(PLANNED)
-  warehouseManagerId String?
-  siteManagerId      String?
-  warehouseManager   User?       @relation("WarehouseManager", fields: [warehouseManagerId], references: [id])
-  siteManager        User?       @relation("SiteManager", fields: [siteManagerId], references: [id])
-  items              EventItem[]
+  id             String               @id @default(cuid())
+  eventName      String
+  eventCode      String               @unique
+  eventDate      DateTime
+  startTime      String
+  endTime        String?
+  venue          String
+  pax            Int
+  eventType      String
+  company        String
+  crm            String
+  siteManager    String
+  siteSupervisor String
+  butlerVendor   String?
+  bartenders     Int
+  maleButler     Int
+  femaleButler   Int
+  clientName     String
+  clientPhone    String
+  clientEmail    String
+  status         EventStatus          @default(UPCOMING)
+  inventoryCost  Float
+  staffCost      Float
+  totalCost      Float
+  inventory      EventInventory[]
+  returns        EventReturnSummary[]
 }
 
-model EventItem {
-  id           String     @id @default(cuid())
-  eventId      String
-  event        Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  itemName     String
-  requestedQty Int
-  approvedQty  Int?
-  status       ItemStatus @default(PENDING)
-}
-
-model InventoryItem {
-  id                String   @id @default(cuid())
-  name              String
-  category          String
-  totalQuantity     Int
+model EventInventory {
+  id                String @id @default(cuid())
+  eventId           String
+  itemId            String
+  requiredQuantity  Int
   availableQuantity Int
-  reservedQuantity  Int
-  dispatchedQuantity Int
-  damagedQuantity   Int
-  lostQuantity      Int
-  minStockLevel     Int
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  reserveQuantity   Int
+  issueQuantity     Int
+  remarks           String
+  event             Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  item              Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model EventReturnSummary {
+  id               String @id @default(cuid())
+  eventId          String
+  itemId           String
+  issuedQuantity   Int
+  returnedQuantity Int
+  damagedQuantity  Int
+  lostQuantity     Int
+  consumedQuantity Int
+  remarks          String
+  event            Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  item             Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model Complain {
+  id              String   @id @default(cuid())
+  complainId      String   @unique
+  siteManagerName String
+  eventId         String?
+  description     String
+  status          String
+  createdAt       DateTime @default(now())
 }

@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   Building2,
-  CalendarDays,
   Warehouse,
   type LucideIcon,
 } from "lucide-react";
@@ -19,25 +18,18 @@ type ModuleConfig = {
 
 const modules: ModuleConfig[] = [
   {
-    title: "Office Module",
+    title: "Office",
     description: "HR, attendance, approvals and administrative operations.",
     href: "/dashboard/office",
     icon: Building2,
     accent: "bg-sky-100 text-sky-700",
   },
   {
-    title: "Warehouse Module",
-    description: "Inventory, low-stock alerts and dispatch management.",
-    href: "/dashboard/warehouse",
+    title: "Warehouse/Site",
+    description: "Inventory, low-stock alerts and event dispatch management.",
+    href: "/warehouse/dashboard",
     icon: Warehouse,
     accent: "bg-amber-100 text-amber-700",
-  },
-  {
-    title: "Event Module",
-    description: "Plan events, assign managers and track item approvals.",
-    href: "/dashboard/events",
-    icon: CalendarDays,
-    accent: "bg-emerald-100 text-emerald-700",
   },
 ];
 
@@ -53,7 +45,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {modules.map((module) => {
           const Icon = module.icon;
           return (

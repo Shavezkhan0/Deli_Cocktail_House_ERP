@@ -2,8 +2,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth";
-import dashboardRouter from "./routes/dashboard";
+import complainsRouter from "./routes/complains";
 import eventsRouter from "./routes/events";
+import itemsRouter from "./routes/items";
 import usersRouter from "./routes/users";
 import warehouseRouter from "./routes/warehouse";
 
@@ -13,8 +14,9 @@ app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
-app.use("/api/dashboard", dashboardRouter);
+app.use("/api/complains", complainsRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/items", itemsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/warehouse", warehouseRouter);
 

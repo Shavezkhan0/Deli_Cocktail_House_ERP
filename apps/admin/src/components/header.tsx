@@ -1,10 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { ChevronDown, GlassWater, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Building2,
+  ChevronDown,
+  GlassWater,
+  LogOut,
+  Warehouse,
+  type LucideIcon,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -26,9 +34,38 @@ function getInitials(name?: string | null, email?: string | null): string {
   return email?.slice(0, 2).toUpperCase() ?? "AD";
 }
 
+const BRANDING: {
+  path: string;
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    path: "/warehouse",
+    title: "Warehouse/Site",
+    subtitle: "Inventory & Site Operations",
+    icon: Warehouse,
+  },
+  {
+    path: "/dashboard/office",
+    title: "Office Module",
+    subtitle: "HR & Administration",
+    icon: Building2,
+  },
+];
+
 export function Header() {
+  const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+
+  const branding =
+    BRANDING.find((item) => pathname.startsWith(item.path)) ?? {
+      title: "Deli Cocktail House",
+      subtitle: "Catering ERP",
+      icon: GlassWater,
+    };
+  const BrandIcon = branding.icon;
 
   function handleLogout() {
     logout();
@@ -41,13 +78,13 @@ export function Header() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-3">
         <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <GlassWater className="size-5" />
+          <BrandIcon className="size-5" />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight text-foreground">
-            Deli Cocktail House
+            {branding.title}
           </p>
-          <p className="text-xs text-muted-foreground">Catering ERP</p>
+          <p className="text-xs text-muted-foreground">{branding.subtitle}</p>
         </div>
       </div>
 
@@ -74,13 +111,15 @@ export function Header() {
           }
         />
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel>
-            <span className="block">{user?.name ?? "Admin"}</span>
-            <span className="block font-normal text-muted-foreground">
-              {user?.email}
-            </span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <span className="block">{user?.name ?? "Admin"}</span>
+              <span className="block font-normal text-muted-foreground">
+                {user?.email}
+              </span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+          </DropdownMenuGroup>
           <DropdownMenuItem variant="destructive" onClick={handleLogout}>
             <LogOut />
             Log out
