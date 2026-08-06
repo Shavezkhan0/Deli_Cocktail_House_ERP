@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, List, Plus, GlassWater } from "lucide-react";
+import { ClipboardCheck, List, Plus } from "lucide-react";
 import { ModuleSidebar } from "@/components/module-sidebar";
 
 const tabs = [
@@ -16,13 +16,7 @@ export default function EventsLayout({
 }) {
   return (
     <div className="flex flex-col gap-6 md:flex-row">
-      <ModuleSidebar
-        basePath="/dashboard/events"
-        title="Event Module"
-        subtitle="Planning & Approvals"
-        icon={GlassWater}
-        tabs={tabs}
-      />
+      <ModuleSidebar basePath="/dashboard/events" tabs={tabs} />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );

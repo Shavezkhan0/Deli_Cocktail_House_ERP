@@ -13,9 +13,6 @@ export type ModuleTab = {
 
 type ModuleSidebarProps = {
   basePath: string;
-  title: string;
-  subtitle: string;
-  icon: LucideIcon;
   tabs: ModuleTab[];
 };
 
@@ -28,9 +25,6 @@ function isActive(pathname: string, basePath: string, href: string): boolean {
 
 export function ModuleSidebar({
   basePath,
-  title,
-  subtitle,
-  icon: ModuleIcon,
   tabs,
 }: ModuleSidebarProps) {
   const pathname = usePathname();
@@ -63,18 +57,6 @@ export function ModuleSidebar({
       </nav>
 
       <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm md:flex">
-        <div className="flex items-center gap-3 border-b border-border px-2 py-3">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ModuleIcon className="size-5" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight text-foreground">
-              {title}
-            </p>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
-          </div>
-        </div>
-
         <nav className="mt-3 flex flex-col gap-1">
           {tabs.map((tab) => renderLink(tab))}
         </nav>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, Building2, CalendarDays, Users } from "lucide-react";
+import { Banknote, CalendarDays, Users } from "lucide-react";
 import { ModuleSidebar } from "@/components/module-sidebar";
 
 const tabs = [
@@ -15,14 +15,8 @@ export default function OfficeLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-6 md:flex-row">
-      <ModuleSidebar
-        basePath="/dashboard/office"
-        title="Office Module"
-        subtitle="HR & Administration"
-        icon={Building2}
-        tabs={tabs}
-      />
+    <div className="-m-6 flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-0 sm:p-2 lg:flex-row">
+      <ModuleSidebar basePath="/dashboard/office" tabs={tabs} />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );

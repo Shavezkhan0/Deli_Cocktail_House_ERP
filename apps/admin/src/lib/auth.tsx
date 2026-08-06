@@ -24,6 +24,7 @@ type AuthState = {
 };
 
 type AuthContextValue = AuthState & {
+  isLoading: boolean;
   isAuthenticated: boolean;
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
@@ -32,14 +33,13 @@ type AuthContextValue = AuthState & {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(
-    () => getStoredAuth() ?? { token: null, user: null },
-  );
+  const [state, setState] = useState<AuthState | null>(null);
 
   useEffect(() => {
     function sync() {
       setState(getStoredAuth() ?? { token: null, user: null });
     }
+    sync();
     window.addEventListener(AUTH_CHANGED_EVENT, sync);
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, sync);
   }, []);
@@ -55,9 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        token: state.token,
-        user: state.user,
-        isAuthenticated: Boolean(state.token),
+        token: state?.token ?? null,
+        user: state?.user ?? null,
+        isLoading: state === null,
+        isAuthenticated: state !== null && Boolean(state.token),
         login,
         logout,
       }}

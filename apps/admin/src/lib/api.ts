@@ -96,5 +96,9 @@ export async function apiFetch<T>(
     throw new Error(message);
   }
 
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
