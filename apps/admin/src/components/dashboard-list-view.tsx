@@ -20,6 +20,11 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import {
+  EVENT_STATUS_COLORS,
+  formatDate,
+  statusColor,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type DashboardItem = {
@@ -102,33 +107,11 @@ const VIEW_CONFIG: Record<string, ViewConfig> = {
   },
 };
 
-const EVENT_STATUS_COLORS: Record<string, string> = {
-  UPCOMING: "bg-sky-100 text-sky-700",
-  ONGOING: "bg-amber-100 text-amber-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-red-100 text-red-700",
-};
-
 const ITEM_STATUS_COLORS: Record<string, string> = {
   "In Stock": "bg-emerald-100 text-emerald-700",
   Low: "bg-amber-100 text-amber-700",
   "Action Required": "bg-rose-100 text-rose-700",
 };
-
-function statusBadgeClass(
-  status: string,
-  colors: Record<string, string>,
-): string {
-  return colors[status] ?? "bg-muted text-muted-foreground";
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function LoadingRow({ colSpan }: { colSpan: number }) {
   return (
@@ -232,7 +215,7 @@ function ItemsTable({
                   variant="outline"
                   className={cn(
                     "border-transparent",
-                    statusBadgeClass(item.status, ITEM_STATUS_COLORS),
+                    statusColor(item.status, ITEM_STATUS_COLORS),
                   )}
                 >
                   {item.status}
@@ -301,7 +284,7 @@ function EventsTable({
                   variant="outline"
                   className={cn(
                     "border-transparent",
-                    statusBadgeClass(event.status, EVENT_STATUS_COLORS),
+                    statusColor(event.status, EVENT_STATUS_COLORS),
                   )}
                 >
                   {event.status}
@@ -417,7 +400,7 @@ function ComplaintsTable({
                   variant="outline"
                   className={cn(
                     "border-transparent",
-                    statusBadgeClass(complain.status, COMPLAIN_STATUS_COLORS),
+                    statusColor(complain.status, COMPLAIN_STATUS_COLORS),
                   )}
                 >
                   {complain.status}

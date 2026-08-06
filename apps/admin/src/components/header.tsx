@@ -52,12 +52,6 @@ const BRANDING: {
     subtitle: "HR & Administration",
     icon: Building2,
   },
-  {
-    path: "/dashboard/events",
-    title: "Event Module",
-    subtitle: "Planning & Approvals",
-    icon: GlassWater,
-  },
 ];
 
 export function Header() {

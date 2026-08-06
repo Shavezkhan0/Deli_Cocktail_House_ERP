@@ -3,7 +3,6 @@ import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth";
 import complainsRouter from "./routes/complains";
-import dashboardRouter from "./routes/dashboard";
 import eventsRouter from "./routes/events";
 import itemsRouter from "./routes/items";
 import usersRouter from "./routes/users";
@@ -16,7 +15,6 @@ app.use(express.json());
 
 app.use("/api/auth", authRouter);
 app.use("/api/complains", complainsRouter);
-app.use("/api/dashboard", dashboardRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/items", itemsRouter);
 app.use("/api/users", usersRouter);

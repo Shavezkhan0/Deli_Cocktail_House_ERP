@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { formatDate, statusColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type WarehouseEvent = {
@@ -48,25 +49,6 @@ type WarehouseEvent = {
   venue: string;
   status: string;
 };
-
-const STATUS_COLORS: Record<string, string> = {
-  UPCOMING: "bg-sky-100 text-sky-700",
-  ONGOING: "bg-amber-100 text-amber-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-red-100 text-red-700",
-};
-
-function statusColor(status: string): string {
-  return STATUS_COLORS[status] ?? "bg-muted text-muted-foreground";
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 const features = tableFeatures({});
 const columnHelper = createColumnHelper<typeof features, WarehouseEvent>();

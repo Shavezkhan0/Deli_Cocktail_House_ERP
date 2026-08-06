@@ -46,7 +46,9 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { statusColor, STOCK_STATUS_COLORS } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { flattenZodErrors } from "@/lib/validation";
 
 type InventoryItem = {
   id: string;
@@ -127,16 +129,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function categoryColor(category: string): string {
   return CATEGORY_COLORS[category] ?? "bg-indigo-100 text-indigo-700";
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  "Action Required": "bg-red-100 text-red-700",
-  Low: "bg-amber-100 text-amber-700",
-  "In Stock": "bg-emerald-100 text-emerald-700",
-};
-
-function statusColor(status: string): string {
-  return STATUS_COLORS[status] ?? "bg-muted text-muted-foreground";
 }
 
 const nonNegativeInt = z
@@ -228,7 +220,7 @@ function StatusBadge({ value }: { value: string }) {
   return (
     <Badge
       variant="outline"
-      className={cn("border-transparent", statusColor(value))}
+      className={cn("border-transparent", statusColor(value, STOCK_STATUS_COLORS))}
     >
       {value}
     </Badge>
@@ -265,17 +257,6 @@ function ItemActions({
       </Button>
     </div>
   );
-}
-
-function flattenZodErrors(error: z.ZodError): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const key = String(issue.path[0] ?? "");
-    if (!out[key]) {
-      out[key] = issue.message;
-    }
-  }
-  return out;
 }
 
 function toCreatePayload(data: z.infer<typeof itemSchema>): CreateItemPayload {

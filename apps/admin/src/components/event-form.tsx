@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { flattenZodErrors } from "@/lib/validation";
 
 export type EventFormData = {
   id: string;
@@ -161,17 +162,6 @@ function toFormValues(event: EventFormData): EventFormValues {
     clientPhone: event.clientPhone,
     clientEmail: event.clientEmail,
   };
-}
-
-function flattenZodErrors(error: z.ZodError): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const key = String(issue.path[0] ?? "");
-    if (!out[key]) {
-      out[key] = issue.message;
-    }
-  }
-  return out;
 }
 
 function Field({
