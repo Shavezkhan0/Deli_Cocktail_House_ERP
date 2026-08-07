@@ -52,6 +52,12 @@ const BRANDING: {
     subtitle: "HR & Administration",
     icon: Building2,
   },
+  {
+    path: "/office",
+    title: "Office Module",
+    subtitle: "HR & Administration",
+    icon: Building2,
+  },
 ];
 
 export function Header() {

@@ -20,7 +20,7 @@ const modules: ModuleConfig[] = [
   {
     title: "Office",
     description: "HR, attendance, approvals and administrative operations.",
-    href: "/dashboard/office",
+    href: "/office/dashboard",
     icon: Building2,
     accent: "bg-sky-100 text-sky-700",
   },

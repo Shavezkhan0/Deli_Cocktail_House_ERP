@@ -1,159 +1,148 @@
-# Turborepo starter
+# Deli Cocktail House ERP
 
-This Turborepo starter is maintained by the Turborepo core team.
+Monorepo ERP for **Deli Cocktail House** — an operations platform covering the Office (HR & payroll) and Warehouse (events & inventory) modules.
 
-## Using this example
-
-Run the following command:
-
-```sh
-npx create-turbo@latest
-```
+Built with a pnpm + Turborepo workspace containing a Next.js admin dashboard, an Express REST API, and a shared Prisma database package.
 
 ## What's inside?
 
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```
+├── apps/
+│   ├── admin/      Next.js (App Router) admin dashboard  → http://localhost:3000
+│   └── api/        Express REST API                     → http://localhost:4000
+└── packages/
+    ├── database/   Prisma schema, client and shared PrismaClient
+    ├── eslint-config/   Shared ESLint configs
+    └── typescript-config/ Shared tsconfigs
 ```
 
-Without global `turbo`, use your package manager:
+## Tech Stack
+
+| Layer      | Tools                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| Frontend   | Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Base UI), TanStack Query, lucide-react, sonner, zod |
+| Backend    | Express 4, TypeScript, multer, jsonwebtoken, nodemailer                                                           |
+| Database   | PostgreSQL (Supabase), Prisma ORM 6                                                                               |
+| Storage    | Supabase Storage (employee documents)                                                                             |
+| Cache/Auth | Redis (Upstash) for OTP, JWT access tokens                                                                        |
+| Tooling    | pnpm, Turborepo, ESLint, Prettier                                                                                 |
+
+## Modules & Features
+
+### Office (HR & Payroll)
+
+- **Dashboard** — live metrics: total employees, present/absent/on-leave today, ongoing events. Click a card to drill into a filtered list (employees or events).
+- **Employees** — create, edit, view and delete employee records; designation, base salary, joining date, contact info.
+- **Employee Documents** — upload Aadhar, PAN, Offer Letter and Bond. Re-uploading auto-deletes the previous file from storage; documents can also be deleted.
+- **Attendance** — mark daily attendance per employee (Present / Absent / Half Day / Short Leave / On Leave).
+- **Salaries** — month-wise salary tracking with paid/unpaid status and paid-date.
+
+### Warehouse (Events & Inventory)
+
+- **Inventory** — items with SKU, category, unit, opening/current/available stock, stock status and expiry.
+- **Events** — create and manage events (event code, name, date, venue, pax, staffing, clients), track status (Upcoming / Ongoing / Completed / Cancelled).
+- **Event Detail** — per-event inventory allocation (required/available/reserved/issued quantities) and return summaries (issued/returned/damaged/lost/consumed).
+- **Complaints** — log and track complaints against events.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js >= 18
+- pnpm >= 10 (`npm i -g pnpm`)
+- PostgreSQL database (a Supabase project works)
+- Redis instance (Upstash Redis with TLS)
+- Supabase project with a storage bucket for documents
+
+### Install
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+pnpm install
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+### Configure environment variables
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Create the following env files (values are your own — never commit real secrets):
+
+**`packages/database/.env`**
 
 ```sh
-turbo build --filter=docs
+DATABASE_URL="postgresql://..."
 ```
 
-Without global `turbo`:
+**`apps/api/.env`**
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+DATABASE_URL="postgresql://..."
+REDIS_URL="redis://..."
+JWT_SECRET="your-jwt-secret"
+PORT=4000
+SUPABASE_URL="https://<project>.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="service_role_key"
+SMTP_USER="your-gmail"
+SMTP_PASS="your-app-password"
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=465
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+**`apps/admin/.env.local`**
 
 ```sh
-cd my-turborepo
-turbo dev
+NEXT_PUBLIC_API_URL="http://localhost:4000"
 ```
 
-Without global `turbo`, use your package manager:
+### Database setup
+
+The `@repo/database` package owns the Prisma schema (`packages/database/prisma/schema.prisma`). Apply schema changes with:
 
 ```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+pnpm --filter @repo/database exec prisma migrate dev
+pnpm --filter @repo/database generate
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+> Note: `prisma generate` can fail with an `EPERM` error renaming the query engine DLL while dev servers are running on Windows — stop the dev servers, then re-run.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Development
+
+Start all apps (Turborepo):
 
 ```sh
-turbo dev --filter=web
+pnpm dev
 ```
 
-Without global `turbo`:
+Or run each app individually:
 
 ```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+pnpm --filter @repo/database dev
+pnpm --filter @repo/api dev
+pnpm --filter admin dev
 ```
 
-### Remote Caching
+## Scripts
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+| Command            | Description                 |
+| ------------------ | --------------------------- |
+| `pnpm dev`         | Run all apps in watch mode  |
+| `pnpm build`       | Build all apps and packages |
+| `pnpm lint`        | Lint all workspaces         |
+| `pnpm check-types` | Type-check all workspaces   |
+| `pnpm format`      | Format code with Prettier   |
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+## API Overview
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+All endpoints (except auth) require a `Bearer` JWT.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
+- `POST /api/auth/request-otp` / `POST /api/auth/verify-otp` / `POST /api/auth/refresh` — email OTP authentication
+- `/api/office/dashboard` — dashboard metrics (incl. `ongoingEvents`)
+- `/api/office/dashboard/ongoing-events` — list of ongoing events
+- `/api/office/employees` — CRUD employees; `?attendanceStatus=` filters to employees with that attendance status today
+- `/api/office/employees/:id/salaries` — get / upsert monthly salary
+- `/api/office/attendance/summary` — monthly attendance + net salary summary
+- `/api/uploads/employee-document` — upload (with optional `oldPath` auto-delete) and delete employee documents
+- `/api/items`, `/api/events`, `/api/warehouse/*`, `/api/complains` — warehouse module routes
 
 ## Useful Links
 
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- [Turborepo docs](https://turborepo.dev/docs)
+- [Next.js docs](https://nextjs.org/docs)
+- [Prisma docs](https://www.prisma.io/docs)
