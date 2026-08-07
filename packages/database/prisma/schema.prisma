@@ -14,6 +14,40 @@ enum Role {
   EMPLOYEE
 }
 
+enum EmployeeDesignation {
+  MANAGER
+  SUPERVISOR
+  STAFF
+  BARTENDER
+  BUTLER
+  CRM
+  ORDERING_OPERATOR
+  DESIGNER
+  GRAPHIC_DESIGNER
+  DATA_ENTRY_OPERATOR
+  MIS
+  WAREHOUSE_MANAGER
+  INVENTORY_MANAGER
+  PERMANENT_LABOUR
+  SOFTWARE_DEVELOPER
+  OFFICE_BOY
+  DRIVER
+  SECURITY_GUARD
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  SHORT_LEAVE
+  ON_LEAVE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  LEFT
+}
+
 enum ItemCategory {
   SETUP
   UNIFORM
@@ -35,11 +69,55 @@ enum EventStatus {
 }
 
 model User {
-  id         String @id @default(cuid())
-  email      String @unique
+  id         String  @id @default(cuid())
+  email      String  @unique
   name       String
-  role       Role   @default(EMPLOYEE)
+  role       Role    @default(EMPLOYEE)
   employeeId String? @unique
+}
+
+model Employee {
+  id               String              @id @default(cuid())
+  employeeId       String              @unique
+  name             String
+  contact          String?
+  emergencyContact String?
+  designation      EmployeeDesignation @default(STAFF)
+  baseSalary       Float               @default(0)
+  joiningDate      DateTime            @default(now())
+  status           EmployeeStatus      @default(ACTIVE)
+  leavingDate      DateTime?
+
+  // Document fields (Optional)
+  aadharUrl      String?
+  panCardUrl     String?
+  offerLetterUrl String?
+  bondUrl        String?
+
+  // Bank fields (Optional)
+  bankAccountNo    String?
+  bankBranch       String?
+  bankIfsc         String?
+  bankOtherDetails String?
+
+  role      Role     @default(EMPLOYEE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salaries    Salary[]
+  attendances Attendance[]
+}
+
+model Attendance {
+  id         String           @id @default(cuid())
+  employeeId String
+  date       DateTime
+  status     AttendanceStatus
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([employeeId, date])
 }
 
 model Item {
@@ -126,4 +204,19 @@ model Complain {
   description     String
   status          String
   createdAt       DateTime @default(now())
+}
+
+model Salary {
+  id         String    @id @default(cuid())
+  employeeId String
+  month      Int // 1-12
+  year       Int // e.g., 2024
+  amount     Float
+  status     String    @default("UNPAID") // PAID or UNPAID
+  paidDate   DateTime?
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([employeeId, month, year])
 }

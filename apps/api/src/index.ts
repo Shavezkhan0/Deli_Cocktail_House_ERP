@@ -7,6 +7,8 @@ import eventsRouter from "./routes/events";
 import itemsRouter from "./routes/items";
 import usersRouter from "./routes/users";
 import warehouseRouter from "./routes/warehouse";
+import officeRouter from "./routes/office";
+import uploadsRouter from "./routes/uploads";
 
 const app = express();
 
@@ -19,6 +21,8 @@ app.use("/api/events", eventsRouter);
 app.use("/api/items", itemsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/warehouse", warehouseRouter);
+app.use("/api/office", officeRouter);
+app.use("/api/uploads", uploadsRouter);
 
 app.get("/", (_req, res) => {
   res.send("Backend is Running");
