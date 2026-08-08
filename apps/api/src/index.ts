@@ -9,10 +9,26 @@ import usersRouter from "./routes/users";
 import warehouseRouter from "./routes/warehouse";
 import officeRouter from "./routes/office";
 import uploadsRouter from "./routes/uploads";
+import employeeAuthRouter from "./routes/employee-portal/auth";
+import profileRouter from "./routes/employee-portal/profile";
+import attendanceRouter from "./routes/employee-portal/attendance";
+import salaryRouter from "./routes/employee-portal/salary";
+import scoreRouter from "./routes/employee-portal/score";
+import employeeEventsRouter from "./routes/employee-portal/events";
+import crmEventsRouter from "./routes/employee-portal/crm-events";
+import tasksRouter from "./routes/employee-portal/tasks";
+import expenseRouter from "./routes/employee-portal/expense";
+import vendorRouter from "./routes/employee-portal/vendor";
+import travelRouter from "./routes/employee-portal/travel";
+import salesRouter from "./routes/employee-portal/sales";
+import { employeeAuth } from "./middleware/employeeAuth";
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({
+  origin: ["http://localhost:3000", "http://localhost:3001"],
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
@@ -23,6 +39,21 @@ app.use("/api/users", usersRouter);
 app.use("/api/warehouse", warehouseRouter);
 app.use("/api/office", officeRouter);
 app.use("/api/uploads", uploadsRouter);
+app.use("/api/employee", employeeAuthRouter);
+app.use("/api/employee", [
+  employeeAuth,
+  profileRouter,
+  attendanceRouter,
+  salaryRouter,
+  scoreRouter,
+  employeeEventsRouter,
+  crmEventsRouter,
+  tasksRouter,
+  expenseRouter,
+  vendorRouter,
+  travelRouter,
+  salesRouter,
+]);
 
 app.get("/", (_req, res) => {
   res.send("Backend is Running");

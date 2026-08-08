@@ -1,0 +1,10 @@
+
+> @repo/api@0.0.0 dev C:\Users\Shavez_Khan\Desktop\Deli_Cocktail_House\Deli_Cocktail_House_ERP\apps\api
+> tsx watch src/index.ts
+
+API server listening on http://localhost:4000
+4:33:16 pm [tsx] change in ./src\routes\events.ts Restarting...
+API server listening on http://localhost:4000
+4:33:22 pm [tsx] change in ./src\routes\events.ts Restarting...
+API server listening on http://localhost:4000
+ ELIFECYCLE  Command failed with exit code 4294967295.

@@ -121,6 +121,7 @@ router.post("/employees", requireAuth, async (req, res) => {
   try {
     const {
       name,
+      email,
       contact,
       emergencyContact,
       designation,
@@ -145,6 +146,7 @@ router.post("/employees", requireAuth, async (req, res) => {
     const data: Record<string, unknown> = {
       employeeId,
       name,
+      email,
       contact,
       emergencyContact,
       designation: designation as EmployeeDesignation,
@@ -194,6 +196,7 @@ router.put("/employees/:id", requireAuth, async (req, res) => {
 
     const updatableFields = [
       "name",
+      "email",
       "contact",
       "emergencyContact",
       "baseSalary",

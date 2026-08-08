@@ -79,6 +79,7 @@ type Employee = {
 
 type CreateEmployeePayload = {
   name: string;
+  email: string;
   contact: string;
   emergencyContact?: string;
   designation: string;
@@ -96,6 +97,7 @@ type CreateEmployeePayload = {
 
 const employeeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
   contact: z.string().trim().min(1, "Contact is required"),
   emergencyContact: z.string().trim().optional(),
   designation: z.enum(DESIGNATION_VALUES),
@@ -114,6 +116,7 @@ const employeeSchema = z.object({
 
 type EmployeeFormValues = {
   name: string;
+  email: string;
   contact: string;
   emergencyContact: string;
   designation: string;
@@ -127,6 +130,7 @@ type EmployeeFormValues = {
 
 const emptyForm: EmployeeFormValues = {
   name: "",
+  email: "",
   contact: "",
   emergencyContact: "",
   designation: "",
@@ -388,6 +392,7 @@ export function EmployeeForm({
     setErrors({});
     createEmployee.mutate({
       name: parsed.data.name,
+      email: parsed.data.email,
       contact: parsed.data.contact,
       ...(parsed.data.emergencyContact?.trim()
         ? { emergencyContact: parsed.data.emergencyContact.trim() }
@@ -427,6 +432,16 @@ export function EmployeeForm({
             onChange={(event) => update("name", event.target.value)}
             placeholder="e.g. Rahul Sharma"
             aria-invalid={Boolean(errors.name)}
+          />
+        </Field>
+
+        <Field label="Email" error={errors.email}>
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(event) => update("email", event.target.value)}
+            placeholder="e.g. rahul@example.com"
+            aria-invalid={Boolean(errors.email)}
           />
         </Field>
 
