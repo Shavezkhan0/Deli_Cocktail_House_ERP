@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  Check,
   Loader2,
   PackageCheck,
   PackagePlus,
@@ -47,28 +48,43 @@ type EventDetail = {
   eventName: string;
   eventCode: string;
   eventDate: string;
-  startTime: string;
+  startTime: string | null;
   endTime?: string | null;
   venue: string;
   pax: number;
   eventType: string;
   company: string;
-  crm: string;
-  siteManager: string;
-  siteSupervisor: string;
+  crm: string | null;
+  siteManager: string | null;
+  siteSupervisor: string | null;
+  crmEmployee?: { id: string; name: string; employeeId: string } | null;
+  siteManagerEmp?: { id: string; name: string; employeeId: string } | null;
+  siteSupervisorEmp?: { id: string; name: string; employeeId: string } | null;
   butlerVendor?: string | null;
   bartenders: number;
   maleButler: number;
   femaleButler: number;
   clientName: string;
   clientPhone: string;
-  clientEmail: string;
+  clientEmail: string | null;
   status: string;
   inventoryCost: number;
   staffCost: number;
   totalCost: number;
   inventory: EventInventoryRecord[];
   returns: EventReturnSummaryRecord[];
+  crmChecklist: EventChecklistRecord[];
+};
+
+type EventChecklistRecord = {
+  id: string;
+  eventId: string;
+  section: string;
+  label: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type EventInventoryRecord = {
@@ -197,6 +213,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
   const [selectedItemId, setSelectedItemId] = useState("");
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
   const [rowKey, setRowKey] = useState(0);
+  const [newChecklistLabel, setNewChecklistLabel] = useState("");
 
   const {
     data: event,
@@ -214,6 +231,60 @@ export function EventDetail({ eventId }: { eventId: string }) {
   });
 
   const isCompleted = event?.status === "COMPLETED";
+
+  const addChecklistItem = useMutation({
+    mutationFn: (label: string) =>
+      apiFetch(`/api/events/${eventId}/crm-checklist`, {
+        method: "POST",
+        body: { label },
+        token,
+      }),
+    onSuccess: () => {
+      setNewChecklistLabel("");
+      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteChecklistItem = useMutation({
+    mutationFn: (itemId: string) =>
+      apiFetch(`/api/events/${eventId}/crm-checklist/${itemId}`, {
+        method: "DELETE",
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Task removed");
+      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const toggleChecklistItem = useMutation({
+    mutationFn: ({ itemId, completed }: { itemId: string; completed: boolean }) =>
+      apiFetch(`/api/events/${eventId}/crm-checklist/${itemId}`, {
+        method: "PATCH",
+        body: { completed },
+        token,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  function handleAddChecklist() {
+    const label = newChecklistLabel.trim();
+    if (!label) {
+      return;
+    }
+    addChecklistItem.mutate(label);
+  }
 
   const inventoryByItemId = useMemo(() => {
     const map = new Map<string, EventInventoryRecord>();
@@ -374,19 +445,25 @@ export function EventDetail({ eventId }: { eventId: string }) {
                 {formatDate(event.eventDate)}
               </Field>
               <Field label="Time">
-                {event.startTime}
+                {event.startTime ?? "—"}
                 {event.endTime ? ` – ${event.endTime}` : ""}
               </Field>
               <Field label="Venue">{event.venue}</Field>
               <Field label="Pax">{event.pax.toLocaleString()}</Field>
               <Field label="Event Type">{event.eventType}</Field>
               <Field label="Company">{event.company}</Field>
-              <Field label="CRM">{event.crm}</Field>
+              <Field label="CRM">
+                {event.crmEmployee?.name ?? event.crm ?? "—"}
+              </Field>
               <Field label="Butler Vendor">
                 {event.butlerVendor ?? "—"}
               </Field>
-              <Field label="Site Manager">{event.siteManager}</Field>
-              <Field label="Site Supervisor">{event.siteSupervisor}</Field>
+              <Field label="Site Manager">
+                {event.siteManagerEmp?.name ?? event.siteManager ?? "—"}
+              </Field>
+              <Field label="Site Supervisor">
+                {event.siteSupervisorEmp?.name ?? event.siteSupervisor ?? "—"}
+              </Field>
               <Field label="Staff">
                 {event.bartenders} bartenders · {event.maleButler} male ·{" "}
                 {event.femaleButler} female
@@ -394,9 +471,115 @@ export function EventDetail({ eventId }: { eventId: string }) {
               <Field label="Client">
                 {event.clientName}
                 <span className="block font-normal text-muted-foreground">
-                  {event.clientPhone} · {event.clientEmail}
+                  {event.clientPhone} · {event.clientEmail ?? "—"}
                 </span>
               </Field>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
+            <div>
+              <CardTitle>CRM Checklist</CardTitle>
+              <CardDescription>
+                Define tasks the assigned CRM must complete for this event.
+                They tick each one off; when all are done the event is fully
+                checked.
+              </CardDescription>
+            </div>
+            {event.crmChecklist.length > 0 ? (
+              <Badge variant="secondary">
+                {event.crmChecklist.filter((item) => item.completed).length} /{" "}
+                {event.crmChecklist.length} done
+              </Badge>
+            ) : null}
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 pt-4">
+            {event.crmChecklist.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {event.crmChecklist.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-lg border px-3 py-2.5"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleChecklistItem.mutate({
+                          itemId: item.id,
+                          completed: !item.completed,
+                        })
+                      }
+                      aria-label={
+                        item.completed
+                          ? "Mark as incomplete"
+                          : "Mark as complete"
+                      }
+                      className={cn(
+                        "flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
+                        item.completed
+                          ? "border-emerald-500 bg-emerald-500 text-white"
+                          : "border-border hover:border-emerald-500/50",
+                      )}
+                    >
+                      {item.completed ? <Check className="size-4" /> : null}
+                    </button>
+                    <span
+                      className={cn(
+                        "flex-1 text-sm",
+                        item.completed &&
+                          "text-muted-foreground line-through",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteChecklistItem.mutate(item.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                No CRM checklist items yet. Add tasks like &quot;Client
+                Onboarding&quot; below.
+              </p>
+            )}
+
+            <div className="flex items-end gap-2">
+              <div className="flex flex-1 flex-col gap-1.5">
+                <span className="text-sm font-medium text-foreground">
+                  Add Task
+                </span>
+                <Input
+                  value={newChecklistLabel}
+                  onChange={(event) => setNewChecklistLabel(event.target.value)}
+                  placeholder="e.g. Client onboarding"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleAddChecklist();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleAddChecklist}
+                disabled={
+                  addChecklistItem.isPending ||
+                  newChecklistLabel.trim() === ""
+                }
+              >
+                <Plus />
+                Add
+              </Button>
             </div>
           </CardContent>
         </Card>

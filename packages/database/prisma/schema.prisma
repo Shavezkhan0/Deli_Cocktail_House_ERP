@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -33,6 +34,7 @@ enum EmployeeDesignation {
   OFFICE_BOY
   DRIVER
   SECURITY_GUARD
+  SALES_EXECUTIVE
 }
 
 enum AttendanceStatus {
@@ -79,6 +81,7 @@ model User {
 model Employee {
   id               String              @id @default(cuid())
   employeeId       String              @unique
+  email            String?             @unique
   name             String
   contact          String?
   emergencyContact String?
@@ -104,8 +107,17 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  salaries    Salary[]
-  attendances Attendance[]
+  salaries       Salary[]
+  attendances    Attendance[]
+  weeklyScores   WeeklyScore[]
+  tasks          Task[]
+  vendorContacts VendorContact[]
+  expenseEntries ExpenseEntry[]
+  travelDetails  TravelDetail[]
+  sales          Sale[]
+  crmEvents          Event[]  @relation("EventCrm")
+  siteManagerEvents  Event[]  @relation("EventSiteManager")
+  siteSupervisorEvents Event[] @relation("EventSiteSupervisor")
 }
 
 model Attendance {
@@ -113,6 +125,8 @@ model Attendance {
   employeeId String
   date       DateTime
   status     AttendanceStatus
+  latitude   Float?
+  longitude  Float?
   employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
@@ -145,28 +159,52 @@ model Event {
   eventName      String
   eventCode      String               @unique
   eventDate      DateTime
-  startTime      String
+  startTime      String?
   endTime        String?
   venue          String
   pax            Int
   eventType      String
   company        String
-  crm            String
-  siteManager    String
-  siteSupervisor String
+  crm            String?
+  siteManager    String?
+  siteSupervisor String?
   butlerVendor   String?
   bartenders     Int
   maleButler     Int
   femaleButler   Int
   clientName     String
   clientPhone    String
-  clientEmail    String
+  clientEmail    String?
   status         EventStatus          @default(UPCOMING)
   inventoryCost  Float
   staffCost      Float
   totalCost      Float
+
+  crmEmployeeId    String?
+  siteManagerId    String?
+  siteSupervisorId String?
+
+  crmEmployee       Employee? @relation("EventCrm", fields: [crmEmployeeId], references: [id])
+  siteManagerEmp    Employee? @relation("EventSiteManager", fields: [siteManagerId], references: [id])
+  siteSupervisorEmp Employee? @relation("EventSiteSupervisor", fields: [siteSupervisorId], references: [id])
+
   inventory      EventInventory[]
   returns        EventReturnSummary[]
+  crmChecklist   EventCrmChecklistItem[]
+}
+
+model EventCrmChecklistItem {
+  id        String   @id @default(cuid())
+  eventId   String
+  section   String   @default("General")
+  label     String
+  completed Boolean  @default(false)
+  sortOrder Int      @default(0)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
 }
 
 model EventInventory {
@@ -219,4 +257,94 @@ model Salary {
   updatedAt  DateTime  @updatedAt
 
   @@unique([employeeId, month, year])
+}
+
+model AppSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. "OFFICE_LAT", "OFFICE_LNG", "ATTENDANCE_RADIUS_M"
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model WeeklyScore {
+  id         String   @id @default(cuid())
+  employeeId String
+  weekStart  DateTime // Monday of the week
+  score      Int // 0-10, entered by admin
+  notes      String?
+  createdAt  DateTime @default(now())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, weekStart])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  assignedTo  String // employeeId
+  assignedBy  String? // admin name/id
+  title       String
+  description String?
+  dueDate     DateTime?
+  status      TaskStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  employee    Employee   @relation(fields: [assignedTo], references: [id], onDelete: Cascade)
+}
+
+model VendorContact {
+  id        String   @id @default(cuid())
+  addedBy   String // employeeId
+  name      String
+  phone     String
+  category  String
+  eventId   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  employee  Employee @relation(fields: [addedBy], references: [id], onDelete: Cascade)
+}
+
+model ExpenseEntry {
+  id          String   @id @default(cuid())
+  submittedBy String // employeeId
+  eventId     String?
+  amount      Float
+  description String
+  receiptUrl  String?
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt   DateTime @default(now())
+  employee    Employee @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
+}
+
+model TravelDetail {
+  id         String   @id @default(cuid())
+  employeeId String
+  eventId    String?
+  from       String
+  to         String
+  travelDate DateTime
+  mode       String // Car, Train, Flight, etc.
+  amount     Float?
+  createdAt  DateTime @default(now())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model Sale {
+  id            String   @id @default(cuid())
+  employeeId    String
+  eventId       String?
+  itemName      String
+  quantity      Int      @default(1)
+  unitPrice     Float
+  amount        Float
+  customerName  String?
+  customerPhone String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }

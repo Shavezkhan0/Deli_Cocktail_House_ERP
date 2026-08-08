@@ -6,6 +6,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./src/default-checklist": {
+      "types": "./dist/default-checklist.d.ts",
+      "default": "./dist/default-checklist.js"
     }
   },
   "scripts": {

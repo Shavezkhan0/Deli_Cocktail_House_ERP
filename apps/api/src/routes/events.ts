@@ -3,19 +3,22 @@ import { prisma, Prisma, EventStatus } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
 import { nextEventCode, createWithSequentialCode } from "../lib/codes";
 import { calculateStatus } from "../lib/status";
+import {
+  isNonEmptyString,
+  parseOptionalString,
+  toNonNegativeFloat,
+  toNonNegativeInt,
+} from "../lib/validation";
+import { ValidationError, OperationError, isPrismaError } from "../lib/errors";
+import {
+  DEFAULT_CRM_CHECKLIST,
+  parseCrmChecklist,
+  toCrmChecklistCreateInput,
+  type CrmChecklistItemInput,
+} from "../lib/crmChecklist";
+import crmChecklistRouter from "./crmChecklist";
 
 const router: Router = Router();
-
-const eventInclude = {
-  inventory: { include: { item: true } },
-  returns: { include: { item: true } },
-} satisfies Prisma.EventInclude;
-
-const VALID_EVENT_STATUSES = new Set<string>(Object.values(EventStatus));
-
-class OperationError extends Error {}
-
-class ValidationError extends Error {}
 
 type AllocationInput = {
   itemId: string;
@@ -35,35 +38,31 @@ type ReturnSummaryInput = {
   remarks: string;
 };
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
+type EventBodyInput = Omit<Prisma.EventUncheckedCreateInput, "eventCode"> & {
+  crmChecklist?: CrmChecklistItemInput[];
+};
 
-function toNonNegativeInt(value: unknown, fallback: number): number | null {
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-    return null;
-  }
-  return value;
-}
+const eventInclude = {
+  inventory: { include: { item: true } },
+  returns: { include: { item: true } },
+  crmChecklist: { orderBy: { sortOrder: "asc" } },
+  crmEmployee: true,
+  siteManagerEmp: true,
+  siteSupervisorEmp: true,
+} satisfies Prisma.EventInclude;
 
-function toNonNegativeFloat(value: unknown, fallback: number): number | null {
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    return null;
-  }
-  return value;
-}
+const VALID_EVENT_STATUSES = new Set<string>(Object.values(EventStatus));
+
+const OPEN_EVENT_STATUSES = [EventStatus.UPCOMING, EventStatus.ONGOING];
 
 function parseAllocations(
   value: unknown,
 ): { ok: true; data: AllocationInput[] } | { ok: false; message: string } {
   if (!Array.isArray(value) || value.length === 0) {
-    return { ok: false, message: "Expected a non-empty array of allocation items" };
+    return {
+      ok: false,
+      message: "Expected a non-empty array of allocation items",
+    };
   }
 
   const data: AllocationInput[] = [];
@@ -104,7 +103,10 @@ function parseReturnSummaries(
   value: unknown,
 ): { ok: true; data: ReturnSummaryInput[] } | { ok: false; message: string } {
   if (!Array.isArray(value) || value.length === 0) {
-    return { ok: false, message: "Expected a non-empty array of return summary items" };
+    return {
+      ok: false,
+      message: "Expected a non-empty array of return summary items",
+    };
   }
 
   const data: ReturnSummaryInput[] = [];
@@ -152,9 +154,7 @@ function parseReturnSummaries(
   return { ok: true, data };
 }
 
-function parseEventBody(
-  body: Record<string, unknown>,
-): Omit<Prisma.EventCreateInput, "eventCode"> {
+function parseEventBody(body: Record<string, unknown>): EventBodyInput {
   const {
     eventName,
     eventDate,
@@ -167,6 +167,9 @@ function parseEventBody(
     crm,
     siteManager,
     siteSupervisor,
+    crmEmployeeId,
+    siteManagerId,
+    siteSupervisorId,
     butlerVendor,
     bartenders,
     maleButler,
@@ -178,6 +181,7 @@ function parseEventBody(
     inventoryCost,
     staffCost,
     totalCost,
+    crmChecklist,
   } = body;
 
   if (!isNonEmptyString(eventName)) {
@@ -185,12 +189,6 @@ function parseEventBody(
   }
   if (typeof eventDate !== "string" || Number.isNaN(Date.parse(eventDate))) {
     throw new ValidationError("A valid event date is required");
-  }
-  if (!isNonEmptyString(startTime)) {
-    throw new ValidationError("Start time is required");
-  }
-  if (endTime !== undefined && !isNonEmptyString(endTime)) {
-    throw new ValidationError("End time must be a non-empty string");
   }
   if (!isNonEmptyString(venue)) {
     throw new ValidationError("Venue is required");
@@ -204,25 +202,25 @@ function parseEventBody(
   if (!isNonEmptyString(company)) {
     throw new ValidationError("Company is required");
   }
-  if (!isNonEmptyString(crm)) {
-    throw new ValidationError("CRM is required");
-  }
-  if (!isNonEmptyString(siteManager)) {
-    throw new ValidationError("Site manager is required");
-  }
-  if (!isNonEmptyString(siteSupervisor)) {
-    throw new ValidationError("Site supervisor is required");
-  }
-  if (butlerVendor !== undefined && !isNonEmptyString(butlerVendor)) {
-    throw new ValidationError("Butler vendor must be a non-empty string");
-  }
-  if (typeof bartenders !== "number" || !Number.isInteger(bartenders) || bartenders < 0) {
+  if (
+    typeof bartenders !== "number" ||
+    !Number.isInteger(bartenders) ||
+    bartenders < 0
+  ) {
     throw new ValidationError("A valid bartender count is required");
   }
-  if (typeof maleButler !== "number" || !Number.isInteger(maleButler) || maleButler < 0) {
+  if (
+    typeof maleButler !== "number" ||
+    !Number.isInteger(maleButler) ||
+    maleButler < 0
+  ) {
     throw new ValidationError("A valid male butler count is required");
   }
-  if (typeof femaleButler !== "number" || !Number.isInteger(femaleButler) || femaleButler < 0) {
+  if (
+    typeof femaleButler !== "number" ||
+    !Number.isInteger(femaleButler) ||
+    femaleButler < 0
+  ) {
     throw new ValidationError("A valid female butler count is required");
   }
   if (!isNonEmptyString(clientName)) {
@@ -230,9 +228,6 @@ function parseEventBody(
   }
   if (!isNonEmptyString(clientPhone)) {
     throw new ValidationError("Client phone is required");
-  }
-  if (!isNonEmptyString(clientEmail)) {
-    throw new ValidationError("Client email is required");
   }
   if (
     status !== undefined &&
@@ -244,7 +239,6 @@ function parseEventBody(
   const inventoryCostValue = toNonNegativeFloat(inventoryCost, 0);
   const staffCostValue = toNonNegativeFloat(staffCost, 0);
   const totalCostValue = toNonNegativeFloat(totalCost, 0);
-
   if (
     inventoryCostValue === null ||
     staffCostValue === null ||
@@ -253,39 +247,88 @@ function parseEventBody(
     throw new ValidationError("Cost fields must be non-negative numbers");
   }
 
+  const crmChecklistValue = parseCrmChecklist(crmChecklist);
+
   return {
     eventName: eventName.trim(),
     eventDate: new Date(eventDate),
-    startTime: startTime.trim(),
+    startTime: parseOptionalString(startTime, "Start time"),
     venue: venue.trim(),
     pax,
     eventType: eventType.trim(),
     company: company.trim(),
-    crm: crm.trim(),
-    siteManager: siteManager.trim(),
-    siteSupervisor: siteSupervisor.trim(),
+    crm: parseOptionalString(crm, "CRM"),
+    siteManager: parseOptionalString(siteManager, "Site manager"),
+    siteSupervisor: parseOptionalString(siteSupervisor, "Site supervisor"),
+    crmEmployeeId: parseOptionalString(
+      crmEmployeeId,
+      "CRM employee",
+      "must be a valid employee selection",
+    ),
+    siteManagerId: parseOptionalString(
+      siteManagerId,
+      "Site manager employee",
+      "must be a valid employee selection",
+    ),
+    siteSupervisorId: parseOptionalString(
+      siteSupervisorId,
+      "Site supervisor employee",
+      "must be a valid employee selection",
+    ),
     bartenders,
     maleButler,
     femaleButler,
     clientName: clientName.trim(),
     clientPhone: clientPhone.trim(),
-    clientEmail: clientEmail.trim(),
+    clientEmail: parseOptionalString(clientEmail, "Client email"),
     inventoryCost: inventoryCostValue,
     staffCost: staffCostValue,
     totalCost: totalCostValue,
-    ...(endTime !== undefined ? { endTime: endTime.trim() } : {}),
-    ...(butlerVendor !== undefined ? { butlerVendor: butlerVendor.trim() } : {}),
+    ...(endTime !== undefined
+      ? { endTime: parseOptionalString(endTime, "End time") }
+      : {}),
+    ...(butlerVendor !== undefined
+      ? { butlerVendor: parseOptionalString(butlerVendor, "Butler vendor") }
+      : {}),
     ...(status !== undefined ? { status: status as EventStatus } : {}),
+    ...(crmChecklistValue !== undefined
+      ? { crmChecklist: crmChecklistValue }
+      : {}),
   };
 }
+
+async function validateAssignedEmployees(
+  data: EventBodyInput,
+): Promise<string | null> {
+  const ids = [
+    data.crmEmployeeId,
+    data.siteManagerId,
+    data.siteSupervisorId,
+  ].filter((id): id is string => typeof id === "string" && id.length > 0);
+
+  if (ids.length === 0) {
+    return null;
+  }
+
+  const count = await prisma.employee.count({
+    where: { id: { in: ids } },
+  });
+
+  if (count !== ids.length) {
+    return "One or more assigned employees no longer exist";
+  }
+
+  return null;
+}
+
+router.use("/:id/crm-checklist", crmChecklistRouter);
 
 router.get("/", requireAuth, async (req, res) => {
   const { filter } = req.query;
 
   if (
     filter !== undefined &&
-    (typeof filter !== "string" ||
-      !["open", "all"].includes(filter))
+    (typeof filter !== "string" || !["open", "all"].includes(filter))
   ) {
     return res.status(400).json({ message: "Invalid filter" });
   }
@@ -295,7 +338,7 @@ router.get("/", requireAuth, async (req, res) => {
       ...(filter === "open"
         ? {
             where: {
-              status: { in: [EventStatus.UPCOMING, EventStatus.ONGOING] },
+              status: { in: OPEN_EVENT_STATUSES },
             },
           }
         : {}),
@@ -329,7 +372,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 });
 
 router.post("/", requireAuth, async (req, res) => {
-  let data: Omit<Prisma.EventCreateInput, "eventCode">;
+  let data: EventBodyInput;
   try {
     data = parseEventBody(req.body ?? {});
   } catch (error) {
@@ -339,23 +382,43 @@ router.post("/", requireAuth, async (req, res) => {
     throw error;
   }
 
+  const employeeError = await validateAssignedEmployees(data);
+  if (employeeError) {
+    return res.status(400).json({ message: employeeError });
+  }
+
   try {
-    const event = await createWithSequentialCode(
-      nextEventCode,
-      (eventCode) =>
-        prisma.event.create({
-          data: { ...data, eventCode },
-          include: eventInclude,
-        }),
+    const { crmChecklist, ...scalarData } = data;
+    const checklistItems =
+      crmChecklist !== undefined
+        ? crmChecklist
+        : scalarData.crmEmployeeId
+          ? DEFAULT_CRM_CHECKLIST
+          : [];
+
+    const event = await createWithSequentialCode(nextEventCode, (eventCode) =>
+      prisma.event.create({
+        data: {
+          ...scalarData,
+          eventCode,
+          ...(checklistItems.length > 0
+            ? {
+                crmChecklist: {
+                  create: toCrmChecklistCreateInput(checklistItems),
+                },
+              }
+            : {}),
+        },
+        include: eventInclude,
+      }),
     );
 
     return res.status(201).json(event);
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return res.status(409).json({ message: "Failed to generate a unique event code" });
+    if (isPrismaError(error, "P2002")) {
+      return res
+        .status(409)
+        .json({ message: "Failed to generate a unique event code" });
     }
     console.error("[Events] Failed to create event:", error);
     return res.status(500).json({ message: "Failed to create event" });
@@ -363,7 +426,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 router.put("/:id", requireAuth, async (req, res) => {
-  let data: Omit<Prisma.EventCreateInput, "eventCode">;
+  let data: EventBodyInput;
   try {
     data = parseEventBody(req.body ?? {});
   } catch (error) {
@@ -373,22 +436,38 @@ router.put("/:id", requireAuth, async (req, res) => {
     throw error;
   }
 
+  const employeeError = await validateAssignedEmployees(data);
+  if (employeeError) {
+    return res.status(400).json({ message: employeeError });
+  }
+
   try {
+    const { crmChecklist, ...scalarData } = data;
     const event = await prisma.event.update({
       where: { id: req.params.id },
-      data,
+      data: {
+        ...scalarData,
+        ...(crmChecklist !== undefined
+          ? {
+              crmChecklist: {
+                deleteMany: {},
+                create: toCrmChecklistCreateInput(crmChecklist),
+              },
+            }
+          : {}),
+      },
       include: eventInclude,
     });
 
     return res.json(event);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
-        return res.status(404).json({ message: "Event not found" });
-      }
-      if (error.code === "P2002") {
-        return res.status(409).json({ message: "Failed to update the event code" });
-      }
+    if (isPrismaError(error, "P2025")) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    if (isPrismaError(error, "P2002")) {
+      return res
+        .status(409)
+        .json({ message: "Failed to update the event code" });
     }
     console.error("[Events] Failed to update event:", error);
     return res.status(500).json({ message: "Failed to update event" });
@@ -403,10 +482,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
     return res.status(204).send();
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
+    if (isPrismaError(error, "P2025")) {
       return res.status(404).json({ message: "Event not found" });
     }
     console.error("[Events] Failed to delete event:", error);
@@ -536,13 +612,13 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
           where: { id: summary.itemId },
         });
         if (!item) {
-          throw new OperationError(
-            `Item with id ${summary.itemId} not found`,
-          );
+          throw new OperationError(`Item with id ${summary.itemId} not found`);
         }
 
         const deduction =
-          summary.lostQuantity + summary.damagedQuantity + summary.consumedQuantity;
+          summary.lostQuantity +
+          summary.damagedQuantity +
+          summary.consumedQuantity;
         const nextCurrentStock = item.currentStock - deduction;
 
         await tx.item.update({
