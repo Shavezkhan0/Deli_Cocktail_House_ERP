@@ -107,17 +107,17 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  salaries       Salary[]
-  attendances    Attendance[]
-  weeklyScores   WeeklyScore[]
-  tasks          Task[]
-  vendorContacts VendorContact[]
-  expenseEntries ExpenseEntry[]
-  travelDetails  TravelDetail[]
-  sales          Sale[]
-  crmEvents          Event[]  @relation("EventCrm")
-  siteManagerEvents  Event[]  @relation("EventSiteManager")
-  siteSupervisorEvents Event[] @relation("EventSiteSupervisor")
+  salaries             Salary[]
+  attendances          Attendance[]
+  weeklyScores         WeeklyScore[]
+  tasks                Task[]
+  vendorContacts       VendorContact[]
+  expenseEntries       ExpenseEntry[]
+  travelDetails        TravelDetail[]
+  sales                Sale[]
+  crmEvents            Event[]         @relation("EventCrm")
+  siteManagerEvents    Event[]         @relation("EventSiteManager")
+  siteSupervisorEvents Event[]         @relation("EventSiteSupervisor")
 }
 
 model Attendance {
@@ -155,9 +155,9 @@ model Item {
 }
 
 model Event {
-  id             String               @id @default(cuid())
+  id             String      @id @default(cuid())
   eventName      String
-  eventCode      String               @unique
+  eventCode      String      @unique
   eventDate      DateTime
   startTime      String?
   endTime        String?
@@ -175,7 +175,7 @@ model Event {
   clientName     String
   clientPhone    String
   clientEmail    String?
-  status         EventStatus          @default(UPCOMING)
+  status         EventStatus @default(UPCOMING)
   inventoryCost  Float
   staffCost      Float
   totalCost      Float
@@ -188,9 +188,9 @@ model Event {
   siteManagerEmp    Employee? @relation("EventSiteManager", fields: [siteManagerId], references: [id])
   siteSupervisorEmp Employee? @relation("EventSiteSupervisor", fields: [siteSupervisorId], references: [id])
 
-  inventory      EventInventory[]
-  returns        EventReturnSummary[]
-  crmChecklist   EventCrmChecklistItem[]
+  inventory    EventInventory[]
+  returns      EventReturnSummary[]
+  crmChecklist EventCrmChecklistItem[]
 }
 
 model EventCrmChecklistItem {
@@ -350,67 +350,133 @@ model Sale {
 }
 
 model PdfCompanySettings {
-  id               String  @id @default(cuid())
-  companyName      String
-  logoUrl          String?
-  headerLogoUrl    String?
-  address          String?
-  phone1           String?
-  phone2           String?
-  email            String?
-  footerText       String?
-  defaultFont      String  @default("Helvetica")
-  defaultTheme     String  @default("modern")
-  defaultTerms     String?
+  id                  String   @id @default(cuid())
+  companyName         String
+  logoUrl             String?
+  headerLogoUrl       String?
+  address             String?
+  phone1              String?
+  phone2              String?
+  email               String?
+  footerText          String?
+  defaultFont         String   @default("Helvetica")
+  defaultTheme        String   @default("modern")
+  defaultTerms        String?
   defaultDeliverables Json?
-  defaultMixers    Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  defaultMixers       Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model PdfEvent {
-  id                String   @id @default(cuid())
-  eventId           String   @unique
-  eventName         String
-  startDate         DateTime
-  endDate           DateTime
-  venue             String
-  city              String?
-  state             String?
-  eventType         String?
-  packageType       String?
-  packagePax        Int?
-  clientName        String?
-  clientContact     String?
+  id                  String   @id @default(cuid())
+  eventId             String   @unique
+  eventName           String
+  startDate           DateTime
+  endDate             DateTime
+  venue               String
+  city                String?
+  state               String?
+  eventType           String?
+  packageType         String?
+  packagePax          Int?
+  clientName          String?
+  clientContact       String?
   specialInstructions String?
-  pdfTitle          String?
-  status            String   @default("DRAFT")
-  deliverables      Json?
-  mixers            Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  pdfTitle            String?
+  status              String   @default("DRAFT")
+  deliverables        Json?
+  mixers              Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  functions         PdfFunction[]
+  functions PdfFunction[]
 }
 
 model PdfFunction {
-  id                 String     @id @default(cuid())
-  eventId            String
-  functionName       String
-  date               DateTime
-  startTime          String?
-  endTime            String?
-  pax                Int?
-  bartenders         Int?
-  butlers            Int?
-  siteManager        String?
-  theme              String?
-  description        String?
-  notes              String?
-  templateData       Json?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  event              PdfEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  eventId      String
+  functionName String
+  date         DateTime
+  startTime    String?
+  endTime      String?
+  pax          Int?
+  bartenders   Int?
+  butlers      Int?
+  siteManager  String?
+  theme        String?
+  description  String?
+  notes        String?
+  templateData Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  event        PdfEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
+}
+
+enum FunctionCategory {
+  EVENT
+  STANDARD
+}
+
+enum BlockType {
+  SIMPLE
+  LIST
+  TEXT
+  TEXT_WITH_ITEMS
+  TEXT_WITH_SUBITEMS
+}
+
+model ProposalFunctionTemplate {
+  id        String                  @id @default(cuid())
+  name      String
+  category  FunctionCategory
+  sortOrder Int                     @default(0)
+  blocks    ProposalBlockTemplate[]
+  proposals EventProposalFunction[]
+}
+
+model ProposalBlockTemplate {
+  id          String    @id @default(cuid())
+  functionId  String
+  type        BlockType
+  sortOrder   Int       @default(0)
+  title       String
+  value       String?
+  description String?
+  items       Json?
+
+  function ProposalFunctionTemplate @relation(fields: [functionId], references: [id], onDelete: Cascade)
+}
+
+model EventProposal {
+  id                String                  @id @default(cuid())
+  eventName         String
+  clientName        String
+  venue             String
+  eventDate         DateTime
+  guestCount        Int
+  companyName       String?
+  companyAddress    String?
+  companyContact    String?
+  companyEmail      String?
+  companyFooterText String?
+  functions         EventProposalFunction[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+}
+
+model EventProposalFunction {
+  id           String @id @default(cuid())
+  proposalId   String
+  functionId   String
+  sortOrder    Int    @default(0)
+  overrideJson Json?
+
+  proposal EventProposal            @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  function ProposalFunctionTemplate @relation(fields: [functionId], references: [id], onDelete: Restrict)
+
+  @@index([proposalId])
+  @@index([functionId])
 }

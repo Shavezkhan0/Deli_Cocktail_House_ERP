@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@repo/database";
 import { requireAuth } from "@/lib/session";
 import { ProposalToolbar } from "@/components/events/proposal-toolbar";
-import { parseDescription, parseTemplateData } from "@/lib/function-templates";
+import { LIBRARY } from "@/lib/functions";
 
 export const dynamic = "force-dynamic";
 
@@ -64,28 +64,14 @@ type CompanySettings = {
   defaultTerms?: string | null;
 };
 
-type FunctionRow = {
+type ProposalBlock = {
   id: string;
-  functionName: string;
-  date: Date;
-  startTime: string | null;
-  endTime: string | null;
-  pax: number | null;
-  bartenders: number | null;
-  butlers: number | null;
-  siteManager: string | null;
-  theme: string | null;
-  notes: string | null;
-  description: string | null;
-  selectedCocktails: string[];
+  type: string;
+  title: string;
+  value?: string;
+  description?: string;
+  items?: any[];
 };
-
-function stringList(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((item): item is string => typeof item === "string");
-}
 
 function ordinal(day: number): string {
   const ones = day % 10;
@@ -96,29 +82,75 @@ function ordinal(day: number): string {
   return `${day}TH`;
 }
 
-function formatHeadingDate(start: Date, end: Date): string {
-  const sameDay = start.toDateString() === end.toDateString();
-  if (sameDay) {
-    return `${ordinal(start.getDate())} ${MONTHS[start.getMonth()]}`;
-  }
-  const sameMonth =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth();
-  if (sameMonth) {
-    return `${ordinal(start.getDate())} - ${ordinal(end.getDate())} ${
-      MONTHS[start.getMonth()]
-    }`;
-  }
-  return `${ordinal(start.getDate())} ${MONTHS[start.getMonth()]} - ${ordinal(
-    end.getDate(),
-  )} ${MONTHS[end.getMonth()]}`;
+function formatHeadingDate(date: Date): string {
+  return `${ordinal(date.getDate())} ${MONTHS[date.getMonth()]}`;
 }
 
-function formatTime(value: string | null | undefined): string {
-  if (!value) {
-    return "—";
+function Block({ block }: { block: ProposalBlock }) {
+  if (block.type === "simple") {
+    return (
+      <p className="text-[10px]">
+        <span className="font-semibold">{block.title}</span>
+        {block.value ? `: ${block.value}` : ""}
+      </p>
+    );
   }
-  return value;
+  if (block.type === "list") {
+    return (
+      <div>
+        <p className="text-[10px] font-semibold">{block.title}</p>
+        <ul className="mt-1 list-disc space-y-[3px] pl-5 text-[10px] text-[#3f3f46]">
+          {block.items?.map((it: string, i: number) => <li key={i}>{it}</li>)}
+        </ul>
+      </div>
+    );
+  }
+  if (block.type === "text") {
+    return (
+      <div>
+        <p className="text-[10px] font-semibold">{block.title}</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
+          {block.description}
+        </p>
+      </div>
+    );
+  }
+  if (block.type === "text_with_items") {
+    return (
+      <div>
+        <p className="text-[10px] font-semibold">{block.title}</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
+          {block.description}
+        </p>
+        <ul className="mt-1 list-disc space-y-[3px] pl-5 text-[10px] text-[#3f3f46]">
+          {block.items?.map((it: string, i: number) => <li key={i}>{it}</li>)}
+        </ul>
+      </div>
+    );
+  }
+  if (block.type === "text_with_subitems") {
+    return (
+      <div>
+        <p className="text-[10px] font-semibold">{block.title}</p>
+        {block.description ? (
+          <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
+            {block.description}
+          </p>
+        ) : null}
+        <div className="mt-2 space-y-2">
+          {block.items?.map((it: any, i: number) => (
+            <div key={i}>
+              <p className="text-[10px] font-semibold">{it.name}</p>
+              <p className="text-[10px] leading-relaxed text-[#3f3f46]">
+                {it.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 export default async function ProposalPreviewPage({
@@ -130,21 +162,21 @@ export default async function ProposalPreviewPage({
 
   const { id } = await params;
 
-  const [event, settings] = await Promise.all([
-    prisma.pdfEvent.findUnique({
+  const [proposal, settings] = await Promise.all([
+    prisma.eventProposal.findUnique({
       where: { id },
-      include: { functions: { orderBy: { date: "asc" } } },
+      include: { functions: { orderBy: { sortOrder: "asc" } } },
     }),
     prisma.pdfCompanySettings.findFirst({ orderBy: { createdAt: "asc" } }),
   ]);
 
-  if (!event) {
+  if (!proposal) {
     notFound();
   }
 
   const company: CompanySettings = settings ?? {};
   const theme = company.defaultTheme ?? "modern";
-  const { primary, accent } = THEME_ACCENTS[theme] ?? THEME_ACCENTS.modern;
+  const { primary } = THEME_ACCENTS[theme] ?? THEME_ACCENTS.modern;
   const fontClass =
     company.defaultFont === "Times-Roman"
       ? "font-serif"
@@ -152,79 +184,26 @@ export default async function ProposalPreviewPage({
         ? "font-mono"
         : "font-sans";
 
-  const functions: FunctionRow[] = event.functions.map((fn) => ({
-    id: fn.id,
-    functionName: fn.functionName,
-    date: fn.date,
-    startTime: fn.startTime,
-    endTime: fn.endTime,
-    pax: fn.pax,
-    bartenders: fn.bartenders,
-    butlers: fn.butlers,
-    siteManager: fn.siteManager,
-    theme: fn.theme,
-    notes: fn.notes,
-    description: fn.description,
-    selectedCocktails:
-      parseTemplateData(fn.templateData).selectedCocktails ?? [],
-  }));
+  const functions = proposal.functions.map((fn) => {
+    const template = LIBRARY.find((f) => f.id === fn.functionId);
+    const overrideBlocks = Array.isArray(fn.overrideJson)
+      ? (fn.overrideJson as ProposalBlock[])
+      : null;
+    return {
+      id: fn.id,
+      name: template?.name ?? fn.functionId,
+      blocks: overrideBlocks ?? template?.blocks ?? [],
+    };
+  });
 
-  const deliverables = stringList(event.deliverables);
-  const mixers = stringList(event.mixers);
-
-  const heading = `${formatHeadingDate(event.startDate, event.endDate)}: ${
-    event.venue
-  }${event.city ? `, ${event.city}` : ""}`;
-
-  const tableColumns: {
-    label: string;
-    width: string;
-    get: (fn: FunctionRow) => string;
-  }[] = [
-    { label: "FUNCTION", width: "23%", get: (fn) => fn.functionName },
-    {
-      label: "DATE",
-      width: "15%",
-      get: (fn) =>
-        fn.date.toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-    },
-    {
-      label: "TIME",
-      width: "12%",
-      get: (fn) => `${formatTime(fn.startTime)}–${formatTime(fn.endTime)}`,
-    },
-    {
-      label: "PAX",
-      width: "9%",
-      get: (fn) => (fn.pax != null ? String(fn.pax) : "—"),
-    },
-    {
-      label: "BAR / BUTL",
-      width: "15%",
-      get: (fn) => `${fn.bartenders ?? 0}/${fn.butlers ?? 0}`,
-    },
-    {
-      label: "SITE MANAGER",
-      width: "15%",
-      get: (fn) => fn.siteManager ?? "—",
-    },
-    {
-      label: "THEME",
-      width: "11%",
-      get: (fn) => fn.theme ?? "—",
-    },
-  ];
+  const heading = `${formatHeadingDate(proposal.eventDate)}: ${proposal.venue}`;
 
   return (
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 py-6">
-      <ProposalToolbar eventId={event.id} />
+      <ProposalToolbar eventId={proposal.id} />
 
       <div
-        className="proposal-page mx-auto w-full max-w-[820px] overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-foreground/10"
+        className="proposal-page mx-auto w-full max-w-[820px] overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-foreground/10 print:overflow-visible"
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
         <div className={fontClass}>
@@ -235,151 +214,40 @@ export default async function ProposalPreviewPage({
             </h2>
           </div>
 
-          {/* STANDARD BAR DELIVERABLES */}
-          {deliverables.length > 0 ? (
-            <section className="mt-8 break-inside-avoid px-12">
-              <h3 className="text-center text-[13px] font-bold uppercase">
-                Standard Bar Deliverables
-              </h3>
-              <ul className="mt-3 space-y-[3px]">
-                {deliverables.map((item) => (
-                  <li key={item} className="text-[10px]">
-                    ♦ {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {/* MIXERS */}
-          {mixers.length > 0 ? (
-            <section className="mt-8 break-inside-avoid px-12">
-              <h3 className="text-center text-[13px] font-bold uppercase underline">
-                Mixers
-              </h3>
-              <ul className="mt-3 space-y-[3px]">
-                {mixers.map((item) => (
-                  <li key={item} className="text-[10px]">
-                    • {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-
-          {/* TEAM FLOW */}
-          {functions.length > 0 ? (
-            <section className="mt-8 break-inside-avoid px-12">
-              <h3 className="text-center text-[13px] font-bold uppercase underline">
-                Team Flow
-              </h3>
-              <table className="mt-3 w-full border-collapse text-left">
-                <thead>
-                  <tr style={{ backgroundColor: primary }}>
-                    {tableColumns.map((col) => (
-                      <th
-                        key={col.label}
-                        className="px-2 py-2 text-[7.5px] font-bold tracking-wide text-white"
-                        style={{ width: col.width }}
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {functions.map((fn, index) => (
-                    <tr
-                      key={fn.id}
-                      className={index % 2 === 0 ? "bg-white" : "bg-[#f4f4f5]"}
-                    >
-                      {tableColumns.map((col) => (
-                        <td
-                          key={col.label}
-                          className="border-b border-zinc-200/70 px-2 py-[5px] text-[8px]"
-                          style={{ color: "#18181b" }}
-                        >
-                          {col.get(fn)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div
-                className="h-[2px] w-full"
-                style={{ backgroundColor: accent }}
-              />
-            </section>
-          ) : null}
+          {/* EVENT DETAILS */}
+          <section className="mt-6 px-12">
+            <p className="text-center text-[10px] text-[#3f3f46]">
+              {proposal.eventName}
+              {proposal.clientName ? ` — ${proposal.clientName}` : ""}
+              {proposal.guestCount > 0 ? ` — ${proposal.guestCount} PAX` : ""}
+            </p>
+          </section>
 
           {/* INDIVIDUAL FUNCTIONS */}
           {functions.length > 0 ? (
-            <section className="mt-10 px-12">
-              <h3 className="text-center text-[13px] font-bold uppercase underline">
-                Individual Functions
-              </h3>
-              {functions.map((fn) => {
-                const blocks = parseDescription(fn.description ?? "");
-                const hasUniformLine = blocks.some((block) =>
-                  block.text.toUpperCase().includes("BARTENDERS UNIFORM"),
-                );
-                const hasSetupLine = blocks.some((block) =>
-                  block.text.toUpperCase().includes("BAR SETUP"),
-                );
-                return (
-                  <div key={fn.id} className="mt-8 break-inside-avoid">
-                    <h4 className="text-center text-[13px] font-bold uppercase underline">
-                      {fn.functionName}
-                    </h4>
-                    <div className="mt-3 space-y-[3px]">
-                      {!hasUniformLine ? (
-                        <p className="text-[10px] uppercase">
-                          ♦ BARTENDERS UNIFORM:- {fn.theme ?? "AS PER THEME"}
-                        </p>
-                      ) : null}
-                      {!hasSetupLine ? (
-                        <p className="text-[10px] uppercase">
-                          ♦ BAR SETUP:- {fn.notes ?? "AS PER THEME"}
-                        </p>
-                      ) : null}
-                      {blocks.map((block, index) =>
-                        block.type === "subheading" ? (
-                          <p
-                            key={index}
-                            className="pt-2 text-[10px] font-semibold uppercase"
-                          >
-                            ♦ {block.text}
-                          </p>
-                        ) : block.type === "item" ? (
-                          <p key={index} className="pl-4 text-[10px]">
-                            • {block.text}
-                          </p>
-                        ) : (
-                          <p key={index} className="text-[10px]">
-                            {block.text}
-                          </p>
-                        ),
-                      )}
-                      {fn.selectedCocktails.length > 0 ? (
-                        <ul className="mt-1 space-y-[3px]">
-                          {fn.selectedCocktails.map((cocktail) => (
-                            <li key={cocktail} className="pl-4 text-[10px]">
-                              • {cocktail}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
+            <section className="mt-10 px-12 print:overflow-visible">
+              {functions.map((fn) => (
+                <section
+                  key={fn.id}
+                  className="break-inside-avoid break-before-page print:break-before-page print:overflow-visible"
+                  style={{ breakBefore: "always", pageBreakBefore: "always" }}
+                >
+                  <h3 className="text-center text-[13px] font-bold uppercase underline">
+                    {fn.name}
+                  </h3>
+                  <div className="mt-3 space-y-[3px]">
+                    {fn.blocks.map((block) => (
+                      <Block key={block.id} block={block} />
+                    ))}
                   </div>
-                );
-              })}
+                </section>
+              ))}
             </section>
           ) : null}
 
           {/* PLEASE NOTE */}
           <section
-            className="mt-10 break-inside-avoid break-before-page px-12"
+            className="mt-10 break-inside-avoid break-before-page px-12 print:break-before-page print:overflow-visible"
             style={{ breakBefore: "always", pageBreakBefore: "always" }}
           >
             <h3 className="text-center text-[13px] font-bold uppercase underline">
@@ -396,7 +264,7 @@ export default async function ProposalPreviewPage({
 
           {/* TERMS & CONDITIONS */}
           <section
-            className="mt-10 break-inside-avoid break-before-page px-12"
+            className="mt-10 break-inside-avoid break-before-page px-12 print:break-before-page print:overflow-visible"
             style={{ breakBefore: "always", pageBreakBefore: "always" }}
           >
             <h3 className="text-center text-[13px] font-bold uppercase underline">

@@ -26,7 +26,7 @@ export function ProposalToolbar({
           <Printer data-icon="inline-start" />
           Print / Save as PDF
         </Button>
-        <Button size="lg" nativeButton={false} render={<a href={`/api/events/${eventId}/pdf`} />}>
+        <Button size="lg" nativeButton={false} render={<a href={`/api/generate-pdf?id=${eventId}`} />}>
           <Download data-icon="inline-start" />
           Download PDF
         </Button>

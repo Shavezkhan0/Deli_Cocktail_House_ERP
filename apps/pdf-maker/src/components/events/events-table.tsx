@@ -227,7 +227,7 @@ export function EventsTable({ events }: { events: EventTableRow[] }) {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           render={
-                            <a href={`/api/events/${event.id}/pdf`} target="_blank" />
+                            <a href={`/api/generate-pdf?id=${event.id}`} target="_blank" />
                           }
                         >
                           <Download />

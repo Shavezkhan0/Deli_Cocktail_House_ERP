@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const event = await prisma.pdfEvent.findUnique({
+  const event = await prisma.eventProposal.findUnique({
     where: { id },
-    include: { functions: { orderBy: { date: "asc" } } },
+    include: { functions: { orderBy: { sortOrder: "asc" } } },
   });
   if (!event) {
     return NextResponse.json({ message: "Event not found" }, { status: 404 });
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const filename = `${event.eventId.replace(/[^a-zA-Z0-9_-]+/g, "_")}-proposal.pdf`;
+  const filename = `${event.id.replace(/[^a-zA-Z0-9_-]+/g, "_")}-proposal.pdf`;
 
   return new NextResponse(new Uint8Array(pdf), {
     headers: {

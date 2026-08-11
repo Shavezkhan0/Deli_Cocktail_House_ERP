@@ -104,7 +104,7 @@ function buildHeaderTemplate(
         companyName,
       )}</span>`;
 
-  return `<div style="width:100%; padding:0 12mm; box-sizing:border-box; font-family:Helvetica,Arial,sans-serif; display:flex; align-items:center; justify-content:space-between; -webkit-print-color-adjust:exact;">
+  return `<div style="width:100%; padding:0 12mm; box-sizing:border-box; font-family:Helvetica,Arial,sans-serif; font-size:9px; display:flex; align-items:center; justify-content:space-between; -webkit-print-color-adjust:exact; color-adjust:exact;">
   ${brand}
   <span style="font-size:8px; color:#71717a; white-space:nowrap;">Event Proposal</span>
 </div>`;
@@ -118,7 +118,7 @@ function buildFooterTemplate(company: BrowserPdfCompany): string {
     .filter(Boolean)
     .join("   ·   ");
 
-  return `<div style="width:100%; padding:0 12mm; box-sizing:border-box; font-family:Helvetica,Arial,sans-serif; font-size:8px; color:#71717a; display:flex; align-items:center; justify-content:space-between;">
+  return `<div style="width:100%; padding:0 12mm; box-sizing:border-box; font-family:Helvetica,Arial,sans-serif; font-size:8px; color:#71717a; display:flex; align-items:center; justify-content:space-between; -webkit-print-color-adjust:exact; color-adjust:exact;">
   <span style="overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${escapeHtml(
     contact,
   )}</span>
@@ -177,8 +177,8 @@ export async function renderProposalPdf({
       headerTemplate,
       footerTemplate,
       margin: {
-        top: "16mm",
-        bottom: "18mm",
+        top: "28mm",
+        bottom: "28mm",
         left: "13mm",
         right: "13mm",
       },
