@@ -1,0 +1,37 @@
+
+> pdf-maker@0.1.0 dev C:\Users\Shavez_Khan\Desktop\Deli_Cocktail_House\Deli_Cocktail_House_ERP\apps\pdf-maker
+> next dev -p 3001
+
+▲ Next.js 16.3.0 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.1.87:3001
+- Environments: .env.local
+✓ Ready in 2.7s
+✓ Running next.config.ts took 204ms
+○ Compiling proxy ...
+
+○ Compiling /login ...
+ GET /login 200 in 8.5s (next.js: 7.3s, proxy.ts: 627ms, application-code: 541ms)
+ POST /api/login 200 in 1095ms (next.js: 990ms, application-code: 105ms)
+○ Compiling / ...
+ GET / 200 in 7.5s (next.js: 4.3s, proxy.ts: 21ms, application-code: 3.2s)
+ POST /api/login 200 in 29ms (next.js: 13ms, application-code: 16ms)
+ GET /settings 200 in 3.2s (next.js: 1872ms, proxy.ts: 14ms, application-code: 1267ms)
+ GET / 200 in 897ms (next.js: 12ms, proxy.ts: 14ms, application-code: 870ms)
+ POST /api/login 200 in 53ms (next.js: 32ms, application-code: 21ms)
+ POST /api/login 200 in 16ms (next.js: 5ms, application-code: 12ms)
+ GET / 200 in 2.2s (next.js: 70ms, proxy.ts: 14ms, application-code: 2.2s)
+ GET /events/cmsmz9yrk0001ugfwqe4vekuk/edit 200 in 7.6s (next.js: 5.4s, proxy.ts: 9ms, application-code: 2.2s)
+ GET /settings 200 in 886ms (next.js: 31ms, proxy.ts: 22ms, application-code: 833ms)
+ POST /api/login 200 in 46ms (next.js: 14ms, application-code: 32ms)
+ GET /api/events/cmsmz9yrk0001ugfwqe4vekuk/pdf 500 in 7.3s (next.js: 4.8s, application-code: 2.5s)
+▲ Next.js 16.3.0 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.1.87:3001
+- Environments: .env.local
+✓ Ready in 2.4s
+✓ Running next.config.ts took 207ms
+
+C:\Users\Shavez_Khan\Desktop\Deli_Cocktail_House\Deli_Cocktail_House_ERP\apps\pdf-maker:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  pdf-maker@0.1.0 dev: `next dev -p 3001`
+Exit status 1

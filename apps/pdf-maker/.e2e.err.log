@@ -1,0 +1,18 @@
+⨯ Error: ENOENT: no such file or directory, open 'C:\ROOT\node_modules\.pnpm\pdfkit@0.19.1\node_modules\pdfkit\js\data\Helvetica.afm'
+    at <unknown> (src\lib\pdf.ts:306:17)
+    at new Promise (<anonymous>)
+    at buildProposalPdf (src\lib\pdf.ts:305:10)
+    at async GET (src\app\api\events\[id]\pdf\route.ts:33:15)
+  304 |
+  305 |   return new Promise((resolve, reject) => {
+> 306 |     const doc = new PDFDocument({
+      |                 ^
+  307 |       size: "A4",
+  308 |       margin: MARGIN,
+  309 |       bufferPages: true, {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\ROOT\\node_modules\\.pnpm\\pdfkit@0.19.1\\node_modules\\pdfkit\\js\\data\\Helvetica.afm'
+}
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...

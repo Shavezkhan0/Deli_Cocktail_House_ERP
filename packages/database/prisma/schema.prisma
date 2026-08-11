@@ -348,3 +348,69 @@ model Sale {
   createdAt     DateTime @default(now())
   employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }
+
+model PdfCompanySettings {
+  id               String  @id @default(cuid())
+  companyName      String
+  logoUrl          String?
+  headerLogoUrl    String?
+  address          String?
+  phone1           String?
+  phone2           String?
+  email            String?
+  footerText       String?
+  defaultFont      String  @default("Helvetica")
+  defaultTheme     String  @default("modern")
+  defaultTerms     String?
+  defaultDeliverables Json?
+  defaultMixers    Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model PdfEvent {
+  id                String   @id @default(cuid())
+  eventId           String   @unique
+  eventName         String
+  startDate         DateTime
+  endDate           DateTime
+  venue             String
+  city              String?
+  state             String?
+  eventType         String?
+  packageType       String?
+  packagePax        Int?
+  clientName        String?
+  clientContact     String?
+  specialInstructions String?
+  pdfTitle          String?
+  status            String   @default("DRAFT")
+  deliverables      Json?
+  mixers            Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  functions         PdfFunction[]
+}
+
+model PdfFunction {
+  id                 String     @id @default(cuid())
+  eventId            String
+  functionName       String
+  date               DateTime
+  startTime          String?
+  endTime            String?
+  pax                Int?
+  bartenders         Int?
+  butlers            Int?
+  siteManager        String?
+  theme              String?
+  description        String?
+  notes              String?
+  templateData       Json?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  event              PdfEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
