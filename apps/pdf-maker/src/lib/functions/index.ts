@@ -16,6 +16,9 @@ import { wedding } from "./wedding";
 import { receptionAfterParty } from "./reception-after-party";
 import { sufiNight } from "./sufi-night";
 import { sangeetAfterParty } from "./sangeet-after-party";
+import { standardDeliverables } from "./standard-deliverables";
+import { mixers } from "./mixers";
+import { additionalCharges } from "./additional-charges";
 
 export const LIBRARY: FunctionTemplate[] = [
   mehendi,
@@ -34,7 +37,10 @@ export const LIBRARY: FunctionTemplate[] = [
   wedding,
   receptionAfterParty,
   sufiNight,
-  sangeetAfterParty
+  sangeetAfterParty,
+  standardDeliverables,
+  mixers,
+  additionalCharges
 ];
 
 export type { Block, BlockType, FunctionTemplate } from "./types";

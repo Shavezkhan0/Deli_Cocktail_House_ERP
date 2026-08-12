@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
-import { prisma } from "@repo/database";
 import { requireAuth } from "@/lib/session";
-import { ProposalToolbar } from "@/components/events/proposal-toolbar";
-import { LIBRARY } from "@/lib/functions";
+import { getProposalPdfData } from "@/lib/proposal-pdf-data";
+import { DownloadPdfButton } from "@/components/events/download-pdf-button";
+import type {
+  ClientPdfBlock,
+  ClientPdfFunction,
+  ClientPdfSubItem,
+} from "@/lib/client-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -11,67 +16,10 @@ export const metadata: Metadata = {
   title: "Proposal Preview | Deli Cocktail House",
 };
 
-const THEME_ACCENTS: Record<string, { primary: string; accent: string }> = {
-  modern: { primary: "#0f172a", accent: "#0ea5e9" },
-  classic: { primary: "#1e3a5f", accent: "#c9a227" },
-  elegant: { primary: "#3b0764", accent: "#c026d3" },
-  minimal: { primary: "#18181b", accent: "#52525b" },
-};
-
-const PLEASE_NOTE_POINTS = [
-  "BAR STRUCTURE BY DECORATOR",
-  "LIQUOR BY CLIENT",
-  "GLASSWARE BY HOTEL",
-  "BEVERAGES BY HOTEL",
-  "STAFF TRAVEL & STAY IS ALL INCLUSIVE OF THE PACKAGE",
-];
-
-const TERMS_AND_CONDITIONS = [
-  {
-    title: "BAR SIZE & SETUP REQUIREMENT",
-    body: "To ensure the smooth functioning and overall success of the event, it is imperative that the size and setup of the bars strictly adhere to the specifications and recommendations provided by DCH. These guidelines are based on an assessment of the event's requirements and are designed to optimize service efficiency and guest satisfaction. Failure to comply may result in compromised event quality and shall be addressed as per the terms outlined in this agreement.",
-  },
-  {
-    title: "ALCOHOL SUPPLY REQUIREMENTS",
-    body: "The client agrees to stock and supply the bar with alcohol as specifically outlined and recommended by DCH. These recommendations are made to ensure a high level of service quality and to meet the preferences and expectations of the event attendees. It is the client's responsibility to ensure that an adequate supply of the agreed-upon types and quantities of alcohol is available at the event to avoid any disruption in service.",
-  },
-  {
-    title: "ATTENDANCE & PREPARATION",
-    body: "For DCH to adequately prepare for the event and ensure sufficient staffing, equipment, and supplies, the client must provide a clear and final guest count no later than three days prior to the event. This information is critical for effective execution and the overall success of the event. Failure to provide accurate and timely details may impact service quality and will be addressed as per the terms outlined in this agreement.",
-  },
-];
-
 const MONTHS = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
 ];
-
-type CompanySettings = {
-  companyName?: string | null;
-  footerText?: string | null;
-  defaultFont?: string | null;
-  defaultTheme?: string | null;
-  defaultTerms?: string | null;
-};
-
-type ProposalBlock = {
-  id: string;
-  type: string;
-  title: string;
-  value?: string;
-  description?: string;
-  items?: any[];
-};
 
 function ordinal(day: number): string {
   const ones = day % 10;
@@ -82,48 +30,44 @@ function ordinal(day: number): string {
   return `${day}TH`;
 }
 
-function formatHeadingDate(date: Date): string {
-  return `${ordinal(date.getDate())} ${MONTHS[date.getMonth()]}`;
+function formatFullDate(date: Date): string {
+  return `${ordinal(date.getDate())} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-function Block({ block }: { block: ProposalBlock }) {
+function Block({ block }: { block: ClientPdfBlock }) {
   if (block.type === "simple") {
     return (
-      <p className="text-[10px]">
-        <span className="font-semibold">{block.title}</span>
-        {block.value ? `: ${block.value}` : ""}
+      <p className="doc-p">
+        <strong>{block.title}</strong>{block.value ? `: ${block.value}` : ""}
       </p>
     );
   }
   if (block.type === "list") {
     return (
-      <div>
-        <p className="text-[10px] font-semibold">{block.title}</p>
-        <ul className="mt-1 list-disc space-y-[3px] pl-5 text-[10px] text-[#3f3f46]">
-          {block.items?.map((it: string, i: number) => <li key={i}>{it}</li>)}
-        </ul>
-      </div>
+      <ul className="doc-ul">
+        {block.items?.map((it: unknown, i: number) => (
+          <li key={i}>{String(it)}</li>
+        ))}
+      </ul>
     );
   }
   if (block.type === "text") {
     return (
       <div>
-        <p className="text-[10px] font-semibold">{block.title}</p>
-        <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
-          {block.description}
-        </p>
+        <p className="doc-p"><strong>{block.title}</strong></p>
+        <p className="doc-p">{block.description}</p>
       </div>
     );
   }
   if (block.type === "text_with_items") {
     return (
       <div>
-        <p className="text-[10px] font-semibold">{block.title}</p>
-        <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
-          {block.description}
-        </p>
-        <ul className="mt-1 list-disc space-y-[3px] pl-5 text-[10px] text-[#3f3f46]">
-          {block.items?.map((it: string, i: number) => <li key={i}>{it}</li>)}
+        <p className="doc-p"><strong>{block.title}</strong></p>
+        <p className="doc-p">{block.description}</p>
+        <ul className="doc-ul">
+          {block.items?.map((it: unknown, i: number) => (
+            <li key={i}>{String(it)}</li>
+          ))}
         </ul>
       </div>
     );
@@ -131,26 +75,64 @@ function Block({ block }: { block: ProposalBlock }) {
   if (block.type === "text_with_subitems") {
     return (
       <div>
-        <p className="text-[10px] font-semibold">{block.title}</p>
-        {block.description ? (
-          <p className="mt-1 text-[10px] leading-relaxed text-[#3f3f46]">
-            {block.description}
-          </p>
-        ) : null}
-        <div className="mt-2 space-y-2">
-          {block.items?.map((it: any, i: number) => (
-            <div key={i}>
-              <p className="text-[10px] font-semibold">{it.name}</p>
-              <p className="text-[10px] leading-relaxed text-[#3f3f46]">
-                {it.description}
-              </p>
-            </div>
-          ))}
-        </div>
+        <p className="doc-p"><strong>{block.title}</strong></p>
+        {block.description ? <p className="doc-p">{block.description}</p> : null}
+        <ul className="doc-ul">
+          {block.items?.map((it: unknown, i: number) => {
+            const sub = (it ?? {}) as ClientPdfSubItem;
+            return (
+              <li key={i}>
+                <p className="concept-name">{sub.name}</p>
+                {sub.description ? (
+                  <p className="doc-p" style={{ marginTop: "-6px", marginBottom: "10px" }}>{sub.description}</p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </div>
     );
   }
   return null;
+}
+
+function renderFunctionSection(fn: ClientPdfFunction, forceNewPage: boolean) {
+  const pageBreakClass = forceNewPage ? "break-before-page" : "";
+  const pageBreakStyle: CSSProperties | undefined = forceNewPage
+    ? { breakBefore: "always", pageBreakBefore: "always" }
+    : undefined;
+
+  // Extract the standard simple fields (Uniform, Setup, Ice, Butler, Entertainment)
+  // to bundle them into a single list, as requested by the user.
+  const fieldBlocks = fn.blocks.filter((b) => b.type === "simple");
+  const contentBlocks = fn.blocks.filter((b) => b.type !== "simple");
+
+  return (
+    <section
+      key={fn.id}
+      className={`break-inside-avoid ${pageBreakClass}`}
+      style={pageBreakStyle}
+      data-page-break={forceNewPage ? "true" : undefined}
+    >
+      <h1 className="doc-h1">{fn.name}</h1>
+      
+      {fieldBlocks.length > 0 && (
+        <ul className="doc-ul">
+          {fieldBlocks.map((b) => (
+            <li key={b.id}>
+              <strong>{b.title}:</strong> {b.value || "—"}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 space-y-[3px]">
+        {contentBlocks.map((block) => (
+          <Block key={block.id} block={block} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default async function ProposalPreviewPage({
@@ -162,135 +144,165 @@ export default async function ProposalPreviewPage({
 
   const { id } = await params;
 
-  const [proposal, settings] = await Promise.all([
-    prisma.eventProposal.findUnique({
-      where: { id },
-      include: { functions: { orderBy: { sortOrder: "asc" } } },
-    }),
-    prisma.pdfCompanySettings.findFirst({ orderBy: { createdAt: "asc" } }),
-  ]);
-
-  if (!proposal) {
+  const data = await getProposalPdfData(id);
+  if (!data) {
     notFound();
   }
 
-  const company: CompanySettings = settings ?? {};
-  const theme = company.defaultTheme ?? "modern";
-  const { primary } = THEME_ACCENTS[theme] ?? THEME_ACCENTS.modern;
-  const fontClass =
-    company.defaultFont === "Times-Roman"
-      ? "font-serif"
-      : company.defaultFont === "Courier"
-        ? "font-mono"
-        : "font-sans";
-
-  const functions = proposal.functions.map((fn) => {
-    const template = LIBRARY.find((f) => f.id === fn.functionId);
-    const overrideBlocks = Array.isArray(fn.overrideJson)
-      ? (fn.overrideJson as ProposalBlock[])
-      : null;
-    return {
-      id: fn.id,
-      name: template?.name ?? fn.functionId,
-      blocks: overrideBlocks ?? template?.blocks ?? [],
-    };
-  });
-
-  const heading = `${formatHeadingDate(proposal.eventDate)}: ${proposal.venue}`;
+  const { proposal, company, teamFlow, blocks } = data;
+  const fullDate = formatFullDate(new Date(proposal.eventDate));
 
   return (
-    <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-4 py-6">
-      <ProposalToolbar eventId={proposal.id} />
+    <>
+      <DownloadPdfButton
+        data={data}
+        className="fixed bottom-6 right-6 z-50 rounded-full px-4 py-2 shadow-lg print:hidden"
+        size="lg"
+      />
+      <div className="doc-page">
+        <div className="watermark"><span>DCH</span></div>
+        <div className="doc-content">
+          <div className="doc-topbar" />
 
-      <div
-        className="proposal-page mx-auto w-full max-w-[820px] overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-foreground/10 print:overflow-visible"
-        style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
-      >
-        <div className={fontClass}>
-          {/* HEADING */}
-          <div className="px-12 pt-8">
-            <h2 className="text-center text-[15px] font-bold uppercase underline">
-              {heading}
-            </h2>
+          <div className="doc-logo-wrap">
+            <div className="doc-logo">{company.companyName || "Deli Cocktail House by Emerge"}</div>
+            <div className="doc-logo-sub">Event Proposal</div>
           </div>
 
-          {/* EVENT DETAILS */}
-          <section className="mt-6 px-12">
-            <p className="text-center text-[10px] text-[#3f3f46]">
-              {proposal.eventName}
-              {proposal.clientName ? ` — ${proposal.clientName}` : ""}
-              {proposal.guestCount > 0 ? ` — ${proposal.guestCount} PAX` : ""}
-            </p>
-          </section>
+          <div className="doc-body">
+            {/* COVER PAGE */}
+            <div className="doc-hero">{fullDate}</div>
+            <div className="doc-hero-sub">{proposal.eventName}</div>
+            <div className="doc-hero-sub">{proposal.venue}</div>
+            {proposal.clientName || (proposal.guestCount && proposal.guestCount > 0) ? (
+              <p className="doc-p" style={{ textAlign: "center", marginBottom: "26px", fontWeight: "700" }}>
+                {proposal.clientName ? `Client: ${proposal.clientName}` : ""}
+                {proposal.guestCount && proposal.guestCount > 0 ? `${proposal.clientName ? " • " : ""}Guests: ${proposal.guestCount}` : ""}
+              </p>
+            ) : null}
 
-          {/* INDIVIDUAL FUNCTIONS */}
-          {functions.length > 0 ? (
-            <section className="mt-10 px-12 print:overflow-visible">
-              {functions.map((fn) => (
-                <section
-                  key={fn.id}
-                  className="break-inside-avoid break-before-page print:break-before-page print:overflow-visible"
-                  style={{ breakBefore: "always", pageBreakBefore: "always" }}
-                >
-                  <h3 className="text-center text-[13px] font-bold uppercase underline">
-                    {fn.name}
-                  </h3>
-                  <div className="mt-3 space-y-[3px]">
-                    {fn.blocks.map((block) => (
-                      <Block key={block.id} block={block} />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </section>
-          ) : null}
+            {blocks.standardDeliverables && blocks.standardDeliverables.blocks.length > 0 && (
+              <>
+                <div className="doc-h2">Standard Bar Deliverables on All Functions</div>
+                <ul className="doc-ul">
+                  {blocks.standardDeliverables.blocks[0]?.items?.map((it: unknown, i: number) => (
+                    <li key={i}>{String(it)}</li>
+                  ))}
+                </ul>
+              </>
+            )}
 
-          {/* PLEASE NOTE */}
-          <section
-            className="mt-10 break-inside-avoid break-before-page px-12 print:break-before-page print:overflow-visible"
-            style={{ breakBefore: "always", pageBreakBefore: "always" }}
-          >
-            <h3 className="text-center text-[13px] font-bold uppercase underline">
-              PLEASE NOTE
-            </h3>
-            <ul className="mt-3 space-y-[3px]">
-              {PLEASE_NOTE_POINTS.map((point) => (
-                <li key={point} className="text-[10px] uppercase">
-                  ➤ {point}
-                </li>
-              ))}
-            </ul>
-          </section>
+            {blocks.mixers && blocks.mixers.blocks.length > 0 && (
+              <>
+                <div className="doc-h2 center">Mixers</div>
+                <ul className="doc-ul mixers">
+                  {blocks.mixers.blocks[0]?.items?.map((it: unknown, i: number) => (
+                    <li key={i}>{String(it)}</li>
+                  ))}
+                </ul>
+              </>
+            )}
 
-          {/* TERMS & CONDITIONS */}
-          <section
-            className="mt-10 break-inside-avoid break-before-page px-12 print:break-before-page print:overflow-visible"
-            style={{ breakBefore: "always", pageBreakBefore: "always" }}
-          >
-            <h3 className="text-center text-[13px] font-bold uppercase underline">
-              TERMS &amp; CONDITIONS
-            </h3>
-            <div className="mt-3 flex flex-col gap-3">
-              {TERMS_AND_CONDITIONS.map((block) => (
-                <div key={block.title}>
-                  <p className="text-[10px] font-bold uppercase">
-                    • {block.title}
-                  </p>
-                  <p className="mt-1 text-[8.5px] leading-relaxed text-[#3f3f46]">
-                    {block.body}
-                  </p>
+            {/* TEAM FLOW */}
+            {teamFlow.length > 0 && (
+              <section
+                className="break-inside-avoid break-before-page"
+                style={{ breakBefore: "always", pageBreakBefore: "always" }}
+                data-page-break="true"
+              >
+                <div className="doc-h1">Team Flow</div>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="doc-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Function Type</th>
+                        <th>Venue</th>
+                        <th>Pax</th>
+                        <th>Bartenders</th>
+                        <th>Butlers</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teamFlow.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.date || "—"}</td>
+                          <td>{row.functionType}</td>
+                          <td>{row.venue || "—"}</td>
+                          <td>{row.pax || "—"}</td>
+                          <td>
+                            {row.bartenders > 0 ? row.bartenders : "—"}
+                            {row.bartendersNote ? (
+                              <span style={{ fontSize: "10px", color: "#666", marginLeft: "4px" }}>
+                                ({row.bartendersNote})
+                              </span>
+                            ) : null}
+                          </td>
+                          <td>{row.butlers > 0 ? row.butlers : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            )}
 
-          {company.footerText ? (
-            <p className="border-t border-zinc-200 py-2.5 text-center text-[8px] text-zinc-400 print:hidden">
-              {company.footerText}
-            </p>
-          ) : null}
+            {/* EVENT FUNCTIONS */}
+            {blocks.eventFunctions.map((fn) => (
+              renderFunctionSection(fn, true)
+            ))}
+
+            {/* PLEASE NOTE */}
+            {blocks.pleaseNote && (
+              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
+                <div className="doc-h1">Please Note</div>
+                {blocks.pleaseNote.blocks.map((block) => (
+                  block.type === "list" ? (
+                    <ul key={block.id} className="doc-ul arrow">
+                      {block.items?.map((it: unknown, i: number) => <li key={i}>{String(it)}</li>)}
+                    </ul>
+                  ) : <Block key={block.id} block={block} />
+                ))}
+              </section>
+            )}
+
+            {/* ADDITIONAL CHARGES */}
+            {blocks.additionalCharges && (
+              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
+                <div className="doc-h1">Additional Charges</div>
+                {blocks.additionalCharges.blocks.map((block) => (
+                  block.type === "list" ? (
+                    <ul key={block.id} className="doc-ul arrow">
+                      {block.items?.map((it: unknown, i: number) => <li key={i}>{String(it)}</li>)}
+                    </ul>
+                  ) : <Block key={block.id} block={block} />
+                ))}
+              </section>
+            )}
+
+            {/* TERMS & CONDITIONS */}
+            {blocks.termsConditions && (
+              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
+                <div className="doc-h1">Terms & Conditions</div>
+                {blocks.termsConditions.blocks.map((block) => (
+                  <div key={block.id}>
+                    <div className="doc-h2">❖ {block.title}</div>
+                    <p className="doc-p">{block.description}</p>
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+
+          <div className="doc-footer">
+            <div style={{ flex: 1, textAlign: "left" }}>
+              {company.phone1}{company.phone1 && company.phone2 ? " | " : ""}{company.phone2}
+            </div>
+            <div style={{ flex: 1, textAlign: "center" }}>{company.companyAddress || company.address}</div>
+            <div style={{ flex: 1, textAlign: "right" }}>{company.companyEmail || company.email}</div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

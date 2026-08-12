@@ -40,8 +40,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { deleteEvent } from "@/app/(app)/events/actions";
+import { deleteEventProposal } from "@/app/(app)/events/actions";
 import { STATUS_STYLES } from "@/lib/constants";
+import {
+  downloadClientPdf,
+  fetchProposalPdfData,
+} from "@/lib/download-client-pdf";
 
 export type EventTableRow = {
   id: string;
@@ -81,8 +85,27 @@ export function EventsTable({ events }: { events: EventTableRow[] }) {
   const router = useRouter();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const confirmEvent = events.find((event) => event.id === confirmId);
+
+  async function handleDownload(id: string) {
+    if (downloadingId) {
+      return;
+    }
+    setDownloadingId(id);
+    try {
+      const source = await fetchProposalPdfData(id);
+      await downloadClientPdf(source);
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate the PDF",
+      );
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   async function handleDelete() {
     if (!confirmId) {
@@ -90,7 +113,7 @@ export function EventsTable({ events }: { events: EventTableRow[] }) {
     }
     setIsDeleting(true);
     try {
-      await deleteEvent(confirmId);
+      await deleteEventProposal(confirmId);
       toast.success("Event deleted");
       setConfirmId(null);
       router.refresh();
@@ -226,9 +249,7 @@ export function EventsTable({ events }: { events: EventTableRow[] }) {
                           Preview
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          render={
-                            <a href={`/api/generate-pdf?id=${event.id}`} target="_blank" />
-                          }
+                          onClick={() => handleDownload(event.id)}
                         >
                           <Download />
                           Download PDF

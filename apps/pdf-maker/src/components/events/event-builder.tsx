@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, X, Plus, Trash2, RotateCcw, ArrowUp, ArrowDown, Wine } from "lucide-react";
+import { Check, Pencil, X, Plus, Trash2, RotateCcw, ArrowUp, ArrowDown, Wine, Table } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LIBRARY } from "@/lib/functions";
 import { createEventProposal } from "@/app/(app)/events/actions";
+import type { TeamFlowRow } from "@/lib/types";
 
 const clone = (v: any) => JSON.parse(JSON.stringify(v));
 
@@ -194,7 +195,7 @@ function FunctionPicker({
   isCustomized,
   overrides,
 }: {
-  category: "EVENT" | "STANDARD";
+  category: "EVENT" | "STANDARD" | "DELIVERABLES";
   selectedIds: string[];
   toggleSelect: (id: string) => void;
   moveFunction: (index: number, dir: number) => void;
@@ -293,7 +294,7 @@ function FunctionPicker({
 
 export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"INFO" | "FUNCTIONS" | "TERMS">("INFO");
+  const [activeTab, setActiveTab] = useState<"INFO" | "DELIVERABLES" | "FUNCTIONS" | "TEAMFLOW" | "TERMS">("INFO");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [overrides, setOverrides] = useState<Record<string, any>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -307,6 +308,7 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
     endDate: "",
     guestCount: "",
   });
+  const [teamFlow, setTeamFlow] = useState<TeamFlowRow[]>([]);
 
   const handleSave = async () => {
     if (isSaving) return;
@@ -323,6 +325,7 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
           sortOrder: index,
           overrideJson: overrides[id] || null,
         })),
+        teamFlowJson: teamFlow,
       });
       router.push(`/events/${res.id}/pdf`);
     } catch (error) {
@@ -336,9 +339,38 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
   const isCustomized = (id: string) => Boolean(overrides[id]);
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => {
+      const template = LIBRARY.find((f) => f.id === id);
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      // Sync teamFlow with selected functions (only EVENT category)
+      if (template?.category === "EVENT") {
+        setTeamFlow((currentFlow) => {
+          if (next.includes(id)) {
+            // Function added - add row if not exists (match by functionId)
+            if (!currentFlow.some((row) => row.functionId === id)) {
+              return [
+                ...currentFlow,
+                {
+                  id: crypto.randomUUID(),
+                  date: "",
+                  functionType: template.name,
+                  functionId: id,
+                  venue: "",
+                  pax: "",
+                  bartenders: 0,
+                  butlers: 0,
+                },
+              ];
+            }
+          } else {
+            // Function removed - remove corresponding row (match by functionId)
+            return currentFlow.filter((row) => row.functionId !== id);
+          }
+          return currentFlow;
+        });
+      }
+      return next;
+    });
   };
 
   const moveFunction = (index: number, dir: number) => {
@@ -396,10 +428,23 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
           PDF Info
         </button>
         <button
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "DELIVERABLES" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          onClick={() => setActiveTab("DELIVERABLES")}
+        >
+          Deliverables
+        </button>
+        <button
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "FUNCTIONS" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           onClick={() => setActiveTab("FUNCTIONS")}
         >
           Functions
+        </button>
+        <button
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "TEAMFLOW" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          onClick={() => setActiveTab("TEAMFLOW")}
+        >
+          <Table className="inline h-4 w-4 mr-1" />
+          Team Flow
         </button>
         <button
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === "TERMS" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -446,6 +491,18 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
             </div>
           )}
 
+          {activeTab === "DELIVERABLES" && (
+            <FunctionPicker
+              category="DELIVERABLES"
+              selectedIds={selectedIds}
+              toggleSelect={toggleSelect}
+              moveFunction={moveFunction}
+              openEditor={openEditor}
+              isCustomized={isCustomized}
+              overrides={overrides}
+            />
+          )}
+
           {activeTab === "FUNCTIONS" && (
             <FunctionPicker
               category="EVENT"
@@ -456,6 +513,130 @@ export function EventBuilder({ mode }: { mode: "create" | "edit" }) {
               isCustomized={isCustomized}
               overrides={overrides}
             />
+          )}
+
+          {activeTab === "TEAMFLOW" && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Team Flow Timeline</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage the timeline for each function. Rows are auto-synced with selected functions.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted">
+                      <th className="px-3 py-2 text-left text-sm font-medium">Date</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Function Type</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Venue (Optional)</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Pax</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Bartenders</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Bartenders Note</th>
+                      <th className="px-3 py-2 text-left text-sm font-medium">Butlers</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamFlow.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                          No functions selected. Go to the <strong>Functions</strong> tab to add functions.
+                        </td>
+                      </tr>
+                    ) : (
+                      teamFlow.map((row, index) => (
+                        <tr key={row.id} className="border-b">
+                          <td className="px-3 py-2">
+                            <Input
+                              type="date"
+                              value={row.date}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, date: e.target.value } : r
+                                  )
+                                )
+                              }
+                              className="w-full"
+                            />
+                          </td>
+                          <td className="px-3 py-2 font-medium">{row.functionType}</td>
+                          <td className="px-3 py-2">
+                            <Input
+                              value={row.venue}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, venue: e.target.value } : r
+                                  )
+                                )
+                              }
+                              placeholder="Venue"
+                              className="w-full"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              value={row.pax}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, pax: e.target.value } : r
+                                  )
+                                )
+                              }
+                              placeholder="Pax"
+                              className="w-full"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              value={row.bartenders}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, bartenders: Number(e.target.value) || 0 } : r
+                                  )
+                                )
+                              }
+                              className="w-full"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              value={row.bartendersNote || ""}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, bartendersNote: e.target.value } : r
+                                  )
+                                )
+                              }
+                              placeholder="Note"
+                              className="w-full"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="number"
+                              value={row.butlers}
+                              onChange={(e) =>
+                                setTeamFlow((prev) =>
+                                  prev.map((r, i) =>
+                                    i === index ? { ...r, butlers: Number(e.target.value) || 0 } : r
+                                  )
+                                )
+                              }
+                              className="w-full"
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {activeTab === "TERMS" && (

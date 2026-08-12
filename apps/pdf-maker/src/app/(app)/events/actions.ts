@@ -180,6 +180,17 @@ export async function deleteEvent(id: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+export async function deleteEventProposal(id: string): Promise<{ ok: true }> {
+  await requireAuth();
+
+  await prisma.eventProposal.delete({
+    where: { id },
+  });
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
 export type EventProposalFunctionInput = {
   functionId: string;
   sortOrder?: number;
@@ -198,6 +209,7 @@ export type EventProposalInput = {
   companyEmail?: string;
   companyFooterText?: string;
   functions?: EventProposalFunctionInput[];
+  teamFlowJson?: unknown;
 };
 
 function toOverrideJson(value: unknown): unknown {
@@ -261,6 +273,7 @@ export async function createEventProposal(
       companyContact: cleanText(input.companyContact),
       companyEmail: cleanText(input.companyEmail),
       companyFooterText: cleanText(input.companyFooterText),
+      teamFlowJson: input.teamFlowJson ?? Prisma.JsonNull,
       functions: {
         create:
           input.functions?.map((fn) => ({
@@ -351,6 +364,7 @@ export async function updateEventProposal(
       companyContact: cleanText(input.companyContact),
       companyEmail: cleanText(input.companyEmail),
       companyFooterText: cleanText(input.companyFooterText),
+      teamFlowJson: input.teamFlowJson ?? Prisma.JsonNull,
     },
   });
 

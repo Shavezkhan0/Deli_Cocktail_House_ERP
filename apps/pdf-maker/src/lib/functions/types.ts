@@ -12,6 +12,6 @@ export type Block = {
 export type FunctionTemplate = {
   id: string;
   name: string;
-  category: "EVENT" | "STANDARD";
+  category: "EVENT" | "STANDARD" | "DELIVERABLES";
   blocks: Block[];
 };

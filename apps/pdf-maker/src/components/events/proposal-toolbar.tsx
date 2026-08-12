@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DownloadPdfButton } from "@/components/events/download-pdf-button";
 
 export function ProposalToolbar({
   eventId,
@@ -26,10 +27,7 @@ export function ProposalToolbar({
           <Printer data-icon="inline-start" />
           Print / Save as PDF
         </Button>
-        <Button size="lg" nativeButton={false} render={<a href={`/api/generate-pdf?id=${eventId}`} />}>
-          <Download data-icon="inline-start" />
-          Download PDF
-        </Button>
+        <DownloadPdfButton eventId={eventId} size="lg" />
       </div>
     </div>
   );
