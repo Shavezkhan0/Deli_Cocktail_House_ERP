@@ -179,3 +179,209 @@ export async function deleteEvent(id: string): Promise<{ ok: true }> {
   revalidatePath("/");
   return { ok: true };
 }
+
+export async function deleteEventProposal(id: string): Promise<{ ok: true }> {
+  await requireAuth();
+
+  await prisma.eventProposal.delete({
+    where: { id },
+  });
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export type EventProposalFunctionInput = {
+  functionId: string;
+  sortOrder?: number;
+  overrideJson?: unknown;
+};
+
+export type EventProposalInput = {
+  eventName: string;
+  clientName: string;
+  venue: string;
+  eventDate: string;
+  guestCount: number;
+  companyName?: string;
+  companyAddress?: string;
+  companyContact?: string;
+  companyEmail?: string;
+  companyFooterText?: string;
+  functions?: EventProposalFunctionInput[];
+  teamFlowJson?: unknown;
+};
+
+function toOverrideJson(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return Prisma.JsonNull;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return Prisma.JsonNull;
+  }
+  return value;
+}
+
+export async function getProposalTemplates() {
+  await requireAuth();
+
+  return prisma.proposalFunctionTemplate.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      blocks: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+}
+
+export async function createEventProposal(
+  input: EventProposalInput,
+): Promise<{ id: string }> {
+  await requireAuth();
+
+  if (!input.eventName.trim()) {
+    throw new Error("Event Name is required.");
+  }
+  if (!input.clientName.trim()) {
+    throw new Error("Client Name is required.");
+  }
+  if (!input.venue.trim()) {
+    throw new Error("Venue is required.");
+  }
+  if (!input.eventDate) {
+    throw new Error("Event Date is required.");
+  }
+  if (!Number.isFinite(input.guestCount) || input.guestCount < 0) {
+    throw new Error("Guest Count must be a positive number.");
+  }
+
+  const eventDate = new Date(input.eventDate);
+  if (Number.isNaN(eventDate.getTime())) {
+    throw new Error("Invalid event date.");
+  }
+
+  const proposal = await prisma.eventProposal.create({
+    data: {
+      eventName: input.eventName.trim(),
+      clientName: input.clientName.trim(),
+      venue: input.venue.trim(),
+      eventDate,
+      guestCount: input.guestCount,
+      companyName: cleanText(input.companyName),
+      companyAddress: cleanText(input.companyAddress),
+      companyContact: cleanText(input.companyContact),
+      companyEmail: cleanText(input.companyEmail),
+      companyFooterText: cleanText(input.companyFooterText),
+      teamFlowJson: input.teamFlowJson ?? Prisma.JsonNull,
+      functions: {
+        create:
+          input.functions?.map((fn) => ({
+            functionId: fn.functionId,
+            sortOrder: fn.sortOrder ?? 0,
+            overrideJson: toOverrideJson(fn.overrideJson),
+          })) ?? [],
+      },
+    },
+  });
+
+  revalidatePath("/events");
+  return { id: proposal.id };
+}
+
+export async function getEventProposal(id: string) {
+  await requireAuth();
+
+  const proposal = await prisma.eventProposal.findUnique({
+    where: { id },
+    include: {
+      functions: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          function: {
+            include: {
+              blocks: {
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!proposal) {
+    throw new Error("Event Proposal not found.");
+  }
+
+  return proposal;
+}
+
+export async function updateEventProposal(
+  id: string,
+  input: EventProposalInput,
+): Promise<{ id: string }> {
+  await requireAuth();
+
+  const existing = await prisma.eventProposal.findUnique({
+    where: { id },
+  });
+  if (!existing) {
+    throw new Error("Event Proposal not found.");
+  }
+
+  if (!input.eventName.trim()) {
+    throw new Error("Event Name is required.");
+  }
+  if (!input.clientName.trim()) {
+    throw new Error("Client Name is required.");
+  }
+  if (!input.venue.trim()) {
+    throw new Error("Venue is required.");
+  }
+  if (!input.eventDate) {
+    throw new Error("Event Date is required.");
+  }
+  if (!Number.isFinite(input.guestCount) || input.guestCount < 0) {
+    throw new Error("Guest Count must be a positive number.");
+  }
+
+  const eventDate = new Date(input.eventDate);
+  if (Number.isNaN(eventDate.getTime())) {
+    throw new Error("Invalid event date.");
+  }
+
+  await prisma.eventProposal.update({
+    where: { id: existing.id },
+    data: {
+      eventName: input.eventName.trim(),
+      clientName: input.clientName.trim(),
+      venue: input.venue.trim(),
+      eventDate,
+      guestCount: input.guestCount,
+      companyName: cleanText(input.companyName),
+      companyAddress: cleanText(input.companyAddress),
+      companyContact: cleanText(input.companyContact),
+      companyEmail: cleanText(input.companyEmail),
+      companyFooterText: cleanText(input.companyFooterText),
+      teamFlowJson: input.teamFlowJson ?? Prisma.JsonNull,
+    },
+  });
+
+  await prisma.eventProposalFunction.deleteMany({
+    where: { proposalId: existing.id },
+  });
+  if (input.functions && input.functions.length > 0) {
+    await prisma.eventProposalFunction.createMany({
+      data: input.functions.map((fn) => ({
+        proposalId: existing.id,
+        functionId: fn.functionId,
+        sortOrder: fn.sortOrder ?? 0,
+        overrideJson: toOverrideJson(fn.overrideJson),
+      })),
+    });
+  }
+
+  revalidatePath("/events");
+  return { id: existing.id };
+}
