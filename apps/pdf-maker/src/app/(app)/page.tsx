@@ -7,25 +7,25 @@ import { EventsTable } from "@/components/events/events-table";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const events = await prisma.pdfEvent.findMany({
+  const events = await prisma.eventProposal.findMany({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { functions: true } } },
   });
 
   const serialized = events.map((event) => ({
     id: event.id,
-    eventId: event.eventId,
+    eventId: "PROPOSAL", // Fallback for table UI
     eventName: event.eventName,
-    startDate: event.startDate.toISOString(),
-    endDate: event.endDate.toISOString(),
+    startDate: event.eventDate.toISOString(),
+    endDate: event.eventDate.toISOString(),
     venue: event.venue,
-    city: event.city,
-    state: event.state,
-    eventType: event.eventType,
-    packageType: event.packageType,
-    packagePax: event.packagePax,
+    city: null,
+    state: null,
+    eventType: null,
+    packageType: null,
+    packagePax: event.guestCount,
     clientName: event.clientName,
-    status: event.status,
+    status: "DRAFT",
     functionCount: event._count.functions,
   }));
 

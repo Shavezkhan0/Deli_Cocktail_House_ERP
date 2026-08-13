@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdfkit", "puppeteer-core"],
+  serverExternalPackages: ["pdfkit"],
 };
 
 export default nextConfig;

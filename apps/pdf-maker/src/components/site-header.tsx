@@ -13,6 +13,7 @@ const NAV_ITEMS: {
   exact?: boolean;
 }[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/event-brief", label: "Event Brief", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

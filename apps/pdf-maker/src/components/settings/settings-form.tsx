@@ -14,15 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { saveSettings } from "@/app/(app)/settings/actions";
-import { FONT_OPTIONS, THEME_OPTIONS, parseLines } from "@/lib/constants";
+import { parseLines } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 type SettingsFormState = {
@@ -267,17 +260,6 @@ export function SettingsForm({ initial }: SettingsFormProps) {
             </Field>
           </div>
 
-          <LogoField
-            label="Header logo"
-            value={form.headerLogoUrl}
-            onChange={(value) => update("headerLogoUrl", value)}
-          />
-          <LogoField
-            label="Logo"
-            value={form.logoUrl}
-            onChange={(value) => update("logoUrl", value)}
-          />
-
           <Field label="Address" htmlFor="address">
             <Textarea
               id="address"
@@ -313,102 +295,6 @@ export function SettingsForm({ initial }: SettingsFormProps) {
               value={form.footerText}
               onChange={(event) => update("footerText", event.target.value)}
               placeholder="Printed at the bottom of every page"
-            />
-          </Field>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>PDF Defaults</CardTitle>
-          <CardDescription>
-            Styles applied to new proposals by default.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Field label="Theme">
-            <Select
-              value={form.defaultTheme}
-              onValueChange={(value) =>
-                update("defaultTheme", typeof value === "string" ? value : "modern")
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {THEME_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field label="Font">
-            <Select
-              value={form.defaultFont}
-              onValueChange={(value) =>
-                update("defaultFont", typeof value === "string" ? value : "Helvetica")
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FONT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field
-            label="Default deliverables"
-            htmlFor="defaultDeliverables"
-            hint="One item per line. Pre-checked when creating a new event."
-            className="sm:col-span-2"
-          >
-            <Textarea
-              id="defaultDeliverables"
-              value={form.defaultDeliverables}
-              onChange={(event) =>
-                update("defaultDeliverables", event.target.value)
-              }
-              placeholder={"Glassware\nCocktail shakers\nNapkins & coasters"}
-              rows={5}
-            />
-          </Field>
-
-          <Field
-            label="Default mixers"
-            htmlFor="defaultMixers"
-            hint="One item per line. Pre-checked when creating a new event."
-            className="sm:col-span-2"
-          >
-            <Textarea
-              id="defaultMixers"
-              value={form.defaultMixers}
-              onChange={(event) => update("defaultMixers", event.target.value)}
-              placeholder={"Soda\nTonic water\nOrange juice\nLemon"}
-              rows={5}
-            />
-          </Field>
-
-          <Field
-            label="Default terms & conditions"
-            htmlFor="defaultTerms"
-            className="sm:col-span-2"
-          >
-            <Textarea
-              id="defaultTerms"
-              value={form.defaultTerms}
-              onChange={(event) => update("defaultTerms", event.target.value)}
-              placeholder="Printed on the proposal…"
-              rows={5}
             />
           </Field>
         </CardContent>
