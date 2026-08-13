@@ -7,7 +7,6 @@ export type AuthEmployee = {
   name: string;
   email: string;
   designation: string;
-  role: string;
 };
 
 export async function employeeAuth(
@@ -53,7 +52,6 @@ export async function employeeAuth(
       name: employee.name,
       email: employee.email ?? "",
       designation: String(employee.designation),
-      role: String(employee.role),
     };
 
     return next();

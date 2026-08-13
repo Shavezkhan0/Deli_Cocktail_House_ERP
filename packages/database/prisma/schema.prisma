@@ -9,10 +9,7 @@ datasource db {
 }
 
 enum Role {
-  SUPER_ADMIN
-  WAREHOUSE_MANAGER
-  SITE_MANAGER
-  EMPLOYEE
+  ADMIN
 }
 
 enum EmployeeDesignation {
@@ -70,12 +67,13 @@ enum EventStatus {
   CANCELLED
 }
 
-model User {
-  id         String  @id @default(cuid())
-  email      String  @unique
-  name       String
-  role       Role    @default(EMPLOYEE)
-  employeeId String? @unique
+model Admin {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String
+  role  Role   @default(ADMIN)
+
+  @@map("Admin")
 }
 
 model Employee {
@@ -103,7 +101,6 @@ model Employee {
   bankIfsc         String?
   bankOtherDetails String?
 
-  role      Role     @default(EMPLOYEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

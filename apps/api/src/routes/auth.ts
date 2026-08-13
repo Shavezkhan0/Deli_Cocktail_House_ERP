@@ -22,7 +22,7 @@ router.post("/request-otp", async (req, res) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -61,7 +61,7 @@ router.post("/verify-otp", async (req, res) => {
 
   await redis.del(`${OTP_PREFIX}${normalizedEmail}`);
 
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  const user = await prisma.admin.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
     return res.status(404).json({ message: "User not found" });
   }
@@ -114,7 +114,7 @@ router.post("/refresh", async (req, res) => {
     return res.status(401).json({ message: "Invalid token" });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+  const user = await prisma.admin.findUnique({ where: { id: payload.userId } });
   if (!user) {
     return res.status(401).json({ message: "User not found" });
   }
