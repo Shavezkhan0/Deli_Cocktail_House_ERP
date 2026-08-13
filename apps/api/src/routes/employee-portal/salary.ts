@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "@repo/database";
+import { calculateEmployeeSalary } from "../../services/salary-calculator";
 
 const router: Router = Router();
 
@@ -35,6 +36,33 @@ router.get("/salary/current", async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to fetch current salary" });
+  }
+});
+
+router.get("/salary/leave-balance", async (req, res) => {
+  try {
+    const employeeId = req.employee?.id;
+    if (!employeeId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { month, year } = currentMonthYear();
+
+    const breakdown = await calculateEmployeeSalary(employeeId, month, year);
+
+    return res.json({
+      month,
+      year,
+      earnedLeaves: breakdown.earnedLeaves,
+      compensatoryLeaves: breakdown.compensatoryLeaves,
+      usedLeaves: breakdown.usedLeaves,
+      availableLeaveBalance: breakdown.availableLeaveBalance,
+    });
+  } catch (error) {
+    console.error("[Employee] Failed to fetch leave balance:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to fetch leave balance" });
   }
 });
 

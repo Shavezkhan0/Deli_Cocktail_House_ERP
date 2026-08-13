@@ -21,18 +21,17 @@ import { flattenZodErrors } from "@/lib/validation";
 
 export const DESIGNATION_VALUES = [
   "CRM",
-  "ORDERING_OPERATOR",
-  "DESIGNER",
   "GRAPHIC_DESIGNER",
+  "OPERATION_COORDINATOR",
   "DATA_ENTRY_OPERATOR",
-  "MIS",
-  "WAREHOUSE_MANAGER",
-  "INVENTORY_MANAGER",
-  "PERMANENT_LABOUR",
-  "SOFTWARE_DEVELOPER",
+  "PROCESS_COORDINATOR",
+  "IT",
   "OFFICE_BOY",
+  "WAREHOUSE_MANAGER",
+  "VIDEO_EDITOR",
+  "MARKETING_EXECUTIVE",
+  "SALES_EXECUTIVE",
   "DRIVER",
-  "SECURITY_GUARD",
 ] as const;
 
 export const DESIGNATION_OPTIONS: {
@@ -40,18 +39,17 @@ export const DESIGNATION_OPTIONS: {
   label: string;
 }[] = [
   { value: "CRM", label: "CRM" },
-  { value: "ORDERING_OPERATOR", label: "Ordering Operator" },
-  { value: "DESIGNER", label: "Designer" },
   { value: "GRAPHIC_DESIGNER", label: "Graphic Designer" },
+  { value: "OPERATION_COORDINATOR", label: "Operation Coordinator" },
   { value: "DATA_ENTRY_OPERATOR", label: "Data Entry Operator" },
-  { value: "MIS", label: "MIS" },
-  { value: "WAREHOUSE_MANAGER", label: "Warehouse Manager" },
-  { value: "INVENTORY_MANAGER", label: "Inventory Manager" },
-  { value: "PERMANENT_LABOUR", label: "Permanent Labour" },
-  { value: "SOFTWARE_DEVELOPER", label: "Software Developer" },
+  { value: "PROCESS_COORDINATOR", label: "Process Coordinator" },
+  { value: "IT", label: "IT" },
   { value: "OFFICE_BOY", label: "Office Boy" },
+  { value: "WAREHOUSE_MANAGER", label: "Warehouse Manager" },
+  { value: "VIDEO_EDITOR", label: "Video Editor" },
+  { value: "MARKETING_EXECUTIVE", label: "Marketing Executive" },
+  { value: "SALES_EXECUTIVE", label: "Sales Executive" },
   { value: "DRIVER", label: "Driver" },
-  { value: "SECURITY_GUARD", label: "Security Guard" },
 ];
 
 export const DESIGNATION_LABELS: Record<string, string> = Object.fromEntries(
@@ -79,8 +77,8 @@ type Employee = {
 
 type CreateEmployeePayload = {
   name: string;
-  email: string;
-  contact: string;
+  email?: string;
+  contact?: string;
   emergencyContact?: string;
   designation: string;
   baseSalary: number;
@@ -97,8 +95,10 @@ type CreateEmployeePayload = {
 
 const employeeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
-  email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
-  contact: z.string().trim().min(1, "Contact is required"),
+  email: z
+    .union([z.string().trim().email("Invalid email address"), z.literal("")])
+    .optional(),
+  contact: z.string().trim().optional(),
   emergencyContact: z.string().trim().optional(),
   designation: z.enum(DESIGNATION_VALUES),
   baseSalary: z
@@ -297,7 +297,12 @@ function DocumentField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-foreground">
+        {label}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          (Optional)
+        </span>
+      </label>
       <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
         <UploadCloud className="size-4 shrink-0" />
         Choose file
@@ -392,8 +397,12 @@ export function EmployeeForm({
     setErrors({});
     createEmployee.mutate({
       name: parsed.data.name,
-      email: parsed.data.email,
-      contact: parsed.data.contact,
+      ...(parsed.data.email?.trim()
+        ? { email: parsed.data.email.trim() }
+        : {}),
+      ...(parsed.data.contact?.trim()
+        ? { contact: parsed.data.contact.trim() }
+        : {}),
       ...(parsed.data.emergencyContact?.trim()
         ? { emergencyContact: parsed.data.emergencyContact.trim() }
         : {}),
@@ -505,7 +514,12 @@ export function EmployeeForm({
         </Field>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <h3 className="text-sm font-medium text-foreground">Documents</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Documents{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (Optional)
+            </span>
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {DOC_OPTIONS.map((doc) => (
               <DocumentField
@@ -526,7 +540,12 @@ export function EmployeeForm({
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <h3 className="text-sm font-medium text-foreground">Bank Details</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Bank Details{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (Optional)
+            </span>
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Account No" error={errors.bankAccountNo}>
               <Input

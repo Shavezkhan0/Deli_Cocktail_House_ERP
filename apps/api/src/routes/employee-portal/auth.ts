@@ -84,7 +84,6 @@ router.post("/verify-otp", async (req, res) => {
     {
       employeeId: employee.id,
       designation: employee.designation,
-      role: employee.role,
     },
     jwtSecret,
     { expiresIn: "1h" },
@@ -138,7 +137,6 @@ router.post("/refresh", async (req, res) => {
     {
       employeeId: employee.id,
       designation: employee.designation,
-      role: employee.role,
     },
     jwtSecret,
     { expiresIn: "1h" },

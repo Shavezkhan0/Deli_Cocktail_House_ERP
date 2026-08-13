@@ -44,6 +44,7 @@ type Employee = {
   id: string;
   employeeId: string;
   name: string;
+  email?: string | null;
   contact: string;
   emergencyContact?: string | null;
   designation: string;
@@ -78,6 +79,10 @@ export default function EmployeesPage() {
     queryFn: () => apiFetch<Employee[]>("/api/office/employees", { token }),
   });
 
+  const sortedEmployees = [...(employees ?? [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
   const columnHelper = createColumnHelper<typeof features, Employee>();
   const features = tableFeatures({});
 
@@ -104,6 +109,14 @@ export default function EmployeesPage() {
     columnHelper.accessor("contact", {
       header: "Contact",
       cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor("email", {
+      header: "Email",
+      cell: (info) => (
+        <span className="text-muted-foreground">
+          {info.getValue() ?? "—"}
+        </span>
+      ),
     }),
     columnHelper.accessor("designation", {
       header: "Designation",
@@ -144,7 +157,7 @@ export default function EmployeesPage() {
   const table = useTable({
     features,
     columns,
-    data: employees ?? [],
+    data: sortedEmployees,
   });
 
   return (

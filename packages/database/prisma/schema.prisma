@@ -9,32 +9,22 @@ datasource db {
 }
 
 enum Role {
-  SUPER_ADMIN
-  WAREHOUSE_MANAGER
-  SITE_MANAGER
-  EMPLOYEE
+  ADMIN
 }
 
 enum EmployeeDesignation {
-  MANAGER
-  SUPERVISOR
-  STAFF
-  BARTENDER
-  BUTLER
   CRM
-  ORDERING_OPERATOR
-  DESIGNER
   GRAPHIC_DESIGNER
+  OPERATION_COORDINATOR
   DATA_ENTRY_OPERATOR
-  MIS
-  WAREHOUSE_MANAGER
-  INVENTORY_MANAGER
-  PERMANENT_LABOUR
-  SOFTWARE_DEVELOPER
+  PROCESS_COORDINATOR
+  IT
   OFFICE_BOY
-  DRIVER
-  SECURITY_GUARD
+  WAREHOUSE_MANAGER
+  VIDEO_EDITOR
+  MARKETING_EXECUTIVE
   SALES_EXECUTIVE
+  DRIVER
 }
 
 enum AttendanceStatus {
@@ -43,6 +33,11 @@ enum AttendanceStatus {
   HALF_DAY
   SHORT_LEAVE
   ON_LEAVE
+}
+
+enum OverrideType {
+  FORCE_WORK
+  FORCE_LEAVE
 }
 
 enum EmployeeStatus {
@@ -70,12 +65,13 @@ enum EventStatus {
   CANCELLED
 }
 
-model User {
-  id         String  @id @default(cuid())
-  email      String  @unique
-  name       String
-  role       Role    @default(EMPLOYEE)
-  employeeId String? @unique
+model Admin {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String
+  role  Role   @default(ADMIN)
+
+  @@map("Admin")
 }
 
 model Employee {
@@ -85,7 +81,7 @@ model Employee {
   name             String
   contact          String?
   emergencyContact String?
-  designation      EmployeeDesignation @default(STAFF)
+  designation      EmployeeDesignation @default(OFFICE_BOY)
   baseSalary       Float               @default(0)
   joiningDate      DateTime            @default(now())
   status           EmployeeStatus      @default(ACTIVE)
@@ -103,7 +99,6 @@ model Employee {
   bankIfsc         String?
   bankOtherDetails String?
 
-  role      Role     @default(EMPLOYEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -121,15 +116,19 @@ model Employee {
 }
 
 model Attendance {
-  id         String           @id @default(cuid())
-  employeeId String
-  date       DateTime
-  status     AttendanceStatus
-  latitude   Float?
-  longitude  Float?
-  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  employeeId   String
+  date         DateTime
+  status       AttendanceStatus
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  checkOutLatitude  Float?
+  checkOutLongitude Float?
+  latitude          Float?
+  longitude         Float?
+  employee     Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@unique([employeeId, date])
 }
@@ -317,6 +316,7 @@ model ExpenseEntry {
   description String
   receiptUrl  String?
   status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  date        DateTime?
   createdAt   DateTime @default(now())
   employee    Employee @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
 }

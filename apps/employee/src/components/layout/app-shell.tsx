@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { RoleSidebar } from "@/components/layout/role-sidebar";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 function AppLoadingScreen() {
   return (
@@ -51,7 +52,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-muted/20">
       <RoleSidebar />
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
           <header className="no-print flex flex-wrap items-end justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -77,6 +78,8 @@ export function AppShell({
           {children}
         </div>
       </main>
+
+      <BottomNav />
     </div>
   );
 }

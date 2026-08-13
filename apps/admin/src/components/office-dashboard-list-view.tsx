@@ -20,65 +20,36 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
 
 type EmployeeRow = {
   id: string;
   employeeId: string;
   name: string;
   designation: string;
+  todayCheckInTime?: string | null;
 };
-
-type EventRow = {
-  id: string;
-  eventCode: string;
-  eventName: string;
-  eventDate: string;
-};
-
-type ViewKind = "employees" | "events";
 
 type ViewConfig = {
   title: string;
   url: string;
-  kind: ViewKind;
 };
 
 const VIEW_CONFIG: Record<string, ViewConfig> = {
-  totalEmployees: {
-    title: "Total Employees",
-    url: "/api/office/employees",
-    kind: "employees",
-  },
   activeEmployees: {
     title: "Active Employees",
     url: "/api/office/employees?employeeStatus=ACTIVE",
-    kind: "employees",
-  },
-  leftEmployees: {
-    title: "Left Company",
-    url: "/api/office/employees?employeeStatus=LEFT",
-    kind: "employees",
   },
   presentToday: {
     title: "Present Today",
     url: "/api/office/employees?attendanceStatus=PRESENT",
-    kind: "employees",
   },
   absentToday: {
     title: "Absent Today",
     url: "/api/office/employees?attendanceStatus=ABSENT",
-    kind: "employees",
   },
   onLeaveToday: {
     title: "Employees on Leave",
     url: "/api/office/employees?attendanceStatus=ON_LEAVE",
-    kind: "employees",
-  },
-  ongoingEvents: {
-    title: "Ongoing Events",
-    url: "/api/office/dashboard/ongoing-events",
-    kind: "events",
   },
 };
 
@@ -147,7 +118,7 @@ function EmployeesTable({
   isError: boolean;
   onRetry: () => void;
 }) {
-  const colSpan = 3;
+  const colSpan = 4;
   return (
     <>
       <TableHeader>
@@ -155,6 +126,7 @@ function EmployeesTable({
           <TableHead>Employee ID</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Designation</TableHead>
+          <TableHead>Check-in Time</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -173,48 +145,14 @@ function EmployeesTable({
                 {DESIGNATION_LABELS[employee.designation] ??
                   employee.designation}
               </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </>
-  );
-}
-
-function EventsTable({
-  events,
-  isPending,
-  isError,
-  onRetry,
-}: {
-  events: EventRow[];
-  isPending: boolean;
-  isError: boolean;
-  onRetry: () => void;
-}) {
-  const colSpan = 3;
-  return (
-    <>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Event Code</TableHead>
-          <TableHead>Event Name</TableHead>
-          <TableHead>Event Date</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {isPending ? (
-          <LoadingRow colSpan={colSpan} />
-        ) : isError ? (
-          <ErrorRow colSpan={colSpan} onRetry={onRetry} />
-        ) : events.length === 0 ? (
-          <EmptyRow colSpan={colSpan} label="No ongoing events right now." />
-        ) : (
-          events.map((event) => (
-            <TableRow key={event.id}>
-              <TableCell className="font-medium">{event.eventCode}</TableCell>
-              <TableCell>{event.eventName}</TableCell>
-              <TableCell>{formatDate(event.eventDate)}</TableCell>
+              <TableCell>
+                {employee.todayCheckInTime
+                  ? new Date(employee.todayCheckInTime).toLocaleTimeString(
+                      [],
+                      { hour: "numeric", minute: "2-digit", hour12: true },
+                    )
+                  : "—"}
+              </TableCell>
             </TableRow>
           ))
         )}
@@ -236,7 +174,7 @@ export function OfficeDashboardListView({
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["office-dashboard-detail", viewId],
     queryFn: () =>
-      apiFetch<EmployeeRow[] | EventRow[]>(config.url, { token }),
+      apiFetch<EmployeeRow[]>(config.url, { token }),
     enabled: Boolean(config),
   });
 
@@ -284,21 +222,12 @@ export function OfficeDashboardListView({
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
-            {config.kind === "events" ? (
-              <EventsTable
-                events={(data ?? []) as EventRow[]}
-                isPending={isPending}
-                isError={isError}
-                onRetry={refetch}
-              />
-            ) : (
-              <EmployeesTable
-                employees={(data ?? []) as EmployeeRow[]}
-                isPending={isPending}
-                isError={isError}
-                onRetry={refetch}
-              />
-            )}
+            <EmployeesTable
+              employees={data ?? []}
+              isPending={isPending}
+              isError={isError}
+              onRetry={refetch}
+            />
           </Table>
         </CardContent>
       </Card>

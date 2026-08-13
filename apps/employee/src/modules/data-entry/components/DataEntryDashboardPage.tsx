@@ -1,0 +1,31 @@
+import { CalendarDays, ClipboardList, Plane } from "lucide-react";
+import { DashboardShell } from "@/components/dashboards/dashboard-shell";
+
+export function DataEntryDashboardPage() {
+  return (
+    <DashboardShell
+      title="Welcome to the Data Entry workspace"
+      description="Keep event records and operational data accurate and up to date."
+      features={[
+        {
+          title: "Event Records",
+          description: "Review and maintain event information entered in the system.",
+          icon: CalendarDays,
+          accent: "bg-teal-100 text-teal-700",
+        },
+        {
+          title: "Data Entry Tasks",
+          description: "Complete pending entries assigned to you.",
+          icon: ClipboardList,
+          accent: "bg-indigo-100 text-indigo-700",
+        },
+        {
+          title: "Travel Logs",
+          description: "Log and verify travel details for your records.",
+          icon: Plane,
+          accent: "bg-sky-100 text-sky-700",
+        },
+      ]}
+    />
+  );
+}

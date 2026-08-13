@@ -6,25 +6,6 @@ const router: Router = Router();
 
 const VALID_ROLES = new Set<string>(Object.values(Role));
 
-async function generateNextEmployeeId(): Promise<string> {
-  const users = await prisma.user.findMany({
-    select: { employeeId: true },
-  });
-
-  let maxNumber = 0;
-  for (const { employeeId } of users) {
-    const match = employeeId ? /^EMP(\d+)$/.exec(employeeId) : null;
-    if (match) {
-      const numeric = Number(match[1]);
-      if (Number.isInteger(numeric) && numeric > maxNumber) {
-        maxNumber = numeric;
-      }
-    }
-  }
-
-  return `EMP${String(maxNumber + 1).padStart(3, "0")}`;
-}
-
 router.post("/", requireAuth, async (req, res) => {
   const { name, email, role } = req.body ?? {};
 
@@ -42,12 +23,10 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    const employeeId = await generateNextEmployeeId();
-    const user = await prisma.user.create({
+    const user = await prisma.admin.create({
       data: {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        employeeId,
         ...(role !== undefined ? { role: role as Role } : {}),
       },
     });
@@ -69,7 +48,7 @@ router.post("/", requireAuth, async (req, res) => {
 
 router.get("/", requireAuth, async (_req, res) => {
   try {
-    const users = await prisma.user.findMany({
+    const users = await prisma.admin.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, role: true },
     });

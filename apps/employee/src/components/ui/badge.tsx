@@ -4,21 +4,21 @@ import { cn } from "@/lib/utils";
 type BadgeTone = "success" | "warning" | "danger" | "info" | "violet" | "neutral";
 
 const TONE_STYLES: Record<BadgeTone, string> = {
-  success: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
-  warning: "border-amber-500/30 bg-amber-500/15 text-amber-300",
-  danger: "border-rose-500/30 bg-rose-500/15 text-rose-300",
-  info: "border-sky-500/30 bg-sky-500/15 text-sky-300",
-  violet: "border-violet-500/30 bg-violet-500/15 text-violet-300",
-  neutral: "border-white/10 bg-white/5 text-slate-300",
+  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  warning: "border-amber-500/30 bg-amber-500/10 text-amber-700",
+  danger: "border-rose-500/30 bg-rose-500/10 text-rose-700",
+  info: "border-sky-500/30 bg-sky-500/10 text-sky-700",
+  violet: "border-violet-500/30 bg-violet-500/10 text-violet-700",
+  neutral: "border-border bg-muted text-muted-foreground",
 };
 
 const DOT_STYLES: Record<BadgeTone, string> = {
-  success: "bg-emerald-400",
-  warning: "bg-amber-400",
-  danger: "bg-rose-400",
-  info: "bg-sky-400",
-  violet: "bg-violet-400",
-  neutral: "bg-slate-400",
+  success: "bg-emerald-600",
+  warning: "bg-amber-600",
+  danger: "bg-rose-600",
+  info: "bg-sky-600",
+  violet: "bg-violet-600",
+  neutral: "bg-muted-foreground",
 };
 
 export function Badge({

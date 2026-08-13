@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  Building2,
   CalendarClock,
+  CalendarX2,
   LayoutDashboard,
   Trophy,
   Users,
@@ -24,6 +26,8 @@ const navItems: NavItem[] = [
   { href: "/office/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/office/employees", label: "Employees", icon: Users },
   { href: "/office/attendance", label: "Attendance & Salary", icon: CalendarClock },
+  { href: "/office/holidays", label: "Holidays", icon: CalendarX2 },
+  { href: "/office/designation-locations", label: "Designation Locations", icon: Building2 },
   { href: "#", label: "Employee Score", icon: Trophy, future: true },
 ];
 

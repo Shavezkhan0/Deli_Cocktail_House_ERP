@@ -8,10 +8,7 @@ import {
   CalendarX2,
   Loader2,
   RotateCw,
-  Target,
   UserCheck,
-  UserMinus,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { OfficeDashboardListView } from "@/components/office-dashboard-list-view";
@@ -44,15 +41,6 @@ type Stat = {
 function buildStats(data: DashboardMetrics): Stat[] {
   return [
     {
-      id: "totalEmployees",
-      label: "Total Employees",
-      value: data.totalEmployees,
-      hint: "Across all designations",
-      icon: Users,
-      iconClass: "bg-sky-100 text-sky-700",
-      barClass: "from-sky-400 to-sky-600",
-    },
-    {
       id: "activeEmployees",
       label: "Active Employees",
       value: data.activeEmployees,
@@ -60,15 +48,6 @@ function buildStats(data: DashboardMetrics): Stat[] {
       icon: UserCheck,
       iconClass: "bg-emerald-100 text-emerald-700",
       barClass: "from-emerald-400 to-emerald-600",
-    },
-    {
-      id: "leftEmployees",
-      label: "Left Company",
-      value: data.leftEmployees,
-      hint: "Former employees",
-      icon: UserMinus,
-      iconClass: "bg-slate-200 text-slate-700",
-      barClass: "from-slate-400 to-slate-600",
     },
     {
       id: "presentToday",
@@ -96,15 +75,6 @@ function buildStats(data: DashboardMetrics): Stat[] {
       icon: CalendarClock,
       iconClass: "bg-amber-100 text-amber-700",
       barClass: "from-amber-400 to-amber-600",
-    },
-    {
-      id: "ongoingEvents",
-      label: "Ongoing Events",
-      value: data.ongoingEvents,
-      hint: "Events in progress right now",
-      icon: Target,
-      iconClass: "bg-violet-100 text-violet-700",
-      barClass: "from-violet-400 to-violet-600",
     },
   ];
 }
@@ -209,7 +179,7 @@ export default function OfficeDashboardPage() {
 
       {isPending ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 7 }).map((_, index) => (
+          {Array.from({ length: 4 }).map((_, index) => (
             <StatSkeleton key={index} />
           ))}
         </div>
