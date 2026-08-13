@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Banknote,
+  CalendarDays,
+  CalendarPlus,
   CheckCircle2,
   Circle,
   FileText,
   Loader2,
   Pencil,
+  Plus,
   RotateCw,
   Trash2,
+  TriangleAlert,
   UploadCloud,
   User,
   Wallet,
@@ -44,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -59,7 +64,7 @@ import {
 } from "@/components/employee-form";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Employee = {
@@ -110,6 +115,72 @@ type AttendanceSummary = {
   netSalary: number;
 };
 
+type WorkingOverride = {
+  id: string;
+  employeeId: string;
+  date: string;
+  type: "FORCE_WORK" | "FORCE_LEAVE";
+  reason: string | null;
+  createdAt: string;
+};
+
+type OverrideTypeValue = "FORCE_WORK" | "FORCE_LEAVE";
+
+type AttendanceRecord = {
+  id: string;
+  employeeId: string;
+  date: string;
+  status: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  createdAt: string;
+};
+
+type ApprovedExpense = {
+  id: string;
+  submittedBy: string;
+  amount: number;
+  description: string;
+  date: string | null;
+  createdAt: string;
+};
+
+type SalaryBreakdown = {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  dailyWage: number;
+  monthsSinceJoining: number;
+  earnedLeaves: number;
+  compensatoryLeaves: number;
+  usedLeaves: number;
+  availableLeaveBalance: number;
+  attendance: {
+    PRESENT: number;
+    ABSENT: number;
+    ON_LEAVE: number;
+    HALF_DAY: number;
+    SHORT_LEAVE: number;
+    sundayAbsences: number;
+    holidayAbsences: number;
+    overriddenAbsences: number;
+  };
+  totalLeavesTaken: number;
+  unpaidLeaves: number;
+  deductionAmount: number;
+  extraExpenses: number;
+  extraExpenseEntries: {
+    id: string;
+    amount: number;
+    description: string;
+    date: string | null;
+  }[];
+  finalAmount: number;
+};
+
 type DocKey = "aadharUrl" | "panCardUrl" | "offerLetterUrl" | "bondUrl";
 
 const DOC_OPTIONS: { key: DocKey; label: string; docType: string }[] = [
@@ -133,6 +204,54 @@ const MONTH_NAMES = [
   "November",
   "December",
 ];
+
+const CHECK_IN_LATE_MINUTES = 10 * 60 + 45; // late if checked in after 10:45 AM
+const CHECK_OUT_EARLY_MINUTES = 17 * 60 + 30; // early if checked out before 5:30 PM
+
+function timeToMinutes(value: string | null): number {
+  if (!value) {
+    return -1;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return -1;
+  }
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+const ATTENDANCE_STATUS_BADGES: Record<string, string> = {
+  PRESENT: "bg-emerald-100 text-emerald-700",
+  ABSENT: "bg-rose-100 text-rose-700",
+  HALF_DAY: "bg-amber-100 text-amber-700",
+  SHORT_LEAVE: "bg-yellow-100 text-yellow-700",
+  ON_LEAVE: "bg-blue-100 text-blue-700",
+};
+
+const OVERRIDE_DOT_COLORS: Record<string, string> = {
+  FORCE_WORK: "bg-indigo-500",
+  FORCE_LEAVE: "bg-sky-500",
+};
+
+const ATTENDANCE_STATUS_COLORS: Record<string, string> = {
+  PRESENT: "#10b981",
+  ABSENT: "#f43f5e",
+  HALF_DAY: "#f59e0b",
+  SHORT_LEAVE: "#eab308",
+  ON_LEAVE: "#3b82f6",
+};
+
+function dateKeyFromParts(year: number, month: number, day: number): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+function dateKeyFromTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return dateKeyFromParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
 
 function formatSalary(value: number): string {
   return new Intl.NumberFormat("en-IN", {
@@ -193,12 +312,75 @@ function InfoRow({
   );
 }
 
+function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/5 p-4">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">
+            Paid Leave Balance
+          </p>
+          <p className="mt-0.5 text-3xl font-bold tabular-nums text-primary">
+            {breakdown.availableLeaveBalance}
+          </p>
+        </div>
+        <p className="max-w-sm text-xs text-muted-foreground">
+          Earned {breakdown.earnedLeaves} leaves ({breakdown.compensatoryLeaves}{" "}
+          from working on Sundays/holidays) · Used {breakdown.usedLeaves}. Leaves
+          taken beyond this balance are deducted at the daily wage
+          ({formatSalary(breakdown.dailyWage)}/day).
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-xs text-muted-foreground">Base Salary</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+            {formatSalary(breakdown.baseSalary)}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-xs text-muted-foreground">Leave Deduction</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-rose-600">
+            − {formatSalary(breakdown.deductionAmount)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {breakdown.unpaidLeaves} unpaid leaves
+          </p>
+        </div>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-xs text-muted-foreground">Extra Expenses</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600">
+            + {formatSalary(breakdown.extraExpenses)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
+          <p className="text-xs text-muted-foreground">Final Total</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
+            {formatSalary(breakdown.finalAmount)}
+          </p>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        {breakdown.attendance.PRESENT} present · {breakdown.attendance.ABSENT}{" "}
+        absent ({breakdown.attendance.sundayAbsences} on Sundays,{" "}
+        {breakdown.attendance.holidayAbsences} on holidays,{" "}
+        {breakdown.attendance.overriddenAbsences} overridden) ·{" "}
+        {breakdown.attendance.ON_LEAVE} on leave ·{" "}
+        {breakdown.attendance.HALF_DAY} half days ·{" "}
+        {breakdown.attendance.SHORT_LEAVE} short leaves
+      </p>
+    </div>
+  );
+}
+
 export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"profile" | "bank" | "salary">(
-    "profile",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "bank" | "salary" | "attendance"
+  >("profile");
   const [uploading, setUploading] = useState<DocKey | null>(null);
   const [deleting, setDeleting] = useState<DocKey | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -209,6 +391,27 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     status: "ACTIVE",
     leavingDate: "",
   });
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  const [overrideDialogDate, setOverrideDialogDate] = useState<string | null>(
+    null,
+  );
+  const [overrideType, setOverrideType] =
+    useState<OverrideTypeValue>("FORCE_WORK");
+  const [overrideDialogReason, setOverrideDialogReason] = useState("");
+
+  const [breakdownMonth, setBreakdownMonth] = useState(currentMonth);
+  const [breakdownYear, setBreakdownYear] = useState(currentYear);
+
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenseDate, setExpenseDate] = useState("");
+
+  const [attendanceMonth, setAttendanceMonth] = useState(currentMonth);
+  const [attendanceYear, setAttendanceYear] = useState(currentYear);
 
   const openEditModal = () => {
     if (!employee) {
@@ -319,16 +522,189 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     },
   });
 
+  const workingOverridesQuery = useQuery({
+    queryKey: ["office-working-overrides", employeeId],
+    queryFn: () =>
+      apiFetch<WorkingOverride[]>(
+        `/api/office/employees/${employeeId}/working-overrides`,
+        { token },
+      ),
+  });
+
+  const approvedExpensesQuery = useQuery({
+    queryKey: ["office-approved-expenses", employeeId],
+    queryFn: () =>
+      apiFetch<ApprovedExpense[]>(
+        `/api/office/employees/${employeeId}/expenses`,
+        { token },
+      ),
+  });
+
+  const attendanceHistoryQuery = useQuery({
+    queryKey: [
+      "office-employee-attendance",
+      employeeId,
+      attendanceMonth,
+      attendanceYear,
+    ],
+    queryFn: () =>
+      apiFetch<AttendanceRecord[]>(
+        `/api/office/employees/${employeeId}/attendance?month=${attendanceMonth}&year=${attendanceYear}`,
+        { token },
+      ),
+  });
+
+  const salaryBreakdownQuery = useQuery({
+    queryKey: [
+      "office-salary-breakdown",
+      employeeId,
+      breakdownMonth,
+      breakdownYear,
+    ],
+    queryFn: () =>
+      apiFetch<SalaryBreakdown>(
+        `/api/office/employees/${employeeId}/salary-breakdown?month=${breakdownMonth}&year=${breakdownYear}`,
+        { token },
+      ),
+  });
+
+  const leaveBalanceQuery = useQuery({
+    queryKey: [
+      "office-leave-balance",
+      employeeId,
+      attendanceMonth,
+      attendanceYear,
+    ],
+    queryFn: () =>
+      apiFetch<SalaryBreakdown>(
+        `/api/office/employees/${employeeId}/salary-breakdown?month=${attendanceMonth}&year=${attendanceYear}`,
+        { token },
+      ),
+  });
+
+  const saveOverride = useMutation({
+    mutationFn: (payload: {
+      date: string;
+      type: OverrideTypeValue;
+      reason?: string;
+    }) =>
+      apiFetch<WorkingOverride>(
+        `/api/office/employees/${employeeId}/attendance-override`,
+        { method: "POST", body: payload, token },
+      ),
+    onSuccess: () => {
+      toast.success("Attendance override saved");
+      setOverrideDialogDate(null);
+      setOverrideDialogReason("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-working-overrides", employeeId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-leave-balance"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteOverride = useMutation({
+    mutationFn: (overrideId: string) =>
+      apiFetch<void>(
+        `/api/office/employees/${employeeId}/working-overrides/${overrideId}`,
+        { method: "DELETE", token },
+      ),
+    onSuccess: () => {
+      toast.success("Override removed");
+      setOverrideDialogDate(null);
+      setOverrideDialogReason("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-working-overrides", employeeId],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const createExpense = useMutation({
+    mutationFn: (payload: {
+      amount: number;
+      description: string;
+      date: string;
+    }) =>
+      apiFetch<ApprovedExpense>(
+        `/api/office/employees/${employeeId}/expenses`,
+        { method: "POST", body: payload, token },
+      ),
+    onSuccess: () => {
+      toast.success("Extra expense added");
+      setExpenseAmount("");
+      setExpenseDescription("");
+      setExpenseDate("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-approved-expenses", employeeId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  function openOverrideDialog(date: string) {
+    const existing = (workingOverridesQuery.data ?? []).find(
+      (override) => dateKeyFromTimestamp(override.date) === date,
+    );
+    setOverrideType(existing?.type ?? "FORCE_WORK");
+    setOverrideDialogReason(existing?.reason ?? "");
+    setOverrideDialogDate(date);
+  }
+
+  function handleOverrideSave() {
+    if (!overrideDialogDate) {
+      return;
+    }
+    saveOverride.mutate({
+      date: overrideDialogDate,
+      type: overrideType,
+      reason: overrideDialogReason.trim() || undefined,
+    });
+  }
+
+  function handleExpenseSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const amount = Number(expenseAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+    if (!expenseDescription.trim()) {
+      toast.error("Description is required");
+      return;
+    }
+    if (!expenseDate) {
+      toast.error("Select a date");
+      return;
+    }
+    createExpense.mutate({
+      amount,
+      description: expenseDescription.trim(),
+      date: expenseDate,
+    });
+  }
+
   const employee = employeeQuery.data;
   const salaries = salariesQuery.data ?? [];
   const attendanceSummary = attendanceQuery.data;
   const currentMonthSummary = attendanceSummary?.find(
     (item) => item.id === employeeId,
   );
-
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
 
   const currentMonthSalary = salaries.find(
     (salary) =>
@@ -339,6 +715,72 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     currentMonthSummary && currentMonthSummary.totalWorkingDays > 0
       ? currentMonthSummary.netSalary
       : (employee?.baseSalary ?? 0);
+
+  const attendanceRecordsByDate = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const record of attendanceHistoryQuery.data ?? []) {
+      const key = dateKeyFromTimestamp(record.date);
+      if (key) {
+        map.set(key, record);
+      }
+    }
+    return map;
+  }, [attendanceHistoryQuery.data]);
+
+  const overridesByDate = useMemo(() => {
+    const map = new Map<string, WorkingOverride>();
+    for (const override of workingOverridesQuery.data ?? []) {
+      const key = dateKeyFromTimestamp(override.date);
+      if (key) {
+        map.set(key, override);
+      }
+    }
+    return map;
+  }, [workingOverridesQuery.data]);
+
+  const historyRecords = attendanceHistoryQuery.data ?? [];
+  const statPresentDays = historyRecords.filter(
+    (record) => record.status === "PRESENT",
+  ).length;
+  const statHalfDays = historyRecords.filter(
+    (record) => record.status === "HALF_DAY",
+  ).length;
+  const statShortLeaves = historyRecords.filter(
+    (record) => record.status === "SHORT_LEAVE",
+  ).length;
+  const remainingPaidLeaves = leaveBalanceQuery.data?.availableLeaveBalance;
+
+  const monthStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      PRESENT: 0,
+      ABSENT: 0,
+      HALF_DAY: 0,
+      SHORT_LEAVE: 0,
+      ON_LEAVE: 0,
+    };
+    for (const record of attendanceHistoryQuery.data ?? []) {
+      counts[record.status] = (counts[record.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [attendanceHistoryQuery.data]);
+
+  const calendarFirstDay = new Date(attendanceYear, attendanceMonth - 1, 1);
+  const calendarLeadingBlanks = calendarFirstDay.getDay();
+  const calendarDaysInMonth = new Date(
+    attendanceYear,
+    attendanceMonth,
+    0,
+  ).getDate();
+  const calendarTodayKey = dateKeyFromParts(
+    new Date().getFullYear(),
+    new Date().getMonth() + 1,
+    new Date().getDate(),
+  );
+
+  const selectedOverride =
+    overrideDialogDate != null
+      ? overridesByDate.get(overrideDialogDate)
+      : undefined;
 
   const [bankForm, setBankForm] = useState<BankForm>({
     bankAccountNo: "",
@@ -477,6 +919,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
   const tabs = [
     { key: "profile" as const, label: "Profile & Documents", icon: User },
+    { key: "attendance" as const, label: "Attendance", icon: CalendarPlus },
     { key: "bank" as const, label: "Bank Details", icon: Wallet },
     { key: "salary" as const, label: "Salary Info", icon: Banknote },
   ];
@@ -727,6 +1170,534 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </div>
       ) : null}
 
+      {activeTab === "attendance" ? (
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Total Present Days
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {attendanceHistoryQuery.isPending ? "…" : statPresentDays}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Total Half Days</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {attendanceHistoryQuery.isPending ? "…" : statHalfDays}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Total Short Leaves
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {attendanceHistoryQuery.isPending ? "…" : statShortLeaves}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Remaining Paid Leave Balance
+                </p>
+                {leaveBalanceQuery.isPending ? (
+                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-muted" />
+                ) : (
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                    {remainingPaidLeaves ?? "—"}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>
+                    <span className="inline-flex items-center gap-2">
+                      <CalendarDays className="size-4 text-primary" />
+                      Attendance Calendar
+                    </span>
+                  </CardTitle>
+                  <CardDescription>
+                    Click a date to assign work on a holiday (FORCE_WORK) or
+                    grant a leave (FORCE_LEAVE). Ringed dates have overrides;
+                    dots show attendance records.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Month
+                    </label>
+                    <Select
+                      value={String(attendanceMonth)}
+                      onValueChange={(value) =>
+                        setAttendanceMonth(
+                          typeof value === "string" ? Number(value) : attendanceMonth,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-36">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MONTH_NAMES.map((monthName, index) => (
+                          <SelectItem key={monthName} value={String(index + 1)}>
+                            {monthName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Year
+                    </label>
+                    <Input
+                      type="number"
+                      min={2000}
+                      className="w-28"
+                      value={String(attendanceYear)}
+                      onChange={(event) =>
+                        setAttendanceYear(Number(event.target.value) || currentYear)
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="mx-auto w-full max-w-xl">
+                <div className="grid grid-cols-7 gap-1">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                    <div
+                      key={day}
+                      className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {day}
+                    </div>
+                  ))}
+                  {Array.from({ length: calendarLeadingBlanks }).map((_, index) => (
+                    <div key={`blank-${index}`} />
+                  ))}
+                  {Array.from({ length: calendarDaysInMonth }).map((_, index) => {
+                    const day = index + 1;
+                    const key = dateKeyFromParts(
+                      attendanceYear,
+                      attendanceMonth,
+                      day,
+                    );
+                    const record = attendanceRecordsByDate.get(key);
+                    const override = overridesByDate.get(key);
+                    const isToday = key === calendarTodayKey;
+                    const tooltip = override
+                      ? `${formatDate(override.date)} — ${
+                          override.type === "FORCE_WORK"
+                            ? "Force work"
+                            : "Force leave"
+                        }${override.reason ? ` (${override.reason})` : ""}`
+                      : record
+                        ? `${formatDate(record.date)} — ${record.status.replace(
+                            "_",
+                            " ",
+                          )}`
+                        : "No override — click to assign";
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => openOverrideDialog(key)}
+                        title={tooltip}
+                        className={cn(
+                          "relative flex aspect-square min-h-7 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                          record
+                            ? "text-white shadow-sm"
+                            : "bg-muted/60 text-muted-foreground",
+                          override
+                            ? "ring-2 ring-indigo-500/70 ring-offset-1 ring-offset-background"
+                            : isToday
+                              ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                              : "",
+                        )}
+                        style={
+                          record && ATTENDANCE_STATUS_COLORS[record.status]
+                            ? { backgroundColor: ATTENDANCE_STATUS_COLORS[record.status] }
+                            : undefined
+                        }
+                      >
+                        <span className="text-sm font-bold leading-none">
+                          {day}
+                        </span>
+                        {override ? (
+                          <span
+                            className={cn(
+                              "absolute top-1 right-1 size-1.5 rounded-full",
+                              OVERRIDE_DOT_COLORS[override.type],
+                            )}
+                          />
+                        ) : null}
+                        <span
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            record
+                              ? "bg-white/80"
+                              : "bg-muted-foreground/30",
+                          )}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Overrides:
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2.5 rounded-full bg-indigo-500" />
+                  Force Work
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2.5 rounded-full bg-sky-500" />
+                  Force Leave
+                </span>
+                <span className="ml-2 text-xs font-medium text-muted-foreground">
+                  Attendance:
+                </span>
+                {(["PRESENT", "HALF_DAY", "SHORT_LEAVE", "ON_LEAVE", "ABSENT"] as const).map(
+                  (status) => (
+                    <span
+                      key={status}
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                    >
+                      <span
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: ATTENDANCE_STATUS_COLORS[status] }}
+                      />
+                      {status.replace("_", " ")}:{" "}
+                      {monthStatusCounts[status] ?? 0}
+                    </span>
+                  ),
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Attendance History</CardTitle>
+                  <CardDescription>
+                    Daily check-in and check-out times. Red highlights mark a
+                    late check-in (after 10:45 AM) or an early departure (before
+                    5:30 PM).
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {attendanceHistoryQuery.isPending ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-10 w-full animate-pulse rounded bg-muted"
+                    />
+                  ))}
+                </div>
+              ) : attendanceHistoryQuery.isError ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Unable to load attendance history.
+                </p>
+              ) : (attendanceHistoryQuery.data ?? []).length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No attendance records for this month.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Check In</TableHead>
+                        <TableHead>Check Out</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(attendanceHistoryQuery.data ?? []).map((record) => {
+                        const checkInMinutes = timeToMinutes(record.checkInTime);
+                        const checkOutMinutes = timeToMinutes(record.checkOutTime);
+                        const isLateCheckIn =
+                          checkInMinutes > CHECK_IN_LATE_MINUTES;
+                        const isEarlyCheckOut =
+                          checkOutMinutes >= 0 &&
+                          checkOutMinutes < CHECK_OUT_EARLY_MINUTES;
+                        return (
+                          <TableRow key={record.id}>
+                            <TableCell className="font-medium tabular-nums text-foreground">
+                              {formatDate(record.date)}
+                            </TableCell>
+                            <TableCell>
+                              {record.checkInTime ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 tabular-nums",
+                                    isLateCheckIn
+                                      ? "font-semibold text-rose-600"
+                                      : "text-foreground",
+                                  )}
+                                >
+                                  {formatTime(record.checkInTime)}
+                                  {isLateCheckIn ? (
+                                    <span title="Checked in late (after 10:45 AM)">
+                                      <TriangleAlert
+                                        className="size-3.5 shrink-0 text-rose-500"
+                                        aria-label="Late check-in"
+                                      />
+                                    </span>
+                                  ) : null}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {record.checkOutTime ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 tabular-nums",
+                                    isEarlyCheckOut
+                                      ? "font-semibold text-rose-600"
+                                      : "text-foreground",
+                                  )}
+                                >
+                                  {formatTime(record.checkOutTime)}
+                                  {isEarlyCheckOut ? (
+                                    <span title="Left early (before 5:30 PM)">
+                                      <TriangleAlert
+                                        className="size-3.5 shrink-0 text-rose-500"
+                                        aria-label="Early check-out"
+                                      />
+                                    </span>
+                                  ) : null}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  ATTENDANCE_STATUS_BADGES[record.status] ??
+                                    "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {record.status.replace("_", " ")}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle>Assigned Dates</CardTitle>
+              <CardDescription>
+                All attendance overrides for this employee.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {workingOverridesQuery.isPending ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-10 w-full animate-pulse rounded bg-muted"
+                    />
+                  ))}
+                </div>
+              ) : workingOverridesQuery.isError ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Unable to load overrides.
+                </p>
+              ) : (workingOverridesQuery.data ?? []).length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No overrides assigned yet. Click a day on the calendar to add
+                  one.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>
+                        <div className="text-right">Actions</div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(workingOverridesQuery.data ?? []).map((override) => (
+                      <TableRow key={override.id}>
+                        <TableCell className="font-medium tabular-nums text-foreground">
+                          {formatDate(override.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              override.type === "FORCE_WORK"
+                                ? "bg-indigo-100 text-indigo-700"
+                                : "bg-sky-100 text-sky-700",
+                            )}
+                          >
+                            {override.type === "FORCE_WORK"
+                              ? "Force Work"
+                              : "Force Leave"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {override.reason ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-destructive hover:bg-destructive/10"
+                              disabled={deleteOverride.isPending}
+                              onClick={() => deleteOverride.mutate(override.id)}
+                              aria-label="Remove override"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      <Dialog
+        open={overrideDialogDate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOverrideDialogDate(null);
+            setOverrideDialogReason("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Attendance Override</DialogTitle>
+            <DialogDescription>
+              {overrideDialogDate
+                ? new Date(`${overrideDialogDate}T00:00:00`).toLocaleDateString(
+                    "en-GB",
+                    {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    },
+                  )
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Action
+              </label>
+              <Select
+                value={overrideType}
+                onValueChange={(value) =>
+                  setOverrideType(value as OverrideTypeValue)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FORCE_WORK">
+                    Assign Work on Holiday
+                  </SelectItem>
+                  <SelectItem value="FORCE_LEAVE">Assign Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Reason{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </label>
+              <Textarea
+                value={overrideDialogReason}
+                onChange={(event) => setOverrideDialogReason(event.target.value)}
+                placeholder="e.g. Compensating for last week"
+              />
+            </div>
+            {selectedOverride ? (
+              <p className="text-xs text-muted-foreground">
+                An override already exists for this date. Saving will update it.
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            {selectedOverride ? (
+              <Button
+                variant="destructive"
+                disabled={deleteOverride.isPending}
+                onClick={() => deleteOverride.mutate(selectedOverride.id)}
+              >
+                <Trash2 />
+                Remove
+              </Button>
+            ) : null}
+            <DialogClose render={<Button variant="outline" type="button" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              disabled={saveOverride.isPending}
+              onClick={handleOverrideSave}
+            >
+              {saveOverride.isPending
+                ? "Saving…"
+                : selectedOverride
+                  ? "Update Override"
+                  : "Save Override"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {activeTab === "bank" ? (
         <Card>
           <CardHeader>
@@ -793,6 +1764,186 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
       {activeTab === "salary" ? (
         <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle>Salary Breakdown</CardTitle>
+              <CardDescription>
+                Automatic calculation using the 30-day rule and the paid leave
+                balance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="mb-4 flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Month
+                  </label>
+                  <Select
+                    value={String(breakdownMonth)}
+                    onValueChange={(value) =>
+                      setBreakdownMonth(
+                        typeof value === "string" ? Number(value) : breakdownMonth,
+                      )
+                    }
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTH_NAMES.map((monthName, index) => (
+                        <SelectItem key={monthName} value={String(index + 1)}>
+                          {monthName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Year
+                  </label>
+                  <Input
+                    type="number"
+                    min={2000}
+                    className="w-28"
+                    value={String(breakdownYear)}
+                    onChange={(event) =>
+                      setBreakdownYear(Number(event.target.value) || currentYear)
+                    }
+                  />
+                </div>
+              </div>
+
+              {salaryBreakdownQuery.isPending ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-20 w-full animate-pulse rounded-lg bg-muted"
+                    />
+                  ))}
+                </div>
+              ) : salaryBreakdownQuery.isError ||
+                !salaryBreakdownQuery.data ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Unable to load the salary breakdown.
+                </p>
+              ) : (
+                <SalaryBreakdownView breakdown={salaryBreakdownQuery.data} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle>Extra Expenses</CardTitle>
+              <CardDescription>
+                Approved expenses are added to the employee&apos;s salary for the
+                month of the selected date.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <form
+                onSubmit={handleExpenseSubmit}
+                className="flex flex-col gap-4"
+              >
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Amount
+                    </label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={expenseAmount}
+                      onChange={(event) => setExpenseAmount(event.target.value)}
+                      placeholder="e.g. 500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Description
+                    </label>
+                    <Input
+                      value={expenseDescription}
+                      onChange={(event) =>
+                        setExpenseDescription(event.target.value)
+                      }
+                      placeholder="e.g. Transport for event"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                      Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={expenseDate}
+                      onChange={(event) => setExpenseDate(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={createExpense.isPending}>
+                    <Plus />
+                    {createExpense.isPending ? "Adding…" : "Add Expense"}
+                  </Button>
+                </div>
+              </form>
+
+              <div className="mt-6">
+                {approvedExpensesQuery.isPending ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-10 w-full animate-pulse rounded bg-muted"
+                      />
+                    ))}
+                  </div>
+                ) : approvedExpensesQuery.isError ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Unable to load expenses.
+                  </p>
+                ) : (approvedExpensesQuery.data ?? []).length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    No extra expenses added yet.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>
+                          <div className="text-right">Amount</div>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(approvedExpensesQuery.data ?? []).map((expense) => (
+                        <TableRow key={expense.id}>
+                          <TableCell className="font-medium tabular-nums text-foreground">
+                            {expense.date ? formatDate(expense.date) : "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {expense.description}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-right tabular-nums text-foreground">
+                              {formatSalary(expense.amount)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Current Month Estimate</CardTitle>

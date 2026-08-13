@@ -5,11 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarCheck,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Info,
   Loader2,
+  LogIn,
+  LogOut,
   MapPin,
   Satellite,
 } from "lucide-react";
@@ -17,10 +18,19 @@ import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { calculateDistance } from "@/lib/geo";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 
 type AttendanceStatus =
   | "PRESENT"
@@ -33,10 +43,17 @@ type AttendanceRecord = {
   id: string;
   date: string;
   status: AttendanceStatus;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type MarkAttendanceResponse = {
+  event: "check-in" | "check-out";
+  attendance: AttendanceRecord;
 };
 
 type AttendanceTodayResponse = {
@@ -160,6 +177,9 @@ export default function AttendancePage() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [historyMonth, setHistoryMonth] = useState(() => new Date().getMonth());
   const [historyYear, setHistoryYear] = useState(() => new Date().getFullYear());
+  const [pendingAction, setPendingAction] = useState<
+    "check-in" | "check-out" | null
+  >(null);
 
   const todayQuery = useQuery({
     queryKey: ["attendance", "today"],
@@ -188,14 +208,18 @@ export default function AttendancePage() {
 
   const markMutation = useMutation({
     mutationFn: (coords: { latitude: number; longitude: number }) =>
-      apiFetch<AttendanceRecord>("/api/employee/attendance/mark", {
+      apiFetch<MarkAttendanceResponse>("/api/employee/attendance/mark", {
         method: "POST",
         body: coords,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setGeoState("success");
       fireConfetti();
-      toast.success("Attendance marked for today!");
+      toast.success(
+        data.event === "check-in"
+          ? "Checked in for today!"
+          : "Checked out for today!",
+      );
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
     },
     onError: (error) => {
@@ -214,6 +238,14 @@ export default function AttendancePage() {
     if (submittingRef.current) {
       return;
     }
+    setPendingAction(hasCheckedIn ? "check-out" : "check-in");
+  }
+
+  function confirmMarkAction() {
+    if (submittingRef.current) {
+      return;
+    }
+    setPendingAction(null);
 
     if (!navigator.geolocation) {
       setGeoState("error");
@@ -302,7 +334,9 @@ export default function AttendancePage() {
   ];
 
   const isAcquiring = geoState === "acquiring" || markMutation.isPending;
-  const marked = todayQuery.data?.marked === true;
+  const todayRecord = todayQuery.data?.attendance ?? null;
+  const hasCheckedIn = !!todayRecord?.checkInTime;
+  const hasCheckedOut = !!todayRecord?.checkOutTime;
 
   const recentDays = useMemo(() => {
     const list: { key: string; date: Date }[] = [];
@@ -396,156 +430,157 @@ export default function AttendancePage() {
     content = (
       <div className="flex flex-col gap-6">
         <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
-          {marked ? (
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <span className="flex size-16 items-center justify-center rounded-full bg-emerald-100">
-                  <CheckCircle2 className="size-9 text-emerald-600" />
-                </span>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                    Attendance marked for today
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Marked on{" "}
-                    {formatDateTime(
-                      todayQuery.data?.attendance?.date ??
-                        new Date().toISOString(),
-                    )}
-                  </p>
-                </div>
-                {todayQuery.data?.attendance ? (
-                  <StatusBadge status={todayQuery.data.attendance.status} />
-                ) : null}
-              </div>
-
-              {markedPosition ? (
-                <div className="flex w-full flex-col gap-3 lg:max-w-sm">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Marked location
-                  </p>
-                  <MapPreview position={markedPosition} />
-                  {distanceFromOffice !== null ? (
-                    <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
-                      <span className="text-muted-foreground">
-                        Distance from{" "}
-                        {officeQuery.data?.locationName ?? "office"}
-                      </span>
-                      <span className="font-semibold text-foreground">
-                        {formatMeters(distanceFromOffice)}
-                      </span>
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex flex-col items-center gap-5 text-center">
-                <button
-                  type="button"
-                  onClick={handleMarkClick}
-                  disabled={isAcquiring}
-                  className={cn(
-                    "group relative flex size-44 flex-col items-center justify-center gap-3 rounded-full bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-500/30 transition-all duration-200 disabled:opacity-90",
-                    isAcquiring
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col items-center gap-5 text-center">
+              <button
+                type="button"
+                onClick={handleMarkClick}
+                disabled={isAcquiring || hasCheckedOut}
+                className={cn(
+                  "group relative flex size-44 flex-col items-center justify-center gap-3 rounded-full text-white shadow-xl transition-all duration-200",
+                  hasCheckedOut
+                    ? "cursor-not-allowed bg-emerald-600 shadow-emerald-600/30"
+                    : hasCheckedIn
+                      ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-500/30"
+                      : "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-indigo-500/30",
+                  !hasCheckedOut && !isAcquiring
+                    ? "hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-95"
+                    : isAcquiring
                       ? "cursor-wait"
-                      : "hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-95",
-                  )}
-                >
-                  {isAcquiring ? (
-                    <>
-                      <span className="absolute inset-0 animate-ping rounded-full bg-indigo-400/40" />
-                      <span className="absolute -inset-3 animate-pulse rounded-full bg-indigo-400/20" />
-                    </>
-                  ) : null}
-                  <span className="relative flex flex-col items-center gap-2">
-                    {isAcquiring ? (
-                      <Loader2 className="size-9 animate-spin" />
-                    ) : (
-                      <CalendarCheck className="size-9" />
-                    )}
-                    <span className="text-sm font-semibold">
-                      {isAcquiring ? "Acquiring GPS…" : "Mark Attendance"}
-                    </span>
-                  </span>
-                </button>
-
+                      : "",
+                )}
+              >
                 {isAcquiring ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Satellite className="size-3.5 animate-pulse text-indigo-500" />
-                      {markMutation.isPending
-                        ? "Validating your location…"
-                        : "Locating your position…"}
-                    </p>
-                    {position ? (
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {position.latitude.toFixed(6)},{" "}
-                        {position.longitude.toFixed(6)}
-                        {position.accuracy
-                          ? ` · ±${Math.round(position.accuracy)}m`
-                          : ""}
-                      </p>
-                    ) : null}
-                  </div>
+                  <>
+                    <span className="absolute inset-0 animate-ping rounded-full bg-indigo-400/40" />
+                    <span className="absolute -inset-3 animate-pulse rounded-full bg-indigo-400/20" />
+                  </>
                 ) : null}
+                <span className="relative flex flex-col items-center gap-2">
+                  {isAcquiring ? (
+                    <Loader2 className="size-9 animate-spin" />
+                  ) : hasCheckedIn ? (
+                    <LogOut className="size-9" />
+                  ) : (
+                    <LogIn className="size-9" />
+                  )}
+                  <span className="text-sm font-semibold">
+                    {isAcquiring
+                      ? "Acquiring GPS…"
+                      : hasCheckedOut
+                        ? "Checked Out"
+                        : hasCheckedIn
+                          ? "Check Out"
+                          : "Check In"}
+                  </span>
+                </span>
+              </button>
 
-                {geoError ? (
-                  <div className="flex w-full items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm text-rose-700">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                    <div>
-                      <p className="font-medium">{geoError}</p>
-                      <p className="mt-0.5 text-xs text-rose-600/80">
-                        You can try again.
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {officeQuery.data ? (
-                  <p className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                    <MapPin className="size-3.5 shrink-0 text-primary" />
-                    Check-in location:{" "}
-                    <strong className="font-semibold text-foreground">
-                      {officeQuery.data.locationName ?? "Office"}
-                    </strong>
-                    <span>
-                      (within {formatMeters(officeQuery.data.radiusMeters)})
+              {hasCheckedIn ? (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-sm text-muted-foreground">
+                    Checked in at{" "}
+                    <span className="font-semibold text-foreground">
+                      {todayRecord?.checkInTime
+                        ? formatTime(todayRecord.checkInTime)
+                        : "—"}
                     </span>
                   </p>
-                ) : null}
-
-                {officeQuery.isSuccess && !officeQuery.data ? (
-                  <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
-                    <Info className="size-3.5" />
-                    Geo validation is disabled — attendance can be marked from
-                    anywhere.
-                  </p>
-                ) : null}
-              </div>
-
-              {position ? (
-                <div className="flex w-full flex-col gap-3 lg:max-w-sm">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Marked location
-                  </p>
-                  <MapPreview position={position} />
-                  {distanceFromOffice !== null ? (
-                    <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
-                      <span className="text-muted-foreground">
-                        Distance from{" "}
-                        {officeQuery.data?.locationName ?? "office"}
-                      </span>
+                  {hasCheckedOut ? (
+                    <p className="text-sm text-muted-foreground">
+                      Checked out at{" "}
                       <span className="font-semibold text-foreground">
-                        {formatMeters(distanceFromOffice)}
+                        {todayRecord?.checkOutTime
+                          ? formatTime(todayRecord.checkOutTime)
+                          : "—"}
                       </span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Remember to check out before 5:30 PM.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              {todayRecord ? (
+                <StatusBadge status={todayRecord.status} />
+              ) : null}
+
+              {isAcquiring ? (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Satellite className="size-3.5 animate-pulse text-indigo-500" />
+                    {markMutation.isPending
+                      ? "Validating your location…"
+                      : "Locating your position…"}
+                  </p>
+                  {position ? (
+                    <p className="font-mono text-xs text-muted-foreground">
+                      {position.latitude.toFixed(6)},{" "}
+                      {position.longitude.toFixed(6)}
+                      {position.accuracy
+                        ? ` · ±${Math.round(position.accuracy)}m`
+                        : ""}
                     </p>
                   ) : null}
                 </div>
               ) : null}
+
+              {geoError ? (
+                <div className="flex w-full items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm text-rose-700">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                  <div>
+                    <p className="font-medium">{geoError}</p>
+                    <p className="mt-0.5 text-xs text-rose-600/80">
+                      You can try again.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {officeQuery.data ? (
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                  <MapPin className="size-3.5 shrink-0 text-primary" />
+                  Check-in location:{" "}
+                  <strong className="font-semibold text-foreground">
+                    {officeQuery.data.locationName ?? "Office"}
+                  </strong>
+                  <span>
+                    (within {formatMeters(officeQuery.data.radiusMeters)})
+                  </span>
+                </p>
+              ) : null}
+
+              {officeQuery.isSuccess && !officeQuery.data ? (
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+                  <Info className="size-3.5" />
+                  Geo validation is disabled — attendance can be marked from
+                  anywhere.
+                </p>
+              ) : null}
             </div>
-          )}
+
+            {markedPosition ? (
+              <div className="flex w-full flex-col gap-3 lg:max-w-sm">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Marked location
+                </p>
+                <MapPreview position={markedPosition} />
+                {distanceFromOffice !== null ? (
+                  <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
+                    <span className="text-muted-foreground">
+                      Distance from{" "}
+                      {officeQuery.data?.locationName ?? "office"}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {formatMeters(distanceFromOffice)}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
@@ -674,6 +709,8 @@ export default function AttendancePage() {
                 <thead>
                   <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <th className="px-6 py-3.5 font-semibold">Date</th>
+                    <th className="px-6 py-3.5 font-semibold">Check In</th>
+                    <th className="px-6 py-3.5 font-semibold">Check Out</th>
                     <th className="px-6 py-3.5 font-semibold">Status</th>
                   </tr>
                 </thead>
@@ -685,6 +722,12 @@ export default function AttendancePage() {
                     >
                       <td className="px-6 py-4 font-medium text-foreground">
                         {formatDate(record.date)}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                        {record.checkInTime ? formatTime(record.checkInTime) : "—"}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                        {record.checkOutTime ? formatTime(record.checkOutTime) : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={record.status} />
@@ -716,6 +759,58 @@ export default function AttendancePage() {
       icon={<CalendarCheck className="size-5" />}
     >
       {content}
+
+      <Dialog
+        open={pendingAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingAction(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingAction === "check-out"
+                ? "Check out now?"
+                : "Check in now?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingAction === "check-out" ? (
+                <>
+                  Are you sure you want to Check Out now? If you check out
+                  before 5:30 PM, it will be marked as a short leave.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to Check In now? Your current location
+                  will be recorded for attendance.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button onClick={confirmMarkAction} disabled={isAcquiring}>
+              {pendingAction === "check-out" ? (
+                <>
+                  <LogOut className="size-4" />
+                  Check Out
+                </>
+              ) : (
+                <>
+                  <LogIn className="size-4" />
+                  Check In
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

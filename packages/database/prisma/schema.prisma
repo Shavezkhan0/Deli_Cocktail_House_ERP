@@ -35,6 +35,11 @@ enum AttendanceStatus {
   ON_LEAVE
 }
 
+enum OverrideType {
+  FORCE_WORK
+  FORCE_LEAVE
+}
+
 enum EmployeeStatus {
   ACTIVE
   LEFT
@@ -108,18 +113,23 @@ model Employee {
   crmEvents          Event[]  @relation("EventCrm")
   siteManagerEvents  Event[]  @relation("EventSiteManager")
   siteSupervisorEvents Event[] @relation("EventSiteSupervisor")
+  attendanceOverrides AttendanceOverride[]
 }
 
 model Attendance {
-  id         String           @id @default(cuid())
-  employeeId String
-  date       DateTime
-  status     AttendanceStatus
-  latitude   Float?
-  longitude  Float?
-  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  employeeId   String
+  date         DateTime
+  status       AttendanceStatus
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  checkOutLatitude  Float?
+  checkOutLongitude Float?
+  latitude          Float?
+  longitude         Float?
+  employee     Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@unique([employeeId, date])
 }
@@ -307,6 +317,7 @@ model ExpenseEntry {
   description String
   receiptUrl  String?
   status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  date        DateTime?
   createdAt   DateTime @default(now())
   employee    Employee @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
 }
@@ -426,4 +437,23 @@ model DesignationLocation {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model AttendanceOverride {
+  id         String       @id @default(cuid())
+  employeeId String
+  date       DateTime
+  type       OverrideType
+  reason     String?
+  employee   Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+
+  @@unique([employeeId, date])
 }

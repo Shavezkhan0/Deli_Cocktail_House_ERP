@@ -6,12 +6,12 @@ type ButtonSize = "sm" | "md";
 
 const VARIANT_STYLES: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/20 hover:brightness-110 active:scale-[0.98]",
+    "bg-primary text-primary-foreground hover:bg-primary/80 active:scale-[0.98]",
   outline:
-    "border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10",
-  ghost: "text-slate-300 hover:bg-white/5",
+    "border border-border bg-background text-foreground hover:bg-muted hover:text-foreground",
+  ghost: "text-foreground hover:bg-muted hover:text-foreground",
   danger:
-    "bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-lg shadow-rose-500/20 hover:brightness-110 active:scale-[0.98]",
+    "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:scale-[0.98]",
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {
@@ -31,7 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-50",
           VARIANT_STYLES[variant],
           SIZE_STYLES[size],
           className,

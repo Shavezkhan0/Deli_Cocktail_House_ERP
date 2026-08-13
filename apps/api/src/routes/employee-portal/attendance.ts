@@ -67,6 +67,39 @@ function startOfToday(): Date {
   return today;
 }
 
+const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
+
+const CHECK_IN_PRESENT_CUTOFF = { hour: 10, minute: 45 }; // before → PRESENT
+const CHECK_IN_SHORT_LEAVE_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
+
+function timeToMinutes(hour: number, minute: number): number {
+  return hour * 60 + minute;
+}
+
+function toMinutes(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function statusForCheckIn(now: Date): AttendanceStatus {
+  const minutes = toMinutes(now);
+  if (minutes < timeToMinutes(CHECK_IN_PRESENT_CUTOFF.hour, CHECK_IN_PRESENT_CUTOFF.minute)) {
+    return AttendanceStatus.PRESENT;
+  }
+  if (minutes <= timeToMinutes(CHECK_IN_SHORT_LEAVE_CUTOFF.hour, CHECK_IN_SHORT_LEAVE_CUTOFF.minute)) {
+    return AttendanceStatus.SHORT_LEAVE;
+  }
+  return AttendanceStatus.HALF_DAY;
+}
+
+function statusForCheckOut(current: AttendanceStatus, now: Date): AttendanceStatus {
+  const minutes = toMinutes(now);
+  const shiftEndMinutes = timeToMinutes(SHIFT_END.hour, SHIFT_END.minute);
+  if (minutes < shiftEndMinutes && current === AttendanceStatus.PRESENT) {
+    return AttendanceStatus.SHORT_LEAVE;
+  }
+  return current;
+}
+
 function distanceMeters(
   lat1: number,
   lon1: number,
@@ -139,6 +172,7 @@ router.get("/attendance/today", async (req, res) => {
 });
 
 // POST /attendance/mark
+// First call of the day = check-in; second call = check-out.
 router.post("/attendance/mark", async (req, res) => {
   try {
     const employeeId = req.employee?.id;
@@ -188,21 +222,53 @@ router.post("/attendance/mark", async (req, res) => {
       },
     });
 
-    if (existing) {
-      return res.status(409).json({ message: "Attendance already marked for today" });
+    const now = new Date();
+
+    // --- Check-in ---
+    if (!existing || existing.checkInTime === null) {
+      const status = statusForCheckIn(now);
+      const attendance = existing
+        ? await prisma.attendance.update({
+            where: { id: existing.id },
+            data: {
+              date: now,
+              status,
+              checkInTime: now,
+              latitude,
+              longitude,
+            },
+          })
+        : await prisma.attendance.create({
+            data: {
+              employeeId,
+              date: now,
+              status,
+              checkInTime: now,
+              latitude,
+              longitude,
+            },
+          });
+
+      return res.status(201).json({ event: "check-in", attendance });
     }
 
-    const attendance = await prisma.attendance.create({
+    // --- Check-out ---
+    if (existing.checkOutTime !== null) {
+      return res.status(409).json({ message: "Already checked out for today" });
+    }
+
+    const status = statusForCheckOut(existing.status, now);
+    const attendance = await prisma.attendance.update({
+      where: { id: existing.id },
       data: {
-        employeeId,
-        date: new Date(),
-        status: AttendanceStatus.PRESENT,
-        latitude,
-        longitude,
+        checkOutTime: now,
+        status,
+        checkOutLatitude: latitude,
+        checkOutLongitude: longitude,
       },
     });
 
-    return res.status(201).json(attendance);
+    return res.json({ event: "check-out", attendance });
   } catch (error) {
     console.error("[Employee] Failed to mark attendance:", error);
     return res.status(500).json({ message: "Failed to mark attendance" });

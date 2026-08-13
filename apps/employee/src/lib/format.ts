@@ -24,6 +24,13 @@ export function formatDateTime(value: string): string {
   }).format(new Date(value));
 }
 
+export function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function monthLabel(month: number, year: number): string {
   const label = new Intl.DateTimeFormat("en-GB", {
     month: "long",

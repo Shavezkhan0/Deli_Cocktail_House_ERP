@@ -10,6 +10,7 @@ import locationsRouter from "./routes/locations";
 import designationLocationsRouter from "./routes/designation-locations";
 import warehouseRouter from "./routes/warehouse";
 import officeRouter from "./routes/office";
+import holidaysRouter from "./routes/office/holidays";
 import uploadsRouter from "./routes/uploads";
 import employeeAuthRouter from "./routes/employee-portal/auth";
 import profileRouter from "./routes/employee-portal/profile";
@@ -42,6 +43,7 @@ app.use("/api/locations", locationsRouter);
 app.use("/api/designation-locations", designationLocationsRouter);
 app.use("/api/warehouse", warehouseRouter);
 app.use("/api/office", officeRouter);
+app.use("/api/office/holidays", holidaysRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/employee", employeeAuthRouter);
 app.use("/api/employee", [

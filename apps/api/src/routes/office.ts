@@ -5,8 +5,11 @@ import {
   EmployeeDesignation,
   EmployeeStatus,
   EventStatus,
+  OverrideType,
+  Prisma,
 } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
+import { calculateEmployeeSalary } from "../services/salary-calculator";
 
 const router: Router = Router();
 
@@ -329,6 +332,279 @@ router.post("/employees/:id/salaries", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("[Office] Failed to save salary:", error);
     return res.status(500).json({ message: "Failed to save salary" });
+  }
+});
+
+// GET /employees/:id/salary-breakdown?month=&year=
+// Returns the full salary calculation breakdown (paid leaves + 30-day deductions + extra expenses).
+router.get("/employees/:id/salary-breakdown", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
+
+    const breakdown = await calculateEmployeeSalary(id, month, year);
+    return res.json(breakdown);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Employee not found") {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+    console.error("[Office] Failed to calculate salary:", error);
+    return res.status(500).json({ message: "Failed to calculate salary" });
+  }
+});
+
+// GET /employees/:id/attendance — list attendance records (with check in/out times) for an employee
+// Optional query: ?month=8&year=2026 to scope to a specific month
+router.get("/employees/:id/attendance", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const { month, year } = req.query;
+    const monthNum = Number(month);
+    const yearNum = Number(year);
+    const hasMonth =
+      Number.isInteger(monthNum) && monthNum >= 1 && monthNum <= 12;
+    const hasYear = Number.isInteger(yearNum) && yearNum >= 2000;
+
+    let where: Prisma.AttendanceWhereInput = { employeeId: id };
+    if (hasMonth && hasYear) {
+      const start = new Date(yearNum, monthNum - 1, 1);
+      const end = new Date(yearNum, monthNum, 1);
+      where = { employeeId: id, date: { gte: start, lt: end } };
+    }
+
+    const records = await prisma.attendance.findMany({
+      where,
+      orderBy: { date: "desc" },
+    });
+
+    return res.json(records);
+  } catch (error) {
+    console.error("[Office] Failed to fetch employee attendance:", error);
+    return res.status(500).json({ message: "Failed to fetch employee attendance" });
+  }
+});
+
+// GET /employees/:id/working-overrides — list working overrides for an employee
+router.get("/employees/:id/working-overrides", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const overrides = await prisma.attendanceOverride.findMany({
+      where: { employeeId: id },
+      orderBy: { date: "desc" },
+    });
+
+    return res.json(overrides);
+  } catch (error) {
+    console.error("[Office] Failed to fetch working overrides:", error);
+    return res.status(500).json({ message: "Failed to fetch working overrides" });
+  }
+});
+
+// POST /employees/:id/working-overrides — assign an employee to work on a date { date, reason? }
+router.post("/employees/:id/working-overrides", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const { date, reason } = req.body ?? {};
+    if (typeof date !== "string" || isNaN(Date.parse(date))) {
+      return res.status(400).json({ message: "A valid date is required" });
+    }
+
+    const override = await prisma.attendanceOverride.upsert({
+      where: {
+        employeeId_date: { employeeId: id, date: new Date(date) },
+      },
+      update: {
+        type: OverrideType.FORCE_WORK,
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+      create: {
+        employeeId: id,
+        date: new Date(date),
+        type: OverrideType.FORCE_WORK,
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+    });
+
+    return res.status(201).json(override);
+  } catch (error) {
+    console.error("[Office] Failed to create working override:", error);
+    return res.status(500).json({ message: "Failed to create working override" });
+  }
+});
+
+// DELETE /employees/:id/working-overrides/:overrideId — remove a working override
+router.delete(
+  "/employees/:id/working-overrides/:overrideId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { id, overrideId } = req.params;
+      if (!overrideId) {
+        return res.status(400).json({ message: "Override id is required" });
+      }
+
+      const override = await prisma.attendanceOverride.findFirst({
+        where: { id: overrideId, employeeId: id },
+      });
+      if (!override) {
+        return res.status(404).json({ message: "Working override not found" });
+      }
+
+      await prisma.attendanceOverride.delete({ where: { id: overrideId } });
+      return res.status(204).send();
+    } catch (error) {
+      console.error("[Office] Failed to delete working override:", error);
+      return res.status(500).json({ message: "Failed to delete working override" });
+    }
+  },
+);
+
+// POST /employees/:id/attendance-override — upsert an attendance override { date, type, reason? }
+// type: FORCE_WORK (assign work on a holiday) or FORCE_LEAVE (grant a leave)
+router.post("/employees/:id/attendance-override", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const { date, type, reason } = req.body ?? {};
+    if (typeof date !== "string" || isNaN(Date.parse(date))) {
+      return res.status(400).json({ message: "A valid date is required" });
+    }
+    if (type !== OverrideType.FORCE_WORK && type !== OverrideType.FORCE_LEAVE) {
+      return res.status(400).json({
+        message: "Type must be FORCE_WORK or FORCE_LEAVE",
+      });
+    }
+
+    const override = await prisma.attendanceOverride.upsert({
+      where: {
+        employeeId_date: { employeeId: id, date: new Date(date) },
+      },
+      update: {
+        type,
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+      create: {
+        employeeId: id,
+        date: new Date(date),
+        type,
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+    });
+
+    return res.status(201).json(override);
+  } catch (error) {
+    console.error("[Office] Failed to save attendance override:", error);
+    return res.status(500).json({ message: "Failed to save attendance override" });
+  }
+});
+
+// GET /employees/:id/expenses — list approved extra expenses for an employee
+router.get("/employees/:id/expenses", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const expenses = await prisma.expenseEntry.findMany({
+      where: { submittedBy: id, status: "APPROVED" },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    });
+
+    return res.json(expenses);
+  } catch (error) {
+    console.error("[Office] Failed to fetch expenses:", error);
+    return res.status(500).json({ message: "Failed to fetch expenses" });
+  }
+});
+
+// POST /employees/:id/expenses — add an approved extra expense { amount, description, date }
+router.post("/employees/:id/expenses", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const { amount, description, date } = req.body ?? {};
+
+    const amountNum = Number(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return res.status(400).json({ message: "Amount must be a positive number" });
+    }
+    if (typeof description !== "string" || description.trim() === "") {
+      return res.status(400).json({ message: "Description is required" });
+    }
+    const expenseDate =
+      typeof date === "string" && !isNaN(Date.parse(date))
+        ? new Date(date)
+        : new Date();
+
+    const expense = await prisma.expenseEntry.create({
+      data: {
+        submittedBy: id,
+        amount: amountNum,
+        description: description.trim(),
+        status: "APPROVED",
+        date: expenseDate,
+      },
+    });
+
+    return res.status(201).json(expense);
+  } catch (error) {
+    console.error("[Office] Failed to create expense:", error);
+    return res.status(500).json({ message: "Failed to create expense" });
   }
 });
 

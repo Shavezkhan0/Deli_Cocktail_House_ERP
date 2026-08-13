@@ -25,3 +25,10 @@ export function formatDate(value: string): string {
     year: "numeric",
   });
 }
+
+export function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
