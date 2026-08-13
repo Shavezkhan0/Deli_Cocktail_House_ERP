@@ -13,25 +13,18 @@ enum Role {
 }
 
 enum EmployeeDesignation {
-  MANAGER
-  SUPERVISOR
-  STAFF
-  BARTENDER
-  BUTLER
   CRM
-  ORDERING_OPERATOR
-  DESIGNER
   GRAPHIC_DESIGNER
+  OPERATION_COORDINATOR
   DATA_ENTRY_OPERATOR
-  MIS
-  WAREHOUSE_MANAGER
-  INVENTORY_MANAGER
-  PERMANENT_LABOUR
-  SOFTWARE_DEVELOPER
+  PROCESS_COORDINATOR
+  IT_SOFTWARE_DEVELOPER
   OFFICE_BOY
-  DRIVER
-  SECURITY_GUARD
+  WAREHOUSE_MANAGER
+  VIDEO_EDITOR
+  MARKETING_EXECUTIVE
   SALES_EXECUTIVE
+  DRIVER
 }
 
 enum AttendanceStatus {
@@ -83,7 +76,7 @@ model Employee {
   name             String
   contact          String?
   emergencyContact String?
-  designation      EmployeeDesignation @default(STAFF)
+  designation      EmployeeDesignation @default(OFFICE_BOY)
   baseSalary       Float               @default(0)
   joiningDate      DateTime            @default(now())
   status           EmployeeStatus      @default(ACTIVE)
@@ -410,4 +403,27 @@ model PdfFunction {
   event              PdfEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
+}
+
+model AttendanceLocation {
+  id        String   @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  radiusM   Int      @default(100)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DesignationLocation {
+  id           String   @id @default(cuid())
+  designation  String   @unique // e.g. "CRM", "DRIVER", "WAREHOUSE_MANAGER"
+  locationName String // e.g. "Office", "CEO Residence", "Warehouse"
+  latitude     Float
+  longitude    Float
+  radiusM      Int      @default(100)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

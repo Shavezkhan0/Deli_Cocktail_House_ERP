@@ -7,24 +7,33 @@ import { useAuth } from "@/lib/auth";
 import { RoleSidebar } from "@/components/layout/role-sidebar";
 import { GreetingBanner } from "@/components/common/greeting-banner";
 import { QuickStatsRow } from "@/components/common/quick-stats-row";
-import { CrmDashboard } from "@/components/dashboards/crm-dashboard";
-import { DataEntryDashboard } from "@/components/dashboards/data-entry-dashboard";
-import { GraphicDesignerDashboard } from "@/components/dashboards/graphic-designer-dashboard";
-import { SalesDashboard } from "@/components/dashboards/sales-dashboard";
-import { WarehouseDashboard } from "@/components/dashboards/warehouse-dashboard";
-import { SiteManagerDashboard } from "@/components/dashboards/site-manager-dashboard";
+import { CrmDashboardPage } from "@/modules/crm/components/CrmDashboardPage";
+import { GraphicDesignerDashboardPage } from "@/modules/graphic-designer/components/GraphicDesignerDashboardPage";
+import { OperationCoordinatorDashboardPage } from "@/modules/operation-coordinator/components/OperationCoordinatorDashboardPage";
+import { DataEntryDashboardPage } from "@/modules/data-entry/components/DataEntryDashboardPage";
+import { ProcessCoordinatorDashboardPage } from "@/modules/process-coordinator/components/ProcessCoordinatorDashboardPage";
+import { ItDashboardPage } from "@/modules/it/components/ItDashboardPage";
+import { OfficeBoyDashboardPage } from "@/modules/office-boy/components/OfficeBoyDashboardPage";
+import { WarehouseDashboardPage } from "@/modules/warehouse/components/WarehouseDashboardPage";
+import { VideoEditorDashboardPage } from "@/modules/video-editor/components/VideoEditorDashboardPage";
+import { MarketingDashboardPage } from "@/modules/marketing/components/MarketingDashboardPage";
+import { SalesDashboardPage } from "@/modules/sales/components/SalesDashboardPage";
+import { DriverDashboardPage } from "@/modules/driver/components/DriverDashboardPage";
 import { DefaultDashboard } from "@/components/dashboards/default-dashboard";
 
 const DESIGNATION_DASHBOARDS: Record<string, ComponentType> = {
-  CRM: CrmDashboard,
-  DATA_ENTRY_OPERATOR: DataEntryDashboard,
-  GRAPHIC_DESIGNER: GraphicDesignerDashboard,
-  DESIGNER: GraphicDesignerDashboard,
-  SALES_EXECUTIVE: SalesDashboard,
-  WAREHOUSE_MANAGER: WarehouseDashboard,
-  INVENTORY_MANAGER: WarehouseDashboard,
-  SITE_MANAGER: SiteManagerDashboard,
-  SUPERVISOR: SiteManagerDashboard,
+  CRM: CrmDashboardPage,
+  GRAPHIC_DESIGNER: GraphicDesignerDashboardPage,
+  OPERATION_COORDINATOR: OperationCoordinatorDashboardPage,
+  DATA_ENTRY_OPERATOR: DataEntryDashboardPage,
+  PROCESS_COORDINATOR: ProcessCoordinatorDashboardPage,
+  IT_SOFTWARE_DEVELOPER: ItDashboardPage,
+  OFFICE_BOY: OfficeBoyDashboardPage,
+  WAREHOUSE_MANAGER: WarehouseDashboardPage,
+  VIDEO_EDITOR: VideoEditorDashboardPage,
+  MARKETING_EXECUTIVE: MarketingDashboardPage,
+  SALES_EXECUTIVE: SalesDashboardPage,
+  DRIVER: DriverDashboardPage,
 };
 
 function DashboardLoadingScreen() {

@@ -5,15 +5,17 @@ import { cn } from "@/lib/utils";
 
 const DESIGNATION_COLORS: Record<string, string> = {
   CRM: "bg-sky-100 text-sky-700",
-  DATA_ENTRY_OPERATOR: "bg-teal-100 text-teal-700",
   GRAPHIC_DESIGNER: "bg-fuchsia-100 text-fuchsia-700",
-  DESIGNER: "bg-fuchsia-100 text-fuchsia-700",
-  SALES_EXECUTIVE: "bg-amber-100 text-amber-700",
+  OPERATION_COORDINATOR: "bg-indigo-100 text-indigo-700",
+  DATA_ENTRY_OPERATOR: "bg-teal-100 text-teal-700",
+  PROCESS_COORDINATOR: "bg-blue-100 text-blue-700",
+  IT_SOFTWARE_DEVELOPER: "bg-purple-100 text-purple-700",
+  OFFICE_BOY: "bg-stone-100 text-stone-700",
   WAREHOUSE_MANAGER: "bg-orange-100 text-orange-700",
-  INVENTORY_MANAGER: "bg-orange-100 text-orange-700",
-  SITE_MANAGER: "bg-violet-100 text-violet-700",
-  SUPERVISOR: "bg-violet-100 text-violet-700",
-  MANAGER: "bg-emerald-100 text-emerald-700",
+  VIDEO_EDITOR: "bg-pink-100 text-pink-700",
+  MARKETING_EXECUTIVE: "bg-rose-100 text-rose-700",
+  SALES_EXECUTIVE: "bg-amber-100 text-amber-700",
+  DRIVER: "bg-slate-100 text-slate-700",
 };
 
 function getGreeting(): string {

@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   CalendarCheck,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Info,
   Loader2,
   MapPin,
@@ -14,6 +16,7 @@ import {
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { calculateDistance } from "@/lib/geo";
@@ -41,10 +44,24 @@ type AttendanceTodayResponse = {
   attendance: AttendanceRecord | null;
 };
 
+type AttendanceSummary = {
+  PRESENT: number;
+  ABSENT: number;
+  HALF_DAY: number;
+  SHORT_LEAVE: number;
+  ON_LEAVE: number;
+};
+
+type AttendanceHistoryResponse = {
+  records: AttendanceRecord[];
+  summary: AttendanceSummary;
+};
+
 type OfficeLocation = {
   latitude: number;
   longitude: number;
   radiusMeters: number;
+  locationName?: string;
 };
 
 type GeoCoords = {
@@ -66,11 +83,19 @@ const STATUS_CONFIG: Record<
 
 const STATUS_ORDER: AttendanceStatus[] = [
   "PRESENT",
-  "ABSENT",
   "HALF_DAY",
   "SHORT_LEAVE",
   "ON_LEAVE",
+  "ABSENT",
 ];
+
+const STATUS_COLORS: Record<AttendanceStatus, string> = {
+  PRESENT: "#10b981",
+  ABSENT: "#f43f5e",
+  HALF_DAY: "#f59e0b",
+  SHORT_LEAVE: "#eab308",
+  ON_LEAVE: "#3b82f6",
+};
 
 function dateKey(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -133,6 +158,8 @@ export default function AttendancePage() {
   const [geoState, setGeoState] = useState<"idle" | "acquiring" | "success" | "error">("idle");
   const [position, setPosition] = useState<GeoCoords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [historyMonth, setHistoryMonth] = useState(() => new Date().getMonth());
+  const [historyYear, setHistoryYear] = useState(() => new Date().getFullYear());
 
   const todayQuery = useQuery({
     queryKey: ["attendance", "today"],
@@ -141,8 +168,17 @@ export default function AttendancePage() {
   });
 
   const historyQuery = useQuery({
-    queryKey: ["attendance", "history"],
-    queryFn: () => apiFetch<AttendanceRecord[]>("/api/employee/attendance/history"),
+    queryKey: ["attendance", "history", historyYear, historyMonth],
+    queryFn: () =>
+      apiFetch<AttendanceHistoryResponse>(
+        `/api/employee/attendance/history?month=${historyMonth + 1}&year=${historyYear}`,
+      ),
+  });
+
+  const recentQuery = useQuery({
+    queryKey: ["attendance", "recent"],
+    queryFn: () =>
+      apiFetch<AttendanceHistoryResponse>("/api/employee/attendance/history"),
   });
 
   const officeQuery = useQuery({
@@ -216,8 +252,87 @@ export default function AttendancePage() {
     );
   }
 
+  function goToPreviousMonth() {
+    setHistoryMonth((prev) => {
+      if (prev === 0) {
+        setHistoryYear((year) => year - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  }
+
+  function goToNextMonth() {
+    setHistoryMonth((prev) => {
+      if (prev === 11) {
+        setHistoryYear((year) => year + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  }
+
+  const historyMonthLabel = new Date(
+    historyYear,
+    historyMonth,
+    1,
+  ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const historySummary: AttendanceSummary = historyQuery.data?.summary ?? {
+    PRESENT: 0,
+    ABSENT: 0,
+    HALF_DAY: 0,
+    SHORT_LEAVE: 0,
+    ON_LEAVE: 0,
+  };
+
+  const historySummaryChips = [
+    { label: "Present", value: historySummary.PRESENT, dot: "bg-emerald-500" },
+    {
+      label: "Leave",
+      value: historySummary.ABSENT + historySummary.ON_LEAVE,
+      dot: "bg-blue-500",
+    },
+    { label: "Half Day", value: historySummary.HALF_DAY, dot: "bg-amber-500" },
+    {
+      label: "Short Leave",
+      value: historySummary.SHORT_LEAVE,
+      dot: "bg-yellow-500",
+    },
+  ];
+
   const isAcquiring = geoState === "acquiring" || markMutation.isPending;
   const marked = todayQuery.data?.marked === true;
+
+  const recentDays = useMemo(() => {
+    const list: { key: string; date: Date }[] = [];
+    const today = new Date();
+    for (let i = 29; i >= 0; i -= 1) {
+      const date = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - i,
+      );
+      list.push({ key: dateKey(date), date });
+    }
+    return list;
+  }, []);
+
+  const recordsByDate = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const record of recentQuery.data?.records ?? []) {
+      map.set(dateKey(new Date(record.date)), record);
+    }
+    return map;
+  }, [recentQuery.data]);
+
+  const recentSummary: AttendanceSummary = recentQuery.data?.summary ?? {
+    PRESENT: 0,
+    ABSENT: 0,
+    HALF_DAY: 0,
+    SHORT_LEAVE: 0,
+    ON_LEAVE: 0,
+  };
 
   const markedPosition: GeoCoords | null = useMemo(() => {
     const record = todayQuery.data?.attendance;
@@ -247,47 +362,16 @@ export default function AttendancePage() {
     );
   }, [markedPosition, officeQuery.data]);
 
-  const days = useMemo(() => {
-    const byKey = new Map<string, AttendanceRecord>(
-      (historyQuery.data ?? []).map((record) => [
-        dateKey(new Date(record.date)),
-        record,
-      ]),
-    );
-    const today = new Date();
-    const todayKey = dateKey(today);
-    const result: {
-      date: Date;
-      key: string;
-      record: AttendanceRecord | null;
-      isToday: boolean;
-    }[] = [];
-
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const key = dateKey(date);
-      result.push({
-        date,
-        key,
-        record: byKey.get(key) ?? null,
-        isToday: key === todayKey,
-      });
-    }
-
-    return result;
-  }, [historyQuery.data]);
-
   let content: React.ReactNode;
 
-  if (todayQuery.isPending || historyQuery.isPending) {
+  if (todayQuery.isPending || historyQuery.isPending || recentQuery.isPending) {
     content = (
       <div className="flex flex-col gap-6">
         <div className="h-72 animate-pulse rounded-xl bg-muted" />
         <div className="h-64 animate-pulse rounded-xl bg-muted" />
       </div>
     );
-  } else if (todayQuery.isError || historyQuery.isError) {
+  } else if (todayQuery.isError || historyQuery.isError || recentQuery.isError) {
     content = (
       <div className="flex flex-col items-center gap-3 rounded-xl bg-card py-12 text-center ring-1 ring-foreground/10">
         <AlertTriangle className="size-8 text-rose-500" />
@@ -299,6 +383,7 @@ export default function AttendancePage() {
           onClick={() => {
             todayQuery.refetch();
             historyQuery.refetch();
+            recentQuery.refetch();
             officeQuery.refetch();
           }}
           className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
@@ -343,7 +428,8 @@ export default function AttendancePage() {
                   {distanceFromOffice !== null ? (
                     <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
                       <span className="text-muted-foreground">
-                        Distance from office
+                        Distance from{" "}
+                        {officeQuery.data?.locationName ?? "office"}
                       </span>
                       <span className="font-semibold text-foreground">
                         {formatMeters(distanceFromOffice)}
@@ -419,9 +505,14 @@ export default function AttendancePage() {
 
                 {officeQuery.data ? (
                   <p className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                    <MapPin className="size-3.5" />
-                    Geofence: {formatMeters(officeQuery.data.radiusMeters)} around
-                    office
+                    <MapPin className="size-3.5 shrink-0 text-primary" />
+                    Check-in location:{" "}
+                    <strong className="font-semibold text-foreground">
+                      {officeQuery.data.locationName ?? "Office"}
+                    </strong>
+                    <span>
+                      (within {formatMeters(officeQuery.data.radiusMeters)})
+                    </span>
                   </p>
                 ) : null}
 
@@ -443,7 +534,8 @@ export default function AttendancePage() {
                   {distanceFromOffice !== null ? (
                     <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
                       <span className="text-muted-foreground">
-                        Distance from office
+                        Distance from{" "}
+                        {officeQuery.data?.locationName ?? "office"}
                       </span>
                       <span className="font-semibold text-foreground">
                         {formatMeters(distanceFromOffice)}
@@ -459,14 +551,124 @@ export default function AttendancePage() {
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <div className="border-b border-border px-6 py-4">
             <h2 className="text-base font-semibold tracking-tight text-foreground">
-              Attendance History
+              Last 30 Days
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Your last 30 days.
+              Your attendance record for the past 30 days.
             </p>
           </div>
 
-          {historyQuery.data && historyQuery.data.length > 0 ? (
+          <div className="px-6 py-5">
+            <div className="grid grid-cols-10 gap-2">
+              {recentDays.map((day) => {
+                const record = recordsByDate.get(day.key);
+                const config = record
+                  ? STATUS_CONFIG[record.status]
+                  : null;
+                const label = day.date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                });
+                return (
+                  <div
+                    key={day.key}
+                    title={
+                      config ? `${label} — ${config.label}` : `${label} — No record`
+                    }
+                    className={cn(
+                      "flex aspect-square flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                      record
+                        ? "text-white shadow-sm"
+                        : "bg-muted/60 text-muted-foreground",
+                    )}
+                    style={
+                      record
+                        ? { backgroundColor: STATUS_COLORS[record.status] }
+                        : undefined
+                    }
+                  >
+                    <span className="text-sm font-bold leading-none">
+                      {day.date.getDate()}
+                    </span>
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        record
+                          ? "bg-white/80"
+                          : "bg-muted-foreground/30",
+                      )}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+              {STATUS_ORDER.map((status) => (
+                <span
+                  key={status}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                >
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: STATUS_COLORS[status] }}
+                  />
+                  {STATUS_CONFIG[status].label}: {recentSummary[status]}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+            <div>
+              <h2 className="text-base font-semibold tracking-tight text-foreground">
+                Attendance History
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Month-wise summary and records.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousMonth}
+                disabled={historyQuery.isPending}
+              >
+                <ChevronLeft className="size-4" />
+                Previous Month
+              </Button>
+              <span className="min-w-32 text-center text-sm font-semibold text-foreground">
+                {historyMonthLabel}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextMonth}
+                disabled={historyQuery.isPending}
+              >
+                Next Month
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-b border-border px-6 py-3">
+            {historySummaryChips.map((chip) => (
+              <span
+                key={chip.label}
+                className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+              >
+                <span className={cn("size-2 rounded-full", chip.dot)} />
+                {chip.label}: {chip.value}
+              </span>
+            ))}
+          </div>
+
+          {historyQuery.data && historyQuery.data.records.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -476,7 +678,7 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {historyQuery.data.map((record) => (
+                  {historyQuery.data.records.map((record) => (
                     <tr
                       key={record.id}
                       className="transition-colors hover:bg-muted/40"
@@ -495,78 +697,13 @@ export default function AttendancePage() {
           ) : (
             <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
               <p className="text-sm font-medium text-foreground">
-                No attendance records yet
+                No attendance records for this month
               </p>
               <p className="text-xs text-muted-foreground">
                 Mark your attendance to see it here.
               </p>
             </div>
           )}
-        </section>
-
-        <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-foreground">
-                Last 30 Days
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                At a glance view of your attendance.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {STATUS_ORDER.map((status) => (
-                <span
-                  key={status}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground"
-                >
-                  <span
-                    className={cn(
-                      "size-2 rounded-full",
-                      STATUS_CONFIG[status].dot,
-                    )}
-                  />
-                  {STATUS_CONFIG[status].label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-6 gap-2 md:grid-cols-10">
-            {days.map((day) => (
-              <div
-                key={day.key}
-                title={
-                  day.record
-                    ? `${formatDate(day.date.toISOString())}: ${STATUS_CONFIG[day.record.status].label}`
-                    : formatDate(day.date.toISOString())
-                }
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border border-border p-2",
-                  day.isToday && "ring-2 ring-primary/40",
-                )}
-              >
-                <span className="text-[10px] font-medium uppercase text-muted-foreground">
-                  {day.date.toLocaleDateString("en-GB", {
-                    weekday: "short",
-                  })}
-                </span>
-                <span className="text-sm font-semibold text-foreground">
-                  {day.date.getDate()}
-                </span>
-                {day.record ? (
-                  <span
-                    className={cn(
-                      "size-2.5 rounded-full",
-                      STATUS_CONFIG[day.record.status].dot,
-                    )}
-                  />
-                ) : (
-                  <span className="size-2.5 rounded-full border border-dashed border-border" />
-                )}
-              </div>
-            ))}
-          </div>
         </section>
       </div>
     );

@@ -1,0 +1,1 @@
+export { ProcessCoordinatorDashboardPage } from "./ProcessCoordinatorDashboardPage";

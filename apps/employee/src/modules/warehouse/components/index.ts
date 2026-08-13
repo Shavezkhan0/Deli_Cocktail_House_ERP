@@ -1,0 +1,1 @@
+export { WarehouseDashboardPage } from "./WarehouseDashboardPage";

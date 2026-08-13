@@ -5,18 +5,16 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Briefcase,
   CalendarCheck,
-  ClipboardList,
+  Filter,
   GlassWater,
   LayoutDashboard,
   ListTodo,
   LogOut,
-  Package,
   Palette,
   PenTool,
   SlidersHorizontal,
   Star,
   Tag,
-  TrendingUp,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -28,55 +26,43 @@ type NavItem = {
   label: string;
   href: string;
   icon: LucideIcon;
+  disabled?: boolean;
+  onlyFor?: string[];
 };
 
 const WORK_NAV: NavItem[] = [
-  { label: "CRM Dashboard", href: "/crm/dashboard", icon: Briefcase },
-  { label: "My Tasks", href: "/designer/tasks", icon: ListTodo },
-  { label: "Menu Design", href: "/crm/menu-design", icon: PenTool },
-  { label: "Glass Tag Designer", href: "/crm/glass-tag", icon: Tag },
-  { label: "Stirrer Design", href: "/crm/stirrer", icon: SlidersHorizontal },
-  { label: "Logo Manager", href: "/crm/logo", icon: Palette },
+  { label: "CRM Dashboard", href: "/modules/crm/dashboard", icon: Briefcase, onlyFor: ["CRM"] },
+  { label: "My Tasks", href: "/modules/designer/tasks", icon: ListTodo, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
+  { label: "Menu Design", href: "/modules/crm/menu-design", icon: PenTool, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
+  { label: "Glass Tag Designer", href: "/modules/crm/glass-tag", icon: Tag, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
+  { label: "Stirrer Design", href: "/modules/crm/stirrer", icon: SlidersHorizontal, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
+  { label: "Logo Manager", href: "/modules/crm/logo", icon: Palette, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
 ];
 
 const PROFILE_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Attendance", href: "/common/attendance", icon: CalendarCheck },
   { label: "My Salary", href: "/common/salary", icon: Wallet },
-  { label: "My Score", href: "/common/score", icon: Star },
+  { label: "My Score", href: "/common/score", icon: Star, disabled: true },
 ];
 
 const DESIGNATION_NAV: Record<string, NavItem[]> = {
-  DATA_ENTRY_OPERATOR: [
-    { label: "Data Entry", href: "/dashboard/data-entry", icon: ClipboardList },
-  ],
-  GRAPHIC_DESIGNER: [
-    { label: "Task Board", href: "/designer/tasks", icon: Palette },
-  ],
-  DESIGNER: [
-    { label: "Task Board", href: "/designer/tasks", icon: Palette },
-  ],
-  SALES_EXECUTIVE: [
-    { label: "Sale Sheet", href: "/sales/sale-sheet", icon: TrendingUp },
-  ],
-  WAREHOUSE_MANAGER: [
-    { label: "Kitting Report", href: "/warehouse/kitting-report", icon: Package },
-  ],
-  INVENTORY_MANAGER: [
-    { label: "Kitting Report", href: "/warehouse/kitting-report", icon: Package },
-  ],
-  SITE_MANAGER: [
-    { label: "Site Events", href: "/dashboard/events", icon: Briefcase },
-  ],
-  SUPERVISOR: [
-    { label: "Site Events", href: "/dashboard/events", icon: Briefcase },
+  CRM: [
+    { label: "Events Pipeline", href: "/modules/crm/dashboard", icon: Filter },
   ],
 };
 
-function NavLink({ item }: { item: NavItem }) {
+function NavLink({ item, designation }: { item: NavItem; designation: string }) {
   const pathname = usePathname();
   const active = pathname === item.href;
   const Icon = item.icon;
+  const locked =
+    item.disabled === true ||
+    (item.onlyFor !== undefined && !item.onlyFor.includes(designation));
+
+  if (locked) {
+    return null;
+  }
 
   return (
     <Link
@@ -138,14 +124,14 @@ export function RoleSidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {WORK_NAV.map((item) => (
-          <NavLink key={item.href} item={item} />
+          <NavLink key={item.href} item={item} designation={designation} />
         ))}
 
         <p className="px-3 pb-2 pt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Your Profile
         </p>
         {PROFILE_NAV.map((item) => (
-          <NavLink key={item.href} item={item} />
+          <NavLink key={item.href} item={item} designation={designation} />
         ))}
 
         {designationNav.length > 0 ? (
@@ -154,7 +140,7 @@ export function RoleSidebar() {
               Your Role
             </p>
             {designationNav.map((item) => (
-              <NavLink key={item.href} item={item} />
+              <NavLink key={item.href} item={item} designation={designation} />
             ))}
           </>
         ) : null}

@@ -1,13 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Wallet } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ErrorState, EmptyState, LoadingCards } from "@/components/common/states";
 import { formatCurrency, formatDate, monthLabel } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type SalaryRecord = {
   id: string;
@@ -24,43 +24,63 @@ type SalaryData = {
   history: SalaryRecord[];
 };
 
-function MonthSalaryCard({
-  label,
-  record,
-}: {
-  label: string;
-  record: SalaryRecord | null;
-}) {
+function SalaryStatusBadge({ status }: { status: SalaryRecord["status"] }) {
+  const paid = status === "PAID";
   return (
-    <Card className="flex flex-col">
-      <CardHeader
-        title={label}
-        icon={
-          <Banknote className="size-4.5" />
-        }
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
+      )}
+    >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          paid ? "bg-emerald-500" : "bg-amber-500",
+        )}
       />
+      {status}
+    </span>
+  );
+}
+
+function CurrentMonthCard({ record }: { record: SalaryRecord | null }) {
+  return (
+    <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+          <Banknote className="size-4.5" />
+        </span>
+        <div>
+          <h3 className="text-base font-semibold tracking-tight text-foreground">
+            This Month&apos;s Salary
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {monthLabel(new Date().getMonth() + 1, new Date().getFullYear())}
+          </p>
+        </div>
+      </div>
       {record ? (
         <>
-          <p className="mt-5 text-4xl font-black tracking-tight text-white">
+          <p className="mt-6 text-5xl font-black tracking-tight text-foreground">
             {formatCurrency(record.amount)}
           </p>
-          <div className="mt-4">
-            <Badge tone={record.status === "PAID" ? "success" : "warning"}>
-              {record.status}
-            </Badge>
+          <div className="mt-4 flex items-center gap-3">
+            <SalaryStatusBadge status={record.status} />
+            <p className="text-xs text-muted-foreground">
+              {record.paidDate
+                ? `Paid on ${formatDate(record.paidDate)}`
+                : "Payment is pending"}
+            </p>
           </div>
-          <p className="mt-3 text-xs text-white/60">
-            {record.paidDate
-              ? `Paid on ${formatDate(record.paidDate)}`
-              : "Payment is pending"}
-          </p>
         </>
       ) : (
-        <p className="mt-5 text-sm text-white/60">
-          No salary record for {label} yet.
+        <p className="mt-6 text-sm text-muted-foreground">
+          No salary record for this month yet. Your salary will appear here once
+          it is published.
         </p>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -77,6 +97,20 @@ export default function SalaryPage() {
     },
   });
 
+  const historyRecords = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+    const records = [...data.history];
+    if (
+      data.previous &&
+      !records.some((record) => record.id === data.previous?.id)
+    ) {
+      records.unshift(data.previous);
+    }
+    return records;
+  }, [data]);
+
   let content: React.ReactNode;
 
   if (isPending) {
@@ -86,58 +120,45 @@ export default function SalaryPage() {
   } else if (data) {
     content = (
       <>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <MonthSalaryCard
-            label={`Current Month (${monthLabel(new Date().getMonth() + 1, new Date().getFullYear())})`}
-            record={data.current}
-          />
-          <MonthSalaryCard
-            label={`Previous Month (${monthLabel(new Date().getMonth(), new Date().getFullYear())})`}
-            record={data.previous}
-          />
-        </div>
+        <CurrentMonthCard record={data.current} />
 
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl">
-          <div className="border-b border-white/10 px-6 py-4">
-            <h3 className="text-base font-semibold tracking-tight text-white/90">
+        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-base font-semibold tracking-tight text-foreground">
               Salary History
             </h3>
-            <p className="mt-0.5 text-xs text-white/60">
-              Your salary records from the last 6 months.
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Your past monthly salary records.
             </p>
           </div>
 
-          {data.history.length > 0 ? (
+          {historyRecords.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wider text-white/60">
-                    <th className="px-6 py-3.5 font-semibold">Month</th>
+                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <th className="px-6 py-3.5 font-semibold">Month / Year</th>
                     <th className="px-6 py-3.5 font-semibold">Amount</th>
                     <th className="px-6 py-3.5 font-semibold">Status</th>
                     <th className="px-6 py-3.5 font-semibold">Paid Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
-                  {data.history.map((record) => (
+                <tbody className="divide-y divide-border">
+                  {historyRecords.map((record) => (
                     <tr
                       key={record.id}
-                      className="transition-colors hover:bg-white/[0.04]"
+                      className="transition-colors hover:bg-muted/40"
                     >
-                      <td className="px-6 py-4 font-medium text-white/90">
+                      <td className="px-6 py-4 font-medium text-foreground">
                         {monthLabel(record.month, record.year)}
                       </td>
-                      <td className="px-6 py-4 text-white/90">
+                      <td className="px-6 py-4 text-foreground">
                         {formatCurrency(record.amount)}
                       </td>
                       <td className="px-6 py-4">
-                        <Badge
-                          tone={record.status === "PAID" ? "success" : "warning"}
-                        >
-                          {record.status}
-                        </Badge>
+                        <SalaryStatusBadge status={record.status} />
                       </td>
-                      <td className="px-6 py-4 text-white/60">
+                      <td className="px-6 py-4 text-muted-foreground">
                         {record.paidDate ? formatDate(record.paidDate) : "—"}
                       </td>
                     </tr>
@@ -153,7 +174,7 @@ export default function SalaryPage() {
               />
             </div>
           )}
-        </div>
+        </section>
       </>
     );
   }
