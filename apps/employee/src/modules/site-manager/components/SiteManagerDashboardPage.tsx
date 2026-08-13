@@ -11,19 +11,19 @@ export function SiteManagerDashboardPage() {
           title: "Site Events",
           description: "Review events you manage at the site.",
           icon: Building2,
-          accent: "bg-violet-500/15 text-violet-300",
+          accent: "bg-violet-100 text-violet-700",
         },
         {
           title: "Event Schedule",
           description: "Track upcoming event dates and requirements.",
           icon: CalendarDays,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "My Tasks",
           description: "Manage tasks assigned for site operations.",
           icon: ListTodo,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
       ]}
     />

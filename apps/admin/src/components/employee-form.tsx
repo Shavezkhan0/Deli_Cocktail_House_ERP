@@ -25,7 +25,7 @@ export const DESIGNATION_VALUES = [
   "OPERATION_COORDINATOR",
   "DATA_ENTRY_OPERATOR",
   "PROCESS_COORDINATOR",
-  "IT_SOFTWARE_DEVELOPER",
+  "IT",
   "OFFICE_BOY",
   "WAREHOUSE_MANAGER",
   "VIDEO_EDITOR",
@@ -43,7 +43,7 @@ export const DESIGNATION_OPTIONS: {
   { value: "OPERATION_COORDINATOR", label: "Operation Coordinator" },
   { value: "DATA_ENTRY_OPERATOR", label: "Data Entry Operator" },
   { value: "PROCESS_COORDINATOR", label: "Process Coordinator" },
-  { value: "IT_SOFTWARE_DEVELOPER", label: "IT (Software Developer)" },
+  { value: "IT", label: "IT" },
   { value: "OFFICE_BOY", label: "Office Boy" },
   { value: "WAREHOUSE_MANAGER", label: "Warehouse Manager" },
   { value: "VIDEO_EDITOR", label: "Video Editor" },
@@ -297,7 +297,12 @@ function DocumentField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-foreground">
+        {label}{" "}
+        <span className="text-xs font-normal text-muted-foreground">
+          (Optional)
+        </span>
+      </label>
       <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
         <UploadCloud className="size-4 shrink-0" />
         Choose file
@@ -509,7 +514,12 @@ export function EmployeeForm({
         </Field>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <h3 className="text-sm font-medium text-foreground">Documents</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Documents{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (Optional)
+            </span>
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {DOC_OPTIONS.map((doc) => (
               <DocumentField
@@ -530,7 +540,12 @@ export function EmployeeForm({
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <h3 className="text-sm font-medium text-foreground">Bank Details</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            Bank Details{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (Optional)
+            </span>
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Account No" error={errors.bankAccountNo}>
               <Input

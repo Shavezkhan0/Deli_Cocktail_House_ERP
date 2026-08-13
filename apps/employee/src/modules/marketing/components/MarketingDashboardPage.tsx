@@ -11,19 +11,19 @@ export function MarketingDashboardPage() {
           title: "Campaigns",
           description: "Plan and monitor marketing campaigns.",
           icon: Megaphone,
-          accent: "bg-pink-500/15 text-pink-300",
+          accent: "bg-pink-100 text-pink-700",
         },
         {
           title: "Content",
           description: "Coordinate content and creative assets.",
           icon: PenLine,
-          accent: "bg-amber-500/15 text-amber-300",
+          accent: "bg-amber-100 text-amber-700",
         },
         {
           title: "Growth",
           description: "Review reach, engagement and performance.",
           icon: TrendingUp,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
       ]}
     />

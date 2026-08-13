@@ -11,19 +11,19 @@ export function VideoEditorDashboardPage() {
           title: "Editing Projects",
           description: "Track video projects and their due dates.",
           icon: Clapperboard,
-          accent: "bg-fuchsia-500/15 text-fuchsia-300",
+          accent: "bg-fuchsia-100 text-fuchsia-700",
         },
         {
           title: "My Tasks",
           description: "Update progress on assigned editing work.",
           icon: ListTodo,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Deliverables",
           description: "Review final exports and client deliveries.",
           icon: Film,
-          accent: "bg-cyan-500/15 text-cyan-300",
+          accent: "bg-cyan-100 text-cyan-700",
         },
       ]}
     />

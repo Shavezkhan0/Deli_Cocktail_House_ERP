@@ -11,19 +11,19 @@ export function ProcessCoordinatorDashboardPage() {
           title: "Process Workflows",
           description: "Monitor process stages from start to completion.",
           icon: ListChecks,
-          accent: "bg-teal-500/15 text-teal-300",
+          accent: "bg-teal-100 text-teal-700",
         },
         {
           title: "Event Schedules",
           description: "Review schedules and align teams on timelines.",
           icon: CalendarDays,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Progress Tracking",
           description: "Track milestones and flag pending items.",
           icon: ClipboardList,
-          accent: "bg-amber-500/15 text-amber-300",
+          accent: "bg-amber-100 text-amber-700",
         },
       ]}
     />

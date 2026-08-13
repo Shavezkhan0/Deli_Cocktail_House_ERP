@@ -11,19 +11,19 @@ export function OfficeBoyDashboardPage() {
           title: "Daily Errands",
           description: "Track and complete assigned errands.",
           icon: Sparkles,
-          accent: "bg-rose-500/15 text-rose-300",
+          accent: "bg-rose-100 text-rose-700",
         },
         {
           title: "My Tasks",
           description: "Stay on top of assigned office duties.",
           icon: ListTodo,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Requests",
           description: "Review support requests from the team.",
           icon: ClipboardList,
-          accent: "bg-amber-500/15 text-amber-300",
+          accent: "bg-amber-100 text-amber-700",
         },
       ]}
     />

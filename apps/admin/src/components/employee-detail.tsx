@@ -71,6 +71,7 @@ type Employee = {
   id: string;
   employeeId: string;
   name: string;
+  email?: string | null;
   contact?: string | null;
   emergencyContact?: string | null;
   designation: string;
@@ -101,18 +102,6 @@ type Salary = {
   paidDate: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-type AttendanceSummary = {
-  id: string;
-  employeeId: string;
-  name: string;
-  baseSalary: number;
-  totalWorkingDays: number;
-  totalFullDays: number;
-  totalHalfDays: number;
-  totalShortLeaves: number;
-  netSalary: number;
 };
 
 type WorkingOverride = {
@@ -280,7 +269,10 @@ type BankForm = {
 
 type EditForm = {
   name: string;
+  email: string;
   contact: string;
+  emergencyContact: string;
+  joiningDate: string;
   baseSalary: string;
   status: string;
   leavingDate: string;
@@ -386,7 +378,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>({
     name: "",
+    email: "",
     contact: "",
+    emergencyContact: "",
+    joiningDate: "",
     baseSalary: "",
     status: "ACTIVE",
     leavingDate: "",
@@ -419,7 +414,12 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     }
     setEditForm({
       name: employee.name,
+      email: employee.email ?? "",
       contact: employee.contact ?? "",
+      emergencyContact: employee.emergencyContact ?? "",
+      joiningDate: employee.joiningDate
+        ? toDateInputValue(employee.joiningDate)
+        : "",
       baseSalary: String(employee.baseSalary),
       status: employee.status ?? "ACTIVE",
       leavingDate: employee.leavingDate
@@ -446,10 +446,19 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     try {
       await updateEmployee.mutateAsync({
         name: editForm.name.trim(),
+        email: editForm.email.trim() || null,
         contact: editForm.contact.trim() || null,
+        emergencyContact: editForm.emergencyContact.trim() || null,
         baseSalary: Number(editForm.baseSalary),
         status: editForm.status,
         leavingDate,
+        ...(editForm.joiningDate
+          ? {
+              joiningDate: new Date(
+                `${editForm.joiningDate}T00:00:00`,
+              ).toISOString(),
+            }
+          : {}),
       });
       setEditOpen(false);
     } catch {
@@ -467,14 +476,6 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     queryKey: ["office-employee-salaries", employeeId],
     queryFn: () =>
       apiFetch<Salary[]>(`/api/office/employees/${employeeId}/salaries`, {
-        token,
-      }),
-  });
-
-  const attendanceQuery = useQuery({
-    queryKey: ["office-attendance-summary"],
-    queryFn: () =>
-      apiFetch<AttendanceSummary[]>("/api/office/attendance/summary", {
         token,
       }),
   });
@@ -568,6 +569,20 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       ),
   });
 
+  const currentSalaryBreakdownQuery = useQuery({
+    queryKey: [
+      "office-salary-breakdown-current",
+      employeeId,
+      currentMonth,
+      currentYear,
+    ],
+    queryFn: () =>
+      apiFetch<SalaryBreakdown>(
+        `/api/office/employees/${employeeId}/salary-breakdown?month=${currentMonth}&year=${currentYear}`,
+        { token },
+      ),
+  });
+
   const leaveBalanceQuery = useQuery({
     queryKey: [
       "office-leave-balance",
@@ -603,6 +618,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         queryKey: ["office-salary-breakdown"],
       });
       queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown-current"],
+      });
+      queryClient.invalidateQueries({
         queryKey: ["office-leave-balance"],
       });
     },
@@ -623,6 +641,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       setOverrideDialogReason("");
       queryClient.invalidateQueries({
         queryKey: ["office-working-overrides", employeeId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown-current"],
       });
     },
     onError: (error) => {
@@ -650,6 +671,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       });
       queryClient.invalidateQueries({
         queryKey: ["office-salary-breakdown"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown-current"],
       });
     },
     onError: (error) => {
@@ -701,10 +725,6 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
   const employee = employeeQuery.data;
   const salaries = salariesQuery.data ?? [];
-  const attendanceSummary = attendanceQuery.data;
-  const currentMonthSummary = attendanceSummary?.find(
-    (item) => item.id === employeeId,
-  );
 
   const currentMonthSalary = salaries.find(
     (salary) =>
@@ -712,9 +732,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   );
 
   const currentMonthEstimate =
-    currentMonthSummary && currentMonthSummary.totalWorkingDays > 0
-      ? currentMonthSummary.netSalary
-      : (employee?.baseSalary ?? 0);
+    currentSalaryBreakdownQuery.data?.finalAmount ??
+    (employee?.baseSalary ?? 0);
 
   const attendanceRecordsByDate = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
@@ -1001,6 +1020,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <InfoRow label="Employee ID" value={employee.employeeId} />
                 <InfoRow label="Name" value={employee.name} />
+                <InfoRow
+                  label="Email"
+                  value={employee.email ?? "—"}
+                />
                 <InfoRow
                   label="Designation"
                   value={
@@ -1946,27 +1969,47 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Current Month Estimate</CardTitle>
+              <CardTitle>
+                {currentMonthSalary ? "Current Month Salary" : "Current Month Estimate"}
+              </CardTitle>
               <CardDescription>
-                Estimated salary for {MONTH_NAMES[currentMonth - 1]}{" "}
-                {currentYear} based on attendance and base salary.
+                {currentMonthSalary
+                  ? `Published salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear}.`
+                  : `Estimated salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear} using the 30-day rule, paid leave balance and approved expenses.`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
-                    {formatSalary(currentMonthEstimate)}
+                    {formatSalary(
+                      currentMonthSalary
+                        ? currentMonthSalary.amount
+                        : currentMonthEstimate,
+                    )}
                   </p>
-                  {currentMonthSummary ? (
+                  {currentMonthSalary ? (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {currentMonthSummary.totalFullDays} full days ·{" "}
-                      {currentMonthSummary.totalHalfDays} half days ·{" "}
-                      {currentMonthSummary.totalShortLeaves} short leaves
+                      {currentMonthSalary.status === "PAID"
+                        ? currentMonthSalary.paidDate
+                          ? `Paid on ${formatDate(currentMonthSalary.paidDate)}`
+                          : "Paid"
+                        : "Published, payment pending"}
+                    </p>
+                  ) : currentSalaryBreakdownQuery.isPending ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Calculating from attendance…
                     </p>
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Based on base salary of {formatSalary(employee.baseSalary)}
+                      {currentSalaryBreakdownQuery.data?.attendance.ABSENT ?? 0}{" "}
+                      absent ·{" "}
+                      {currentSalaryBreakdownQuery.data?.unpaidLeaves ?? 0} unpaid
+                      leaves ·{" "}
+                      {formatSalary(
+                        currentSalaryBreakdownQuery.data?.extraExpenses ?? 0,
+                      )}{" "}
+                      expenses
                     </p>
                   )}
                 </div>
@@ -1981,7 +2024,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 ) : (
                   <Button
                     onClick={handleMarkCurrentMonthPaid}
-                    disabled={saveSalary.isPending}
+                    disabled={saveSalary.isPending || currentSalaryBreakdownQuery.isPending}
                   >
                     <CheckCircle2 />
                     {saveSalary.isPending ? "Saving…" : "Mark as Paid"}
@@ -2124,12 +2167,47 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-sm font-medium text-foreground">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(event) => editField("email", event.target.value)}
+                  placeholder="e.g. rahul@example.com"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
                   Contact
                 </label>
                 <Input
                   value={editForm.contact}
                   onChange={(event) => editField("contact", event.target.value)}
                   placeholder="Contact number"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Emergency Contact
+                </label>
+                <Input
+                  value={editForm.emergencyContact}
+                  onChange={(event) =>
+                    editField("emergencyContact", event.target.value)
+                  }
+                  placeholder="Emergency contact number"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Joining Date
+                </label>
+                <Input
+                  type="date"
+                  value={editForm.joiningDate}
+                  onChange={(event) =>
+                    editField("joiningDate", event.target.value)
+                  }
                 />
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -9,7 +9,7 @@ const DESIGNATION_COLORS: Record<string, string> = {
   OPERATION_COORDINATOR: "bg-indigo-100 text-indigo-700",
   DATA_ENTRY_OPERATOR: "bg-teal-100 text-teal-700",
   PROCESS_COORDINATOR: "bg-blue-100 text-blue-700",
-  IT_SOFTWARE_DEVELOPER: "bg-purple-100 text-purple-700",
+  IT: "bg-purple-100 text-purple-700",
   OFFICE_BOY: "bg-stone-100 text-stone-700",
   WAREHOUSE_MANAGER: "bg-orange-100 text-orange-700",
   VIDEO_EDITOR: "bg-pink-100 text-pink-700",

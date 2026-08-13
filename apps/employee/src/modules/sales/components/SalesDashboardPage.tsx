@@ -11,19 +11,19 @@ export function SalesDashboardPage() {
           title: "Sales Activity",
           description: "Monitor your current sales pipeline and leads.",
           icon: TrendingUp,
-          accent: "bg-amber-500/15 text-amber-300",
+          accent: "bg-amber-100 text-amber-700",
         },
         {
           title: "Events",
           description: "Review event schedules you are involved with.",
           icon: CalendarDays,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Expenses",
           description: "Submit and track your sales-related expenses.",
           icon: Wallet,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
       ]}
     />

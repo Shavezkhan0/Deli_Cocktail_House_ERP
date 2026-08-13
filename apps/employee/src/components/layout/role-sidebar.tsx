@@ -3,54 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Briefcase,
-  CalendarCheck,
-  Filter,
   GlassWater,
-  LayoutDashboard,
-  ListTodo,
   LogOut,
-  Palette,
-  PenTool,
-  SlidersHorizontal,
-  Star,
-  Tag,
-  Wallet,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-
-type NavItem = {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  disabled?: boolean;
-  onlyFor?: string[];
-};
-
-const WORK_NAV: NavItem[] = [
-  { label: "CRM Dashboard", href: "/modules/crm/dashboard", icon: Briefcase, onlyFor: ["CRM"] },
-  { label: "My Tasks", href: "/modules/designer/tasks", icon: ListTodo, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
-  { label: "Menu Design", href: "/modules/crm/menu-design", icon: PenTool, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
-  { label: "Glass Tag Designer", href: "/modules/crm/glass-tag", icon: Tag, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
-  { label: "Stirrer Design", href: "/modules/crm/stirrer", icon: SlidersHorizontal, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
-  { label: "Logo Manager", href: "/modules/crm/logo", icon: Palette, onlyFor: ["CRM", "GRAPHIC_DESIGNER"] },
-];
-
-const PROFILE_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Attendance", href: "/common/attendance", icon: CalendarCheck },
-  { label: "My Salary", href: "/common/salary", icon: Wallet },
-  { label: "My Score", href: "/common/score", icon: Star, disabled: true },
-];
-
-const DESIGNATION_NAV: Record<string, NavItem[]> = {
-  CRM: [
-    { label: "Events Pipeline", href: "/modules/crm/dashboard", icon: Filter },
-  ],
-};
+import {
+  DESIGNATION_NAV,
+  PROFILE_NAV,
+  WORK_NAV,
+  type NavItem,
+} from "@/components/layout/nav-items";
 
 function NavLink({ item, designation }: { item: NavItem; designation: string }) {
   const pathname = usePathname();
@@ -109,7 +73,7 @@ export function RoleSidebar() {
   }
 
   return (
-    <aside className="no-print sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-border bg-background">
+    <aside className="no-print sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-background lg:flex">
       <div className="flex items-center gap-3 border-b border-border px-6 py-5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <GlassWater className="size-5" />

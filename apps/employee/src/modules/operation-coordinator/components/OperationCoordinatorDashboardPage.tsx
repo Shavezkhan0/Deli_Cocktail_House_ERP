@@ -11,19 +11,19 @@ export function OperationCoordinatorDashboardPage() {
           title: "Event Operations",
           description: "Oversee event logistics and coordination.",
           icon: CalendarDays,
-          accent: "bg-cyan-500/15 text-cyan-300",
+          accent: "bg-cyan-100 text-cyan-700",
         },
         {
           title: "Task Assignments",
           description: "Track and manage assigned operational tasks.",
           icon: ListTodo,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Vendor Coordination",
           description: "Liaise with vendors for event requirements.",
           icon: ClipboardCheck,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
       ]}
     />

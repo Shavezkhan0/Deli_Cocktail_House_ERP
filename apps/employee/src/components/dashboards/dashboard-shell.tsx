@@ -19,11 +19,11 @@ export function DashboardShell({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
-        <h2 className="text-lg font-semibold tracking-tight text-white">
+      <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-slate-400">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
 
       {features && features.length > 0 ? (
@@ -33,7 +33,7 @@ export function DashboardShell({
             return (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur-xl transition-colors duration-200 hover:bg-white/[0.08]"
+                className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:bg-muted/50"
               >
                 <span
                   className={cn(
@@ -43,10 +43,10 @@ export function DashboardShell({
                 >
                   <Icon className="size-5" />
                 </span>
-                <h3 className="mt-4 text-sm font-semibold text-white">
+                <h3 className="mt-4 text-sm font-semibold text-foreground">
                   {feature.title}
                 </h3>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>
               </div>

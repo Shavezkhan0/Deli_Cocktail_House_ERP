@@ -11,19 +11,19 @@ export function DataEntryDashboardPage() {
           title: "Event Records",
           description: "Review and maintain event information entered in the system.",
           icon: CalendarDays,
-          accent: "bg-teal-500/15 text-teal-300",
+          accent: "bg-teal-100 text-teal-700",
         },
         {
           title: "Data Entry Tasks",
           description: "Complete pending entries assigned to you.",
           icon: ClipboardList,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "Travel Logs",
           description: "Log and verify travel details for your records.",
           icon: Plane,
-          accent: "bg-sky-500/15 text-sky-300",
+          accent: "bg-sky-100 text-sky-700",
         },
       ]}
     />

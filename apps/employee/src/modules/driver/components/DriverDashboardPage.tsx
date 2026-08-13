@@ -11,19 +11,19 @@ export function DriverDashboardPage() {
           title: "My Trips",
           description: "View assigned trips and delivery schedules.",
           icon: Car,
-          accent: "bg-sky-500/15 text-sky-300",
+          accent: "bg-sky-100 text-sky-700",
         },
         {
           title: "Deliveries",
           description: "Track pickup and drop-off points.",
           icon: Truck,
-          accent: "bg-amber-500/15 text-amber-300",
+          accent: "bg-amber-100 text-amber-700",
         },
         {
           title: "Routes",
           description: "Review routes and event locations.",
           icon: MapPin,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
       ]}
     />

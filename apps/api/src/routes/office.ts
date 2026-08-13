@@ -35,7 +35,7 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
       prisma.attendance.count({
         where: {
           date: { gte: today, lt: tomorrow },
-          status: AttendanceStatus.PRESENT,
+          checkInTime: { not: null },
         },
       }),
       prisma.attendance.count({
@@ -78,18 +78,46 @@ router.get("/employees", requireAuth, async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayWindow = { gte: today, lt: tomorrow };
 
     let where: Record<string, unknown> = {};
+    let include: Prisma.EmployeeInclude | undefined;
+
+    const todayAttendanceInclude = {
+      attendances: {
+        where: { date: todayWindow },
+        select: { checkInTime: true, status: true },
+        take: 1,
+      },
+    } satisfies Prisma.EmployeeInclude;
+    type EmployeeWithTodayAttendance = Prisma.EmployeeGetPayload<{
+      include: typeof todayAttendanceInclude;
+    }>;
 
     if (typeof attendanceStatus === "string" && attendanceStatus.trim() !== "") {
-      where = {
-        attendances: {
-          some: {
-            date: { gte: today, lt: tomorrow },
-            status: attendanceStatus.trim() as AttendanceStatus,
+      const status = attendanceStatus.trim() as AttendanceStatus;
+      if (status === AttendanceStatus.PRESENT) {
+        // "Present today" = anyone who actually checked in today,
+        // regardless of late status (SHORT_LEAVE / HALF_DAY).
+        where = {
+          attendances: {
+            some: {
+              date: todayWindow,
+              checkInTime: { not: null },
+            },
           },
-        },
-      };
+        };
+        include = todayAttendanceInclude;
+      } else {
+        where = {
+          attendances: {
+            some: {
+              date: todayWindow,
+              status,
+            },
+          },
+        };
+      }
     }
 
     if (typeof employeeStatus === "string" && employeeStatus.trim() !== "") {
@@ -99,7 +127,24 @@ router.get("/employees", requireAuth, async (req, res) => {
       };
     }
 
-    const employees = await prisma.employee.findMany({ where });
+    const employees = await prisma.employee.findMany({
+      where,
+      include,
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (include) {
+      return res.json(
+        (employees as EmployeeWithTodayAttendance[]).map(
+          ({ attendances, ...employee }) => ({
+            ...employee,
+            todayCheckInTime: attendances[0]?.checkInTime ?? null,
+            todayStatus: attendances[0]?.status ?? null,
+          }),
+        ),
+      );
+    }
+
     return res.json(employees);
   } catch (error) {
     console.error("[Office] Failed to fetch employees:", error);
@@ -132,24 +177,43 @@ router.post("/employees", requireAuth, async (req, res) => {
       joiningDate,
     } = req.body;
 
-    const lastEmployee = await prisma.employee.findFirst({
-      orderBy: { createdAt: "desc" },
+    const existingEmployees = await prisma.employee.findMany({
+      select: { employeeId: true },
     });
 
-    let nextNum = 1;
-    if (lastEmployee && lastEmployee.employeeId.startsWith("EMP-")) {
-      const numStr = lastEmployee.employeeId.replace("EMP-", "");
-      const num = parseInt(numStr, 10);
-      if (!isNaN(num)) {
-        nextNum = num + 1;
+    let maxNum = 0;
+    for (const emp of existingEmployees) {
+      const match = /^DCH-(\d+)$/.exec(emp.employeeId);
+      if (match) {
+        const num = parseInt(match[1] ?? "0", 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
       }
     }
-    const employeeId = `EMP-${nextNum.toString().padStart(3, "0")}`;
+    const nextNum = maxNum + 1;
+    const employeeId = `DCH-${nextNum.toString().padStart(3, "0")}`;
+
+    const normalizedEmail =
+      typeof email === "string" && email.trim() !== ""
+        ? email.trim().toLowerCase()
+        : null;
+
+    if (normalizedEmail) {
+      const existingEmail = await prisma.employee.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (existingEmail) {
+        return res
+          .status(409)
+          .json({ message: "An employee with this email already exists" });
+      }
+    }
 
     const data: Record<string, unknown> = {
       employeeId,
       name,
-      email,
+      email: normalizedEmail,
       contact,
       emergencyContact,
       designation: designation as EmployeeDesignation,
@@ -181,6 +245,14 @@ router.post("/employees", requireAuth, async (req, res) => {
 
     return res.status(201).json(newEmployee);
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return res
+        .status(409)
+        .json({ message: "An employee with this email already exists" });
+    }
     console.error("[Office] Failed to create employee:", error);
     return res.status(500).json({ message: "Failed to create employee" });
   }
@@ -197,9 +269,27 @@ router.put("/employees/:id", requireAuth, async (req, res) => {
 
     const data: Record<string, unknown> = {};
 
+    if ("email" in req.body) {
+      const rawEmail = req.body.email;
+      const normalizedEmail =
+        typeof rawEmail === "string" && rawEmail.trim() !== ""
+          ? rawEmail.trim().toLowerCase()
+          : null;
+      if (normalizedEmail) {
+        const existingEmail = await prisma.employee.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (existingEmail && existingEmail.id !== id) {
+          return res
+            .status(409)
+            .json({ message: "An employee with this email already exists" });
+        }
+      }
+      data.email = normalizedEmail;
+    }
+
     const updatableFields = [
       "name",
-      "email",
       "contact",
       "emergencyContact",
       "baseSalary",
@@ -248,6 +338,14 @@ router.put("/employees/:id", requireAuth, async (req, res) => {
 
     return res.json(updatedEmployee);
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return res
+        .status(409)
+        .json({ message: "An employee with this email already exists" });
+    }
     console.error("[Office] Failed to update employee:", error);
     return res.status(500).json({ message: "Failed to update employee" });
   }

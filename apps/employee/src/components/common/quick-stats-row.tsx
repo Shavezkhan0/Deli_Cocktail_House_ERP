@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarCheck,
+  CalendarRange,
   Star,
   Wallet,
   type LucideIcon,
@@ -25,6 +26,15 @@ type SalaryRecord = {
 type WeeklyScoreRecord = {
   score: number;
   notes: string | null;
+};
+
+type LeaveBalanceRecord = {
+  month: number;
+  year: number;
+  earnedLeaves: number;
+  compensatoryLeaves: number;
+  usedLeaves: number;
+  availableLeaveBalance: number;
 };
 
 type StatCardProps = {
@@ -88,6 +98,12 @@ export function QuickStatsRow() {
       apiFetch<WeeklyScoreRecord | null>("/api/employee/score/current"),
   });
 
+  const leaveBalance = useQuery({
+    queryKey: ["salary", "leave-balance"],
+    queryFn: () =>
+      apiFetch<LeaveBalanceRecord | null>("/api/employee/salary/leave-balance"),
+  });
+
   const todayLabel = new Date().toLocaleDateString("en-IN", {
     weekday: "short",
     day: "numeric",
@@ -95,7 +111,7 @@ export function QuickStatsRow() {
   });
 
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label="Today's Attendance"
         icon={CalendarCheck}
@@ -114,6 +130,29 @@ export function QuickStatsRow() {
         {attendance.data?.marked ? (
           <span className="text-xs font-medium text-emerald-700">{todayLabel}</span>
         ) : null}
+      </StatCard>
+
+      <StatCard
+        label="Leave Balance"
+        icon={CalendarRange}
+        accent="bg-emerald-100 text-emerald-700"
+        loading={leaveBalance.isPending}
+        sub={
+          leaveBalance.data ? (
+            <span className="text-xs font-medium text-muted-foreground">
+              Earned {leaveBalance.data.earnedLeaves} · Used{" "}
+              {leaveBalance.data.usedLeaves}
+            </span>
+          ) : null
+        }
+      >
+        {leaveBalance.isError
+          ? "Unavailable"
+          : leaveBalance.data
+            ? `${leaveBalance.data.availableLeaveBalance} day${
+                leaveBalance.data.availableLeaveBalance === 1 ? "" : "s"
+              }`
+            : "No record"}
       </StatCard>
 
       <StatCard

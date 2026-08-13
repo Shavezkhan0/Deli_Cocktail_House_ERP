@@ -11,7 +11,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl",
+        "rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm",
         className,
       )}
     >
@@ -37,16 +37,16 @@ export function CardHeader({
     <div className={cn("flex items-start justify-between gap-3", className)}>
       <div className="flex items-start gap-3">
         {icon ? (
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             {icon}
           </span>
         ) : null}
         <div>
-          <h3 className="text-base font-semibold tracking-tight text-white/90">
+          <h3 className="text-base font-semibold tracking-tight text-foreground">
             {title}
           </h3>
           {subtitle ? (
-            <p className="mt-0.5 text-xs text-white/60">{subtitle}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
           ) : null}
         </div>
       </div>

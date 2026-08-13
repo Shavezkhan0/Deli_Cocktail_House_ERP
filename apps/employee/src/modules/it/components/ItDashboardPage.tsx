@@ -11,19 +11,19 @@ export function ItDashboardPage() {
           title: "Support Requests",
           description: "Resolve technical issues reported by the team.",
           icon: Wrench,
-          accent: "bg-violet-500/15 text-violet-300",
+          accent: "bg-violet-100 text-violet-700",
         },
         {
           title: "Systems & Access",
           description: "Manage user access and system accounts.",
           icon: ShieldCheck,
-          accent: "bg-emerald-500/15 text-emerald-300",
+          accent: "bg-emerald-100 text-emerald-700",
         },
         {
           title: "Infrastructure",
           description: "Monitor servers, devices and network health.",
           icon: HardDrive,
-          accent: "bg-sky-500/15 text-sky-300",
+          accent: "bg-sky-100 text-sky-700",
         },
       ]}
     />

@@ -11,19 +11,19 @@ export function WarehouseDashboardPage() {
           title: "Inventory",
           description: "Track stock levels and availability.",
           icon: Package,
-          accent: "bg-orange-500/15 text-orange-300",
+          accent: "bg-orange-100 text-orange-700",
         },
         {
           title: "Events",
           description: "Review event schedules and dispatch requirements.",
           icon: CalendarDays,
-          accent: "bg-indigo-500/15 text-indigo-300",
+          accent: "bg-indigo-100 text-indigo-700",
         },
         {
           title: "My Tasks",
           description: "Stay on top of assigned warehouse duties.",
           icon: ListTodo,
-          accent: "bg-violet-500/15 text-violet-300",
+          accent: "bg-violet-100 text-violet-700",
         },
       ]}
     />

@@ -584,7 +584,7 @@ export default function AttendancePage() {
         </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="border-b border-border px-6 py-4">
+          <div className="border-b border-border px-4 py-4 sm:px-6">
             <h2 className="text-base font-semibold tracking-tight text-foreground">
               Last 30 Days
             </h2>
@@ -593,8 +593,8 @@ export default function AttendancePage() {
             </p>
           </div>
 
-          <div className="px-6 py-5">
-            <div className="grid grid-cols-10 gap-2">
+          <div className="px-4 py-5 sm:px-6">
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
               {recentDays.map((day) => {
                 const record = recordsByDate.get(day.key);
                 const config = record
@@ -605,6 +605,9 @@ export default function AttendancePage() {
                   month: "short",
                   day: "numeric",
                 });
+                const weekday = day.date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                });
                 return (
                   <div
                     key={day.key}
@@ -612,7 +615,7 @@ export default function AttendancePage() {
                       config ? `${label} — ${config.label}` : `${label} — No record`
                     }
                     className={cn(
-                      "flex aspect-square flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                      "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg transition-transform hover:scale-105",
                       record
                         ? "text-white shadow-sm"
                         : "bg-muted/60 text-muted-foreground",
@@ -623,17 +626,17 @@ export default function AttendancePage() {
                         : undefined
                     }
                   >
-                    <span className="text-sm font-bold leading-none">
+                    <span className="text-base font-bold leading-none sm:text-sm">
                       {day.date.getDate()}
                     </span>
                     <span
                       className={cn(
-                        "size-1.5 rounded-full",
-                        record
-                          ? "bg-white/80"
-                          : "bg-muted-foreground/30",
+                        "text-[9px] font-semibold uppercase tracking-wide",
+                        record ? "text-white/70" : "text-muted-foreground/60",
                       )}
-                    />
+                    >
+                      {weekday}
+                    </span>
                   </div>
                 );
               })}
@@ -657,7 +660,7 @@ export default function AttendancePage() {
         </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-foreground">
                 Attendance History
@@ -666,17 +669,19 @@ export default function AttendancePage() {
                 Month-wise summary and records.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={goToPreviousMonth}
                 disabled={historyQuery.isPending}
+                aria-label="Previous month"
+                className="px-2 sm:px-3"
               >
                 <ChevronLeft className="size-4" />
-                Previous Month
+                <span className="hidden sm:inline">Previous Month</span>
               </Button>
-              <span className="min-w-32 text-center text-sm font-semibold text-foreground">
+              <span className="min-w-20 whitespace-nowrap text-center text-sm font-semibold text-foreground sm:min-w-32">
                 {historyMonthLabel}
               </span>
               <Button
@@ -684,14 +689,16 @@ export default function AttendancePage() {
                 size="sm"
                 onClick={goToNextMonth}
                 disabled={historyQuery.isPending}
+                aria-label="Next month"
+                className="px-2 sm:px-3"
               >
-                Next Month
+                <span className="hidden sm:inline">Next Month</span>
                 <ChevronRight className="size-4" />
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 border-b border-border px-6 py-3">
+          <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-6">
             {historySummaryChips.map((chip) => (
               <span
                 key={chip.label}
