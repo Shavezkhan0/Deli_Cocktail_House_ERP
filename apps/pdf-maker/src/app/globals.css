@@ -180,4 +180,5 @@
 .doc-table th{background:#dcdcdc;border:1px solid #999;padding:11px 9px;text-align:center;font-weight:700;}
 .doc-table td{border:1px solid #999;padding:11px 9px;text-align:center;}
 .doc-footer{background:#111;color:#fff;padding:14px 40px;font-size:10.5px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;flex-shrink:0;font-family:'Inter',sans-serif;}
+.doc-footer-wrapper{flex-shrink:0;}
 .concept-name{font-weight:700;text-decoration:underline;text-underline-offset:3px;}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import type { ClientPdfSource } from "@/lib/client-pdf";
+import type { ClientPdfProposal } from "@/lib/client-pdf";
 import {
   downloadClientPdf,
   fetchProposalPdfData,
@@ -13,8 +13,8 @@ import type { VariantProps } from "class-variance-authority";
 import type { buttonVariants } from "@/components/ui/button";
 
 type DownloadPdfButtonProps = {
+  proposal?: ClientPdfProposal;
   eventId?: string;
-  data?: ClientPdfSource;
   label?: string;
   className?: string;
   variant?: VariantProps<typeof buttonVariants>["variant"];
@@ -22,8 +22,8 @@ type DownloadPdfButtonProps = {
 };
 
 export function DownloadPdfButton({
+  proposal,
   eventId,
-  data,
   label = "Download PDF",
   className,
   variant = "default",
@@ -37,7 +37,8 @@ export function DownloadPdfButton({
     }
     setIsGenerating(true);
     try {
-      const source = data ?? (await fetchProposalPdfData(eventId ?? ""));
+      const proposalData = proposal ?? (await fetchProposalPdfData(eventId ?? ""));
+      const source = { proposal: proposalData };
       await downloadClientPdf(source);
     } catch (error) {
       console.error(error);

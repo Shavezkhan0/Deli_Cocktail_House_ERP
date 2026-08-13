@@ -3,12 +3,42 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/session";
 import { getProposalPdfData } from "@/lib/proposal-pdf-data";
-import { DownloadPdfButton } from "@/components/events/download-pdf-button";
-import type {
-  ClientPdfBlock,
-  ClientPdfFunction,
-  ClientPdfSubItem,
-} from "@/lib/client-pdf";
+import { PDFViewerWrapper } from "@/components/pdf/PDFViewerWrapper";
+import {
+  STANDARD_DELIVERABLES,
+  MIXERS_DEFAULT,
+  PLEASE_NOTE_OPTIONS,
+  TERMS_AND_CONDITIONS,
+} from "@/lib/dch-constants";
+
+type PdfBlock = {
+  id: string;
+  type: string;
+  title: string;
+  value?: string;
+  description?: string;
+  items?: unknown[];
+};
+
+type PdfFunction = {
+  id: string;
+  functionId: string;
+  name: string;
+  category?: string;
+  blocks: PdfBlock[];
+  functionType?: string;
+  pax?: string;
+  bartenders?: number;
+  butlers?: number;
+  bartendersNote?: string;
+  venue?: string;
+  date?: string;
+};
+
+type PdfSubItem = {
+  name?: string | null;
+  description?: string | null;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -24,30 +54,30 @@ const MONTHS = [
 function ordinal(day: number): string {
   const ones = day % 10;
   const tens = day % 100;
-  if (ones === 1 && tens !== 11) return `${day}ST`;
-  if (ones === 2 && tens !== 12) return `${day}ND`;
-  if (ones === 3 && tens !== 13) return `${day}RD`;
-  return `${day}TH`;
+  if (ones === 1 && tens !== 11) return `${day}st`;
+  if (ones === 2 && tens !== 12) return `${day}nd`;
+  if (ones === 3 && tens !== 13) return `${day}rd`;
+  return `${day}th`;
 }
 
 function formatFullDate(date: Date): string {
   return `${ordinal(date.getDate())} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-function Block({ block }: { block: ClientPdfBlock }) {
+function Block({ block }: { block: PdfBlock }) {
   if (block.type === "simple") {
     return (
       <p className="doc-p">
-        <strong>{block.title}</strong>{block.value ? `: ${block.value}` : ""}
+        {block.title}{block.value ? `: ${block.value}` : ""}
       </p>
     );
   }
   if (block.type === "list") {
     return (
       <ul className="doc-ul">
-        {block.items?.map((it: unknown, i: number) => (
+        {block.items?.map((it: unknown, i: number) =>
           <li key={i}>{String(it)}</li>
-        ))}
+        )}
       </ul>
     );
   }
@@ -65,9 +95,9 @@ function Block({ block }: { block: ClientPdfBlock }) {
         <p className="doc-p"><strong>{block.title}</strong></p>
         <p className="doc-p">{block.description}</p>
         <ul className="doc-ul">
-          {block.items?.map((it: unknown, i: number) => (
+          {block.items?.map((it: unknown, i: number) =>
             <li key={i}>{String(it)}</li>
-          ))}
+          )}
         </ul>
       </div>
     );
@@ -79,7 +109,7 @@ function Block({ block }: { block: ClientPdfBlock }) {
         {block.description ? <p className="doc-p">{block.description}</p> : null}
         <ul className="doc-ul">
           {block.items?.map((it: unknown, i: number) => {
-            const sub = (it ?? {}) as ClientPdfSubItem;
+            const sub = (it ?? {}) as PdfSubItem;
             return (
               <li key={i}>
                 <p className="concept-name">{sub.name}</p>
@@ -96,26 +126,37 @@ function Block({ block }: { block: ClientPdfBlock }) {
   return null;
 }
 
-function renderFunctionSection(fn: ClientPdfFunction, forceNewPage: boolean) {
-  const pageBreakClass = forceNewPage ? "break-before-page" : "";
+function renderFunctionSection(fn: PdfFunction, forceNewPage: boolean) {
   const pageBreakStyle: CSSProperties | undefined = forceNewPage
     ? { breakBefore: "always", pageBreakBefore: "always" }
     : undefined;
 
-  // Extract the standard simple fields (Uniform, Setup, Ice, Butler, Entertainment)
-  // to bundle them into a single list, as requested by the user.
   const fieldBlocks = fn.blocks.filter((b) => b.type === "simple");
   const contentBlocks = fn.blocks.filter((b) => b.type !== "simple");
 
   return (
     <section
       key={fn.id}
-      className={`break-inside-avoid ${pageBreakClass}`}
+      className={`break-inside-avoid`}
       style={pageBreakStyle}
       data-page-break={forceNewPage ? "true" : undefined}
     >
       <h1 className="doc-h1">{fn.name}</h1>
-      
+
+      {/* Function details line */}
+      {(fn.functionType || fn.pax || fn.bartenders || fn.butlers) && (
+        <ul className="doc-ul" style={{ marginBottom: "16px" }}>
+          {fn.functionType && <li><strong>Function Type:</strong> {fn.functionType}</li>}
+          {fn.pax && <li><strong>Pax:</strong> {fn.pax}</li>}
+          {fn.bartenders && fn.bartenders > 0 && (
+            <li><strong>Bartenders:</strong> {fn.bartenders}{fn.bartendersNote ? ` (${fn.bartendersNote})` : ""}</li>
+          )}
+          {fn.butlers && fn.butlers > 0 && (
+            <li><strong>Butlers:</strong> {fn.butlers}</li>
+          )}
+        </ul>
+      )}
+
       {fieldBlocks.length > 0 && (
         <ul className="doc-ul">
           {fieldBlocks.map((b) => (
@@ -126,7 +167,7 @@ function renderFunctionSection(fn: ClientPdfFunction, forceNewPage: boolean) {
         </ul>
       )}
 
-      <div className="mt-3 space-y-[3px]">
+      <div>
         {contentBlocks.map((block) => (
           <Block key={block.id} block={block} />
         ))}
@@ -152,66 +193,72 @@ export default async function ProposalPreviewPage({
   const { proposal, company, teamFlow, blocks } = data;
   const fullDate = formatFullDate(new Date(proposal.eventDate));
 
+  // Use DB data if available, otherwise fall back to hardcoded constants
+  const stdDeliverableItems: string[] =
+    (blocks.standardDeliverables?.blocks[0]?.items as string[] | undefined) ??
+    STANDARD_DELIVERABLES;
+
+  const mixerItems: string[] =
+    (blocks.mixers?.blocks[0]?.items as string[] | undefined) ??
+    MIXERS_DEFAULT;
+
+  const pleaseNoteItems: string[] =
+    (blocks.pleaseNote?.blocks[0]?.items as string[] | undefined) ??
+    PLEASE_NOTE_OPTIONS.slice(0, 4);
+
+  // T&C from DB blocks, else hardcoded
+  const termsBlocks = blocks.termsConditions?.blocks ?? [];
+
   return (
-    <>
-      <DownloadPdfButton
-        data={data}
-        className="fixed bottom-6 right-6 z-50 rounded-full px-4 py-2 shadow-lg print:hidden"
-        size="lg"
-      />
-      <div className="doc-page">
-        <div className="watermark"><span>DCH</span></div>
-        <div className="doc-content">
-          <div className="doc-topbar" />
+    <main className="min-h-screen bg-gray-100 relative">
+      <PDFViewerWrapper proposal={proposal}>
+        <div className="doc-page">
+          <div className="doc-content">
+            <div className="doc-topbar" />
 
-          <div className="doc-logo-wrap">
-            <div className="doc-logo">{company.companyName || "Deli Cocktail House by Emerge"}</div>
-            <div className="doc-logo-sub">Event Proposal</div>
-          </div>
+            <div className="doc-logo-wrap">
+              <div className="doc-logo">Deli Cocktail House</div>
+              <div className="doc-logo-sub">By Emerge</div>
+            </div>
 
-          <div className="doc-body">
-            {/* COVER PAGE */}
-            <div className="doc-hero">{fullDate}</div>
-            <div className="doc-hero-sub">{proposal.eventName}</div>
-            <div className="doc-hero-sub">{proposal.venue}</div>
-            {proposal.clientName || (proposal.guestCount && proposal.guestCount > 0) ? (
-              <p className="doc-p" style={{ textAlign: "center", marginBottom: "26px", fontWeight: "700" }}>
-                {proposal.clientName ? `Client: ${proposal.clientName}` : ""}
-                {proposal.guestCount && proposal.guestCount > 0 ? `${proposal.clientName ? " • " : ""}Guests: ${proposal.guestCount}` : ""}
-              </p>
-            ) : null}
+            <div className="doc-body">
 
-            {blocks.standardDeliverables && blocks.standardDeliverables.blocks.length > 0 && (
-              <>
-                <div className="doc-h2">Standard Bar Deliverables on All Functions</div>
-                <ul className="doc-ul">
-                  {blocks.standardDeliverables.blocks[0]?.items?.map((it: unknown, i: number) => (
-                    <li key={i}>{String(it)}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+              {/* ── COVER PAGE ── */}
+              <div className="doc-hero">{fullDate}</div>
+              <div className="doc-hero-sub">{proposal.eventName}</div>
+              {proposal.venue && <div className="doc-hero-sub">{proposal.venue}</div>}
+              {(proposal.clientName || (proposal.guestCount && proposal.guestCount > 0)) && (
+                <p className="doc-p" style={{ textAlign: "center", marginBottom: "26px", fontWeight: "700" }}>
+                  {proposal.clientName ? `Client: ${proposal.clientName}` : ""}
+                  {proposal.guestCount && proposal.guestCount > 0
+                    ? `${proposal.clientName ? " • " : ""}Guests: ${proposal.guestCount}`
+                    : ""}
+                </p>
+              )}
 
-            {blocks.mixers && blocks.mixers.blocks.length > 0 && (
-              <>
-                <div className="doc-h2 center">Mixers</div>
-                <ul className="doc-ul mixers">
-                  {blocks.mixers.blocks[0]?.items?.map((it: unknown, i: number) => (
-                    <li key={i}>{String(it)}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+              {/* ── STANDARD BAR DELIVERABLES ── always shown */}
+              <div className="doc-h2">Standard Bar Deliverables on All Functions</div>
+              <ul className="doc-ul">
+                {stdDeliverableItems.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
 
-            {/* TEAM FLOW */}
-            {teamFlow.length > 0 && (
-              <section
-                className="break-inside-avoid break-before-page"
-                style={{ breakBefore: "always", pageBreakBefore: "always" }}
-                data-page-break="true"
-              >
-                <div className="doc-h1">Team Flow</div>
-                <div className="mt-4 overflow-x-auto">
+              {/* ── MIXERS ── always shown */}
+              <div className="doc-h2 center">Mixers</div>
+              <ul className="doc-ul mixers">
+                {mixerItems.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+
+              {/* ── TEAM FLOW ── shown if teamFlow rows exist */}
+              {teamFlow.length > 0 && (
+                <section
+                  data-page-break="true"
+                  style={{ breakBefore: "always", pageBreakBefore: "always" }}
+                >
+                  <div className="doc-h1">Team Flow</div>
                   <table className="doc-table">
                     <thead>
                       <tr>
@@ -227,7 +274,7 @@ export default async function ProposalPreviewPage({
                       {teamFlow.map((row) => (
                         <tr key={row.id}>
                           <td>{row.date || "—"}</td>
-                          <td>{row.functionType}</td>
+                          <td>{row.functionType || "—"}</td>
                           <td>{row.venue || "—"}</td>
                           <td>{row.pax || "—"}</td>
                           <td>
@@ -243,66 +290,79 @@ export default async function ProposalPreviewPage({
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </section>
-            )}
+                </section>
+              )}
 
-            {/* EVENT FUNCTIONS */}
-            {blocks.eventFunctions.map((fn) => (
-              renderFunctionSection(fn, true)
-            ))}
+              {/* ── EVENT FUNCTIONS ── each function from the proposal */}
+              {blocks.eventFunctions.map((fn) =>
+                renderFunctionSection(fn as PdfFunction, true)
+              )}
 
-            {/* PLEASE NOTE */}
-            {blocks.pleaseNote && (
-              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
+              {/* ── PLEASE NOTE ── always shown */}
+              <section
+                data-page-break="true"
+                style={{ breakBefore: "always", pageBreakBefore: "always" }}
+              >
                 <div className="doc-h1">Please Note</div>
-                {blocks.pleaseNote.blocks.map((block) => (
-                  block.type === "list" ? (
-                    <ul key={block.id} className="doc-ul arrow">
-                      {block.items?.map((it: unknown, i: number) => <li key={i}>{String(it)}</li>)}
-                    </ul>
-                  ) : <Block key={block.id} block={block} />
-                ))}
+                <ul className="doc-ul arrow">
+                  {pleaseNoteItems.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
               </section>
-            )}
 
-            {/* ADDITIONAL CHARGES */}
-            {blocks.additionalCharges && (
-              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
-                <div className="doc-h1">Additional Charges</div>
-                {blocks.additionalCharges.blocks.map((block) => (
-                  block.type === "list" ? (
-                    <ul key={block.id} className="doc-ul arrow">
-                      {block.items?.map((it: unknown, i: number) => <li key={i}>{String(it)}</li>)}
-                    </ul>
-                  ) : <Block key={block.id} block={block} />
-                ))}
+              {/* ── ADDITIONAL CHARGES ── only if DB has them */}
+              {blocks.additionalCharges && (
+                <section
+                  data-page-break="true"
+                  style={{ breakBefore: "always", pageBreakBefore: "always" }}
+                >
+                  <div className="doc-h1">Additional Charges</div>
+                  {blocks.additionalCharges.blocks.map((block: PdfBlock) => (
+                    block.type === "list" ? (
+                      <ul key={block.id} className="doc-ul arrow">
+                        {block.items?.map((it: unknown, i: number) => <li key={i}>{String(it)}</li>)}
+                      </ul>
+                    ) : <Block key={block.id} block={block as PdfBlock} />
+                  ))}
+                </section>
+              )}
+
+              {/* ── TERMS & CONDITIONS ── always shown (DB or hardcoded) */}
+              <section
+                data-page-break="true"
+                style={{ breakBefore: "always", pageBreakBefore: "always" }}
+              >
+                <div className="doc-h1">Terms &amp; Conditions</div>
+                {termsBlocks.length > 0 ? (
+                  termsBlocks.map((block: PdfBlock) => (
+                    <div key={block.id}>
+                      <div className="doc-h2">❖ {block.title}</div>
+                      <p className="doc-p">{block.description}</p>
+                    </div>
+                  ))
+                ) : (
+                  TERMS_AND_CONDITIONS.map((t, i) => (
+                    <div key={i}>
+                      <div className="doc-h2">❖ {t.h}</div>
+                      <p className="doc-p">{t.p}</p>
+                    </div>
+                  ))
+                )}
               </section>
-            )}
 
-            {/* TERMS & CONDITIONS */}
-            {blocks.termsConditions && (
-              <section className="break-inside-avoid break-before-page" style={{ breakBefore: "always", pageBreakBefore: "always" }} data-page-break="true">
-                <div className="doc-h1">Terms & Conditions</div>
-                {blocks.termsConditions.blocks.map((block) => (
-                  <div key={block.id}>
-                    <div className="doc-h2">❖ {block.title}</div>
-                    <p className="doc-p">{block.description}</p>
-                  </div>
-                ))}
-              </section>
-            )}
-          </div>
+            </div>{/* end .doc-body */}
 
-          <div className="doc-footer">
-            <div style={{ flex: 1, textAlign: "left" }}>
-              {company.phone1}{company.phone1 && company.phone2 ? " | " : ""}{company.phone2}
+            {/* ── FOOTER ── */}
+            <div className="doc-footer">
+              <div>☎ {company?.phone1 || company?.phone2 ? `${company.phone1 ?? ""}${company.phone2 ? ` / ${company.phone2}` : ""}` : "+91-9999109404 / 9599737354"}</div>
+              <div>{company?.address || "C-3/16, Phase 2, Ashok Vihar, Delhi"}</div>
+              <div>✉ {company?.email || "Delicocktailhouse@gmail.com"}</div>
             </div>
-            <div style={{ flex: 1, textAlign: "center" }}>{company.companyAddress || company.address}</div>
-            <div style={{ flex: 1, textAlign: "right" }}>{company.companyEmail || company.email}</div>
-          </div>
-        </div>
-      </div>
-    </>
+
+          </div>{/* end .doc-content */}
+        </div>{/* end .doc-page */}
+      </PDFViewerWrapper>
+    </main>
   );
 }
