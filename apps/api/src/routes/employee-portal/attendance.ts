@@ -202,8 +202,10 @@ router.post("/attendance/mark", async (req, res) => {
         location.longitude,
       );
       if (distance > location.radiusMeters) {
-        return res.status(400).json({
-          message: `You must be within ${Math.round(location.radiusMeters)} m of ${location.locationName} to mark attendance. You are ${Math.round(distance)} m away.`,
+        return res.status(403).json({
+          error: "LOCATION_NOT_ALLOWED",
+          message: "Location not allowed",
+          detail: `You must be within ${Math.round(location.radiusMeters)} m of ${location.locationName} to mark attendance. You are ${Math.round(distance)} m away.`,
           distanceMeters: Math.round(distance),
           requiredRadiusMeters: location.radiusMeters,
           locationName: location.locationName,

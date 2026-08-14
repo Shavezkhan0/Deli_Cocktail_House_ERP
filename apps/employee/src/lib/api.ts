@@ -21,6 +21,18 @@ type RefreshResponse = {
 
 type RefreshResult = "refreshed" | "expired" | "unreachable";
 
+export class ApiError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+
+  constructor(message: string, status?: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function refreshAccessToken(): Promise<RefreshResult> {
   const stored = getStoredAuth();
   if (!stored?.token) {
@@ -87,15 +99,17 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`;
+    let code: string | undefined;
     try {
-      const data = (await res.json()) as { message?: string };
+      const data = (await res.json()) as { message?: string; error?: string };
       if (data.message) {
         message = data.message;
       }
+      code = data.error;
     } catch {
       // Response body was not JSON; fall back to the generic message.
     }
-    throw new Error(message);
+    throw new ApiError(message, res.status, code);
   }
 
   if (res.status === 204) {

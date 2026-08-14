@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { calculateDistance } from "@/lib/geo";
 import { formatDate, formatTime } from "@/lib/format";
@@ -175,6 +175,7 @@ export default function AttendancePage() {
   const [geoState, setGeoState] = useState<"idle" | "acquiring" | "success" | "error">("idle");
   const [position, setPosition] = useState<GeoCoords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [locationBlocked, setLocationBlocked] = useState(false);
   const [historyMonth, setHistoryMonth] = useState(() => new Date().getMonth());
   const [historyYear, setHistoryYear] = useState(() => new Date().getFullYear());
   const [pendingAction, setPendingAction] = useState<
@@ -224,6 +225,10 @@ export default function AttendancePage() {
     },
     onError: (error) => {
       setGeoState("error");
+      if (error instanceof ApiError && error.code === "LOCATION_NOT_ALLOWED") {
+        setLocationBlocked(true);
+        return;
+      }
       const message =
         error instanceof Error ? error.message : "Could not mark attendance";
       setGeoError(message);
@@ -815,6 +820,31 @@ export default function AttendancePage() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={locationBlocked}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLocationBlocked(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Action Failed</DialogTitle>
+            <DialogDescription>
+              You are outside the allowed location radius for check-in/out.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" type="button">
+                Close
+              </Button>
+            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
