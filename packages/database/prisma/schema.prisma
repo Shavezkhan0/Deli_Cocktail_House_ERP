@@ -113,6 +113,7 @@ model Employee {
   crmEvents            Event[]         @relation("EventCrm")
   siteManagerEvents    Event[]         @relation("EventSiteManager")
   siteSupervisorEvents Event[]         @relation("EventSiteSupervisor")
+  attendanceOverrides  AttendanceOverride[]
 }
 
 model Attendance {
@@ -481,4 +482,46 @@ model EventProposalFunction {
 
   @@index([proposalId])
   @@index([functionId])
+}
+
+model AttendanceLocation {
+  id        String   @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  radiusM   Int      @default(100)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DesignationLocation {
+  id           String   @id @default(cuid())
+  designation  String   @unique // e.g. "CRM", "DRIVER", "WAREHOUSE_MANAGER"
+  locationName String // e.g. "Office", "CEO Residence", "Warehouse"
+  latitude     Float
+  longitude    Float
+  radiusM      Int      @default(100)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model AttendanceOverride {
+  id         String       @id @default(cuid())
+  employeeId String
+  date       DateTime
+  type       OverrideType
+  reason     String?
+  employee   Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime     @default(now())
+
+  @@unique([employeeId, date])
 }
