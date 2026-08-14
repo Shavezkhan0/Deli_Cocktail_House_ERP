@@ -38,10 +38,15 @@ app.use(
       "http://13.60.186.249:3000",
       "http://13.60.186.249:3001",
 
-      // Production domains
+      // Production HTTP
       "http://delicocktailhouse.in",
       "http://www.delicocktailhouse.in",
       "http://employee.delicocktailhouse.in",
+
+      // Production HTTPS
+      "https://delicocktailhouse.in",
+      "https://www.delicocktailhouse.in",
+      "https://employee.delicocktailhouse.in",
     ],
     credentials: true,
   })
