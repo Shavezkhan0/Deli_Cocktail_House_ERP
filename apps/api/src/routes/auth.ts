@@ -9,6 +9,9 @@ const router: Router = Router();
 const OTP_PREFIX = "otp:";
 const OTP_TTL_SECONDS = 60 * 5;
 
+const TOKEN_EXPIRES_IN = (process.env.ADMIN_TOKEN_EXPIRES_IN ??
+  "3min") as jwt.SignOptions["expiresIn"];
+
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -74,7 +77,7 @@ router.post("/verify-otp", async (req, res) => {
   const token = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
     jwtSecret,
-    { expiresIn: "3min" },
+    { expiresIn: TOKEN_EXPIRES_IN },
   );
 
   return res.status(200).json({
@@ -122,7 +125,7 @@ router.post("/refresh", async (req, res) => {
   const newToken = jwt.sign(
     { userId: user.id, email: user.email, role: user.role },
     jwtSecret,
-    { expiresIn: "3min" },
+    { expiresIn: TOKEN_EXPIRES_IN },
   );
 
   return res.status(200).json({

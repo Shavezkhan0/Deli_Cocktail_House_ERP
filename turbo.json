@@ -1,7 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalEnv": ["DATABASE_URL", "REDIS_URL", "JWT_SECRET", "PORT", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "PDF_APP_PASSWORD"],
+  "globalEnv": ["DATABASE_URL", "REDIS_URL", "JWT_SECRET", "PORT", "API_PORT", "ADMIN_PORT", "EMPLOYEE_PORT", "ADMIN_TOKEN_EXPIRES_IN", "EMPLOYEE_TOKEN_EXPIRES_IN", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "PDF_APP_PASSWORD"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
