@@ -30,7 +30,21 @@ router.get("/salary/current", async (req, res) => {
       },
     });
 
-    return res.json(salary ?? null);
+    if (salary) {
+      return res.json(salary);
+    }
+
+    const breakdown = await calculateEmployeeSalary(employeeId, month, year);
+
+    return res.json({
+      id: `estimate-${employeeId}-${month}-${year}`,
+      month,
+      year,
+      amount: breakdown.finalAmount,
+      status: "UNPAID",
+      paidDate: null,
+      isEstimate: true,
+    });
   } catch (error) {
     console.error("[Employee] Failed to fetch current salary:", error);
     return res

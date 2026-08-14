@@ -16,6 +16,7 @@ type SalaryRecord = {
   amount: number;
   status: "PAID" | "UNPAID";
   paidDate: string | null;
+  isEstimate?: boolean;
 };
 
 type SalaryData = {
@@ -61,19 +62,37 @@ function CurrentMonthCard({ record }: { record: SalaryRecord | null }) {
         </div>
       </div>
       {record ? (
-        <>
-          <p className="mt-6 text-5xl font-black tracking-tight text-foreground">
-            {formatCurrency(record.amount)}
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <SalaryStatusBadge status={record.status} />
-            <p className="text-xs text-muted-foreground">
-              {record.paidDate
-                ? `Paid on ${formatDate(record.paidDate)}`
-                : "Payment is pending"}
+        record.isEstimate ? (
+          <>
+            <p className="mt-6 text-5xl font-black tracking-tight text-foreground">
+              {formatCurrency(record.amount)}
             </p>
-          </div>
-        </>
+            <div className="mt-4 flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                <span className="size-1.5 rounded-full bg-amber-500" />
+                Estimate
+              </span>
+              <p className="text-xs text-muted-foreground">
+                Calculated from attendance, leaves and expenses. Your final
+                salary will appear here once it is published.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-6 text-5xl font-black tracking-tight text-foreground">
+              {formatCurrency(record.amount)}
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <SalaryStatusBadge status={record.status} />
+              <p className="text-xs text-muted-foreground">
+                {record.paidDate
+                  ? `Paid on ${formatDate(record.paidDate)}`
+                  : "Payment is pending"}
+              </p>
+            </div>
+          </>
+        )
       ) : (
         <p className="mt-6 text-sm text-muted-foreground">
           No salary record for this month yet. Your salary will appear here once
