@@ -33,12 +33,20 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
+
+      // Old AWS direct access
       "http://13.60.186.249:3000",
       "http://13.60.186.249:3001",
+
+      // Production domains
+      "http://delicocktailhouse.in",
+      "http://www.delicocktailhouse.in",
+      "http://employee.delicocktailhouse.in",
     ],
     credentials: true,
   })
 );
+
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
