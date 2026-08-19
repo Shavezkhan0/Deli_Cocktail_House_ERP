@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { prisma, AttendanceStatus, Prisma } from "@repo/database";
+import { prisma, AttendanceStatus, OverrideType, Prisma } from "@repo/database";
+import { ATTENDANCE_TIMEZONE, istDayOfWeek, istHourMinute, startOfToday, timeToMinutes } from "../../lib/attendance-time";
 
 const router: Router = Router();
 
@@ -61,34 +62,29 @@ async function getEffectiveLocation(designation: string) {
   return getGlobalOfficeSettings();
 }
 
-function startOfToday(): Date {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
-
 const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
 
-const CHECK_IN_PRESENT_CUTOFF = { hour: 10, minute: 45 }; // before → PRESENT
-const CHECK_IN_SHORT_LEAVE_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
-
-function timeToMinutes(hour: number, minute: number): number {
-  return hour * 60 + minute;
-}
+const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 30 }; // at or before → PRESENT (Full)
+const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 45 }; // at or before → SHORT_LEAVE
+const CHECK_IN_HALF_CUTOFF = { hour: 14, minute: 30 }; // at or before → HALF_DAY, after → blocked
 
 function toMinutes(date: Date): number {
-  return date.getHours() * 60 + date.getMinutes();
+  const { hour, minute } = istHourMinute(date);
+  return timeToMinutes(hour, minute);
 }
 
-function statusForCheckIn(now: Date): AttendanceStatus {
+function statusForCheckIn(now: Date): AttendanceStatus | null {
   const minutes = toMinutes(now);
-  if (minutes < timeToMinutes(CHECK_IN_PRESENT_CUTOFF.hour, CHECK_IN_PRESENT_CUTOFF.minute)) {
+  if (minutes <= timeToMinutes(CHECK_IN_FULL_CUTOFF.hour, CHECK_IN_FULL_CUTOFF.minute)) {
     return AttendanceStatus.PRESENT;
   }
-  if (minutes <= timeToMinutes(CHECK_IN_SHORT_LEAVE_CUTOFF.hour, CHECK_IN_SHORT_LEAVE_CUTOFF.minute)) {
+  if (minutes <= timeToMinutes(CHECK_IN_SHORT_CUTOFF.hour, CHECK_IN_SHORT_CUTOFF.minute)) {
     return AttendanceStatus.SHORT_LEAVE;
   }
-  return AttendanceStatus.HALF_DAY;
+  if (minutes <= timeToMinutes(CHECK_IN_HALF_CUTOFF.hour, CHECK_IN_HALF_CUTOFF.minute)) {
+    return AttendanceStatus.HALF_DAY;
+  }
+  return null;
 }
 
 function statusForCheckOut(current: AttendanceStatus, now: Date): AttendanceStatus {
@@ -228,7 +224,37 @@ router.post("/attendance/mark", async (req, res) => {
 
     // --- Check-in ---
     if (!existing || existing.checkInTime === null) {
+      const isSunday = istDayOfWeek(now) === 0;
+      const holiday = await prisma.holiday.findFirst({
+        where: { date: { gte: today, lt: tomorrow } },
+      });
+      const isHoliday = !!holiday;
+
+      if (isSunday || isHoliday) {
+        const workOverride = await prisma.attendanceOverride.findFirst({
+          where: {
+            employeeId,
+            date: { gte: today, lt: tomorrow },
+            type: OverrideType.FORCE_WORK,
+          },
+        });
+        if (!workOverride) {
+          return res.status(403).json({
+            error: "NOT_A_WORKING_DAY",
+            message:
+              "Today is a holiday. You are not scheduled to work today — contact admin if this is a mistake.",
+          });
+        }
+      }
+
       const status = statusForCheckIn(now);
+      if (status === null) {
+        return res.status(403).json({
+          error: "ATTENDANCE_WINDOW_CLOSED",
+          message:
+            "Attendance can no longer be marked for today. The window closed at 2:30 PM.",
+        });
+      }
       const attendance = existing
         ? await prisma.attendance.update({
             where: { id: existing.id },
@@ -333,6 +359,35 @@ router.get("/attendance/history", async (req, res) => {
   } catch (error) {
     console.error("[Employee] Failed to fetch attendance history:", error);
     return res.status(500).json({ message: "Failed to fetch attendance history" });
+  }
+});
+
+// GET /attendance/holidays
+// Optional query: ?month=8&year=2026 to scope to a specific month; otherwise returns all.
+router.get("/attendance/holidays", async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const monthNum = Number(month);
+    const yearNum = Number(year);
+    const hasMonth = Number.isInteger(monthNum) && monthNum >= 1 && monthNum <= 12;
+    const hasYear = Number.isInteger(yearNum) && yearNum >= 2000;
+
+    let where: Prisma.HolidayWhereInput = {};
+    if (hasMonth && hasYear) {
+      const start = new Date(yearNum, monthNum - 1, 1);
+      const end = new Date(yearNum, monthNum, 1);
+      where = { date: { gte: start, lt: end } };
+    }
+
+    const holidays = await prisma.holiday.findMany({
+      where,
+      orderBy: { date: "asc" },
+    });
+
+    return res.json(holidays);
+  } catch (error) {
+    console.error("[Employee] Failed to fetch holidays:", error);
+    return res.status(500).json({ message: "Failed to fetch holidays" });
   }
 });
 

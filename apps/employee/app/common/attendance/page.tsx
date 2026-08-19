@@ -74,6 +74,13 @@ type AttendanceHistoryResponse = {
   summary: AttendanceSummary;
 };
 
+type Holiday = {
+  id: string;
+  date: string;
+  name: string;
+  createdAt: string;
+};
+
 type OfficeLocation = {
   latitude: number;
   longitude: number;
@@ -113,6 +120,8 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   SHORT_LEAVE: "#eab308",
   ON_LEAVE: "#3b82f6",
 };
+
+const HOLIDAY_COLOR = "#8b5cf6";
 
 function dateKey(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -196,10 +205,12 @@ export default function AttendancePage() {
       ),
   });
 
-  const recentQuery = useQuery({
-    queryKey: ["attendance", "recent"],
+  const holidaysQuery = useQuery({
+    queryKey: ["attendance", "holidays", historyYear, historyMonth],
     queryFn: () =>
-      apiFetch<AttendanceHistoryResponse>("/api/employee/attendance/history"),
+      apiFetch<Holiday[]>(
+        `/api/employee/attendance/holidays?month=${historyMonth + 1}&year=${historyYear}`,
+      ),
   });
 
   const officeQuery = useQuery({
@@ -342,36 +353,29 @@ export default function AttendancePage() {
   const todayRecord = todayQuery.data?.attendance ?? null;
   const hasCheckedIn = !!todayRecord?.checkInTime;
   const hasCheckedOut = !!todayRecord?.checkOutTime;
+  const now = new Date();
+  const isPastCheckInWindow =
+    now.getHours() * 60 + now.getMinutes() > 14 * 60 + 30;
 
-  const recentDays = useMemo(() => {
-    const list: { key: string; date: Date }[] = [];
-    const today = new Date();
-    for (let i = 29; i >= 0; i -= 1) {
-      const date = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - i,
-      );
-      list.push({ key: dateKey(date), date });
-    }
-    return list;
-  }, []);
-
-  const recordsByDate = useMemo(() => {
+  const monthRecordsByDate = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
-    for (const record of recentQuery.data?.records ?? []) {
+    for (const record of historyQuery.data?.records ?? []) {
       map.set(dateKey(new Date(record.date)), record);
     }
     return map;
-  }, [recentQuery.data]);
+  }, [historyQuery.data]);
 
-  const recentSummary: AttendanceSummary = recentQuery.data?.summary ?? {
-    PRESENT: 0,
-    ABSENT: 0,
-    HALF_DAY: 0,
-    SHORT_LEAVE: 0,
-    ON_LEAVE: 0,
-  };
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, Holiday>();
+    for (const holiday of holidaysQuery.data ?? []) {
+      map.set(dateKey(new Date(holiday.date)), holiday);
+    }
+    return map;
+  }, [holidaysQuery.data]);
+
+  const calendarLeadingBlanks = new Date(historyYear, historyMonth, 1).getDay();
+  const calendarDaysInMonth = new Date(historyYear, historyMonth + 1, 0).getDate();
+  const calendarTodayKey = dateKey(new Date());
 
   const markedPosition: GeoCoords | null = useMemo(() => {
     const record = todayQuery.data?.attendance;
@@ -403,14 +407,14 @@ export default function AttendancePage() {
 
   let content: React.ReactNode;
 
-  if (todayQuery.isPending || historyQuery.isPending || recentQuery.isPending) {
+  if (todayQuery.isPending || historyQuery.isPending || holidaysQuery.isPending) {
     content = (
       <div className="flex flex-col gap-6">
         <div className="h-72 animate-pulse rounded-xl bg-muted" />
         <div className="h-64 animate-pulse rounded-xl bg-muted" />
       </div>
     );
-  } else if (todayQuery.isError || historyQuery.isError || recentQuery.isError) {
+  } else if (todayQuery.isError || historyQuery.isError || holidaysQuery.isError) {
     content = (
       <div className="flex flex-col items-center gap-3 rounded-xl bg-card py-12 text-center ring-1 ring-foreground/10">
         <AlertTriangle className="size-8 text-rose-500" />
@@ -422,7 +426,7 @@ export default function AttendancePage() {
           onClick={() => {
             todayQuery.refetch();
             historyQuery.refetch();
-            recentQuery.refetch();
+            holidaysQuery.refetch();
             officeQuery.refetch();
           }}
           className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
@@ -440,7 +444,11 @@ export default function AttendancePage() {
               <button
                 type="button"
                 onClick={handleMarkClick}
-                disabled={isAcquiring || hasCheckedOut}
+                disabled={
+                  isAcquiring ||
+                  hasCheckedOut ||
+                  (!hasCheckedIn && isPastCheckInWindow)
+                }
                 className={cn(
                   "group relative flex size-44 flex-col items-center justify-center gap-3 rounded-full text-white shadow-xl transition-all duration-200",
                   hasCheckedOut
@@ -480,6 +488,12 @@ export default function AttendancePage() {
                   </span>
                 </span>
               </button>
+
+              {!hasCheckedIn && isPastCheckInWindow ? (
+                <p className="text-xs text-muted-foreground">
+                  Attendance window closed for today. Check-in closes at 2:30 PM.
+                </p>
+              ) : null}
 
               {hasCheckedIn ? (
                 <div className="flex flex-col items-center gap-1">
@@ -589,89 +603,13 @@ export default function AttendancePage() {
         </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="border-b border-border px-4 py-4 sm:px-6">
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
-              Last 30 Days
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Your attendance record for the past 30 days.
-            </p>
-          </div>
-
-          <div className="px-4 py-5 sm:px-6">
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-              {recentDays.map((day) => {
-                const record = recordsByDate.get(day.key);
-                const config = record
-                  ? STATUS_CONFIG[record.status]
-                  : null;
-                const label = day.date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                });
-                const weekday = day.date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                });
-                return (
-                  <div
-                    key={day.key}
-                    title={
-                      config ? `${label} — ${config.label}` : `${label} — No record`
-                    }
-                    className={cn(
-                      "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg transition-transform hover:scale-105",
-                      record
-                        ? "text-white shadow-sm"
-                        : "bg-muted/60 text-muted-foreground",
-                    )}
-                    style={
-                      record
-                        ? { backgroundColor: STATUS_COLORS[record.status] }
-                        : undefined
-                    }
-                  >
-                    <span className="text-base font-bold leading-none sm:text-sm">
-                      {day.date.getDate()}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[9px] font-semibold uppercase tracking-wide",
-                        record ? "text-white/70" : "text-muted-foreground/60",
-                      )}
-                    >
-                      {weekday}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-              {STATUS_ORDER.map((status) => (
-                <span
-                  key={status}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
-                >
-                  <span
-                    className="size-2.5 rounded-full"
-                    style={{ backgroundColor: STATUS_COLORS[status] }}
-                  />
-                  {STATUS_CONFIG[status].label}: {recentSummary[status]}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-foreground">
-                Attendance History
+                Attendance Calendar
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Month-wise summary and records.
+                Your day-by-day attendance for the month.
               </p>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -700,6 +638,105 @@ export default function AttendancePage() {
                 <span className="hidden sm:inline">Next Month</span>
                 <ChevronRight className="size-4" />
               </Button>
+            </div>
+          </div>
+
+          <div className="px-4 py-5 sm:px-6">
+            <div className="mx-auto w-full max-w-xl">
+              <div className="grid grid-cols-7 gap-1">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                  <div
+                    key={day}
+                    className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    {day}
+                  </div>
+                ))}
+                {Array.from({ length: calendarLeadingBlanks }).map((_, index) => (
+                  <div key={`blank-${index}`} />
+                ))}
+                {Array.from({ length: calendarDaysInMonth }).map((_, index) => {
+                  const day = index + 1;
+                  const cellDate = new Date(historyYear, historyMonth, day);
+                  const key = dateKey(cellDate);
+                  const record = monthRecordsByDate.get(key);
+                  const holiday = holidaysByDate.get(key);
+                  const isSunday = cellDate.getDay() === 0;
+                  const isHolidayCell = !record && (!!holiday || isSunday);
+                  const isToday = key === calendarTodayKey;
+                  const label = cellDate.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const title = record
+                    ? `${label} — ${STATUS_CONFIG[record.status].label}`
+                    : isHolidayCell
+                      ? holiday
+                        ? `${label} — Holiday (${holiday.name})`
+                        : `${label} — Sunday`
+                      : `${label} — No record`;
+                  return (
+                    <div
+                      key={key}
+                      title={title}
+                      className={cn(
+                        "relative flex aspect-square min-h-9 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                        record || isHolidayCell
+                          ? "text-white shadow-sm"
+                          : "bg-muted/60 text-muted-foreground",
+                        isToday
+                          ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                          : "",
+                      )}
+                      style={
+                        record
+                          ? { backgroundColor: STATUS_COLORS[record.status] }
+                          : isHolidayCell
+                            ? { backgroundColor: HOLIDAY_COLOR }
+                            : undefined
+                      }
+                    >
+                      <span className="text-sm font-bold leading-none">{day}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+              {STATUS_ORDER.map((status) => (
+                <span
+                  key={status}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                >
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: STATUS_COLORS[status] }}
+                  />
+                  {STATUS_CONFIG[status].label}: {historySummary[status]}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: HOLIDAY_COLOR }}
+                />
+                Holiday
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+            <div>
+              <h2 className="text-base font-semibold tracking-tight text-foreground">
+                Attendance History
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Detailed records for {historyMonthLabel}.
+              </p>
             </div>
           </div>
 

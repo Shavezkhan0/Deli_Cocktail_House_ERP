@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/table";
 import {
   DESIGNATION_LABELS,
+  DESIGNATION_OPTIONS,
   deleteDocument,
   uploadDocument,
 } from "@/components/employee-form";
@@ -122,6 +123,13 @@ type AttendanceRecord = {
   status: string;
   checkInTime: string | null;
   checkOutTime: string | null;
+  createdAt: string;
+};
+
+type Holiday = {
+  id: string;
+  date: string;
+  name: string;
   createdAt: string;
 };
 
@@ -229,6 +237,8 @@ const ATTENDANCE_STATUS_COLORS: Record<string, string> = {
   ON_LEAVE: "#3b82f6",
 };
 
+const HOLIDAY_COLOR = "#8b5cf6";
+
 function dateKeyFromParts(year: number, month: number, day: number): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${year}-${pad(month)}-${pad(day)}`;
@@ -272,6 +282,7 @@ type EditForm = {
   email: string;
   contact: string;
   emergencyContact: string;
+  designation: string;
   joiningDate: string;
   baseSalary: string;
   status: string;
@@ -381,6 +392,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     email: "",
     contact: "",
     emergencyContact: "",
+    designation: "",
     joiningDate: "",
     baseSalary: "",
     status: "ACTIVE",
@@ -417,6 +429,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       email: employee.email ?? "",
       contact: employee.contact ?? "",
       emergencyContact: employee.emergencyContact ?? "",
+      designation: employee.designation ?? "",
       joiningDate: employee.joiningDate
         ? toDateInputValue(employee.joiningDate)
         : "",
@@ -449,6 +462,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         email: editForm.email.trim() || null,
         contact: editForm.contact.trim() || null,
         emergencyContact: editForm.emergencyContact.trim() || null,
+        designation: editForm.designation,
         baseSalary: Number(editForm.baseSalary),
         status: editForm.status,
         leavingDate,
@@ -530,6 +544,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         `/api/office/employees/${employeeId}/working-overrides`,
         { token },
       ),
+  });
+
+  const holidaysQuery = useQuery({
+    queryKey: ["office-holidays"],
+    queryFn: () => apiFetch<Holiday[]>("/api/office/holidays", { token }),
   });
 
   const approvedExpensesQuery = useQuery({
@@ -756,6 +775,17 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     }
     return map;
   }, [workingOverridesQuery.data]);
+
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, Holiday>();
+    for (const holiday of holidaysQuery.data ?? []) {
+      const key = dateKeyFromTimestamp(holiday.date);
+      if (key) {
+        map.set(key, holiday);
+      }
+    }
+    return map;
+  }, [holidaysQuery.data]);
 
   const historyRecords = attendanceHistoryQuery.data ?? [];
   const statPresentDays = historyRecords.filter(
@@ -1321,6 +1351,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     );
                     const record = attendanceRecordsByDate.get(key);
                     const override = overridesByDate.get(key);
+                    const holiday = holidaysByDate.get(key);
+                    const isSunday =
+                      new Date(attendanceYear, attendanceMonth - 1, day).getDay() === 0;
+                    const isHolidayCell = !record && (!!holiday || isSunday);
                     const isToday = key === calendarTodayKey;
                     const tooltip = override
                       ? `${formatDate(override.date)} — ${
@@ -1333,7 +1367,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             "_",
                             " ",
                           )}`
-                        : "No override — click to assign";
+                        : isHolidayCell
+                          ? holiday
+                            ? `Holiday — ${holiday.name}`
+                            : "Sunday"
+                          : "No override — click to assign";
                     return (
                       <button
                         key={key}
@@ -1342,7 +1380,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         title={tooltip}
                         className={cn(
                           "relative flex aspect-square min-h-7 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
-                          record
+                          record || isHolidayCell
                             ? "text-white shadow-sm"
                             : "bg-muted/60 text-muted-foreground",
                           override
@@ -1354,7 +1392,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         style={
                           record && ATTENDANCE_STATUS_COLORS[record.status]
                             ? { backgroundColor: ATTENDANCE_STATUS_COLORS[record.status] }
-                            : undefined
+                            : isHolidayCell
+                              ? { backgroundColor: HOLIDAY_COLOR }
+                              : undefined
                         }
                       >
                         <span className="text-sm font-bold leading-none">
@@ -1371,7 +1411,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         <span
                           className={cn(
                             "size-1.5 rounded-full",
-                            record
+                            record || isHolidayCell
                               ? "bg-white/80"
                               : "bg-muted-foreground/30",
                           )}
@@ -1412,6 +1452,13 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     </span>
                   ),
                 )}
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: HOLIDAY_COLOR }}
+                  />
+                  Holiday
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -2197,6 +2244,28 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   }
                   placeholder="Emergency contact number"
                 />
+              </div>
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Designation
+                </label>
+                <Select
+                  value={editForm.designation}
+                  onValueChange={(value) =>
+                    editField("designation", typeof value === "string" ? value : "")
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select designation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DESIGNATION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-sm font-medium text-foreground">
