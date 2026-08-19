@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cron from "node-cron";
 import authRouter from "./routes/auth";
 import complainsRouter from "./routes/complains";
 import eventsRouter from "./routes/events";
@@ -25,6 +26,7 @@ import vendorRouter from "./routes/employee-portal/vendor";
 import travelRouter from "./routes/employee-portal/travel";
 import salesRouter from "./routes/employee-portal/sales";
 import { employeeAuth } from "./middleware/employeeAuth";
+import { markAbsentEmployeesForToday } from "./services/mark-absent-job";
 
 const app = express();
 
@@ -94,3 +96,15 @@ const port = process.env.API_PORT ? Number(process.env.API_PORT) : 4000;
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
+cron.schedule("35 14 * * *", () => {
+  markAbsentEmployeesForToday()
+    .then((result) => {
+      console.log(
+        `[Attendance] Marked absent: ${result.marked}, on leave: ${result.onLeave}, skipped: ${result.skipped}`,
+      );
+    })
+    .catch((err) => {
+      console.error("[Attendance] Failed to mark absent employees:", err);
+    });
+}, { timezone: "Asia/Kolkata" });

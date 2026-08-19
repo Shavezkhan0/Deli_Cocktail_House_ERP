@@ -10,6 +10,7 @@ import {
 } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
 import { calculateEmployeeSalary } from "../services/salary-calculator";
+import { markAbsentEmployeesForToday } from "../services/mark-absent-job";
 
 const router: Router = Router();
 
@@ -817,6 +818,16 @@ router.get("/attendance/summary", requireAuth, async (_req, res) => {
   } catch (error) {
     console.error("[Office] Failed to fetch attendance summary:", error);
     return res.status(500).json({ message: "Failed to fetch attendance summary" });
+  }
+});
+
+router.post("/attendance/mark-absent-now", requireAuth, async (_req, res) => {
+  try {
+    const result = await markAbsentEmployeesForToday();
+    return res.json(result);
+  } catch (error) {
+    console.error("[Office] Failed to mark absent employees:", error);
+    return res.status(500).json({ message: "Failed to mark absent employees" });
   }
 });
 
