@@ -41,6 +41,7 @@ type WarehouseEventInventory = {
   loadedQty: number;
   returnedQty: number;
   damageReportedQty: number;
+  lostQty: number;
 };
 
 type WarehouseEventDetail = {
@@ -55,7 +56,7 @@ type WarehouseEventDetail = {
   inventory: WarehouseEventInventory[];
 };
 
-type TabKey = "out" | "in";
+type TabKey = "out" | "in" | "damage";
 
 function statusBadge(status: string) {
   switch (status) {
@@ -72,6 +73,13 @@ function statusBadge(status: string) {
   }
 }
 
+function clampQuantity(raw: string, max: number): string {
+  if (raw === "") return "";
+  const num = Number(raw);
+  if (Number.isNaN(num)) return "";
+  return String(Math.max(0, Math.min(num, max)));
+}
+
 function DamageReportForm({
   itemId,
   shortfall,
@@ -83,8 +91,9 @@ function DamageReportForm({
   eventId: string;
   onSuccess: () => void;
 }) {
-  const [quantity, setQuantity] = useState(shortfall);
+  const [quantity, setQuantity] = useState("");
   const [remark, setRemark] = useState("");
+  const [reason, setReason] = useState<"DAMAGE" | "LOST">("DAMAGE");
   const [dismissed, setDismissed] = useState(false);
 
   const reportDamage = useMutation({
@@ -92,7 +101,7 @@ function DamageReportForm({
       apiFetch(`/api/employee/warehouse/events/${eventId}/damage`, {
         method: "POST",
         body: {
-          items: [{ itemId, quantity, remark }],
+          items: [{ itemId, quantity: Number(quantity), remark, reason }],
         },
       }),
     onSuccess: () => {
@@ -117,6 +126,32 @@ function DamageReportForm({
               {shortfall} short — report damage/loss?
             </p>
             <div className="mt-3 flex flex-col gap-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReason("DAMAGE")}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    reason === "DAMAGE"
+                      ? "bg-amber-600 text-white"
+                      : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                  )}
+                >
+                  Damage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReason("LOST")}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    reason === "LOST"
+                      ? "bg-amber-600 text-white"
+                      : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                  )}
+                >
+                  Lost
+                </button>
+              </div>
               <div className="flex items-center gap-3">
                 <Label htmlFor={`damage-qty-${itemId}`} className="text-xs text-amber-700">
                   Qty
@@ -127,7 +162,8 @@ function DamageReportForm({
                   min={1}
                   max={shortfall}
                   value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  placeholder="0"
+                  onChange={(e) => setQuantity(e.target.value)}
                   className="w-20 rounded-lg border-amber-300 bg-white text-sm"
                 />
               </div>
@@ -155,11 +191,17 @@ function DamageReportForm({
                 </Button>
                 <Button
                   size="sm"
-                  disabled={reportDamage.isPending || quantity < 1 || remark.trim() === ""}
+                  disabled={
+                    reportDamage.isPending ||
+                    Number(quantity) < 1 ||
+                    remark.trim() === ""
+                  }
                   onClick={() => reportDamage.mutate()}
                   className="bg-amber-600 text-white hover:bg-amber-700"
                 >
-                  {reportDamage.isPending ? "Submitting…" : "Report Damage"}
+                  {reportDamage.isPending
+                    ? "Submitting…"
+                    : reason === "LOST" ? "Report Loss" : "Report Damage"}
                 </Button>
               </div>
             </div>
@@ -182,8 +224,11 @@ export default function WarehouseEventDetailPage() {
   const eventId = params?.id;
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>("out");
-  const [outQuantities, setOutQuantities] = useState<Record<string, number>>({});
-  const [inQuantities, setInQuantities] = useState<Record<string, number>>({});
+  const [outQuantities, setOutQuantities] = useState<Record<string, string>>({});
+  const [inQuantities, setInQuantities] = useState<Record<string, string>>({});
+  const [damageForms, setDamageForms] = useState<
+    Record<string, { quantity: string; remark: string; reason: "DAMAGE" | "LOST" }>
+  >({});
 
   const { data: event, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-event", eventId],
@@ -226,28 +271,45 @@ export default function WarehouseEventDetailPage() {
     },
   });
 
+  const submitDamage = useMutation({
+    mutationFn: (items: { itemId: string; quantity: number; remark: string; reason: "DAMAGE" | "LOST" }[]) =>
+      apiFetch(`/api/employee/warehouse/events/${eventId}/damage`, {
+        method: "POST",
+        body: { items },
+      }),
+    onSuccess: () => {
+      toast.success("Damage reported");
+      setDamageForms({});
+      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   function handleOutSubmit() {
     const items = Object.entries(outQuantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([itemId, quantity]) => ({ itemId, quantity }));
+      .filter(([, qty]) => Number(qty) > 0)
+      .map(([itemId, qty]) => ({ itemId, quantity: Number(qty) }));
     if (items.length === 0) return;
     submitOut.mutate(items);
   }
 
   function handleInSubmit() {
     const items = Object.entries(inQuantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([itemId, quantity]) => ({ itemId, quantity }));
+      .filter(([, qty]) => Number(qty) > 0)
+      .map(([itemId, qty]) => ({ itemId, quantity: Number(qty) }));
     if (items.length === 0) return;
     submitIn.mutate(items);
   }
 
   function getOutQty(item: WarehouseEventInventory) {
-    return outQuantities[item.itemId] ?? Math.max(0, item.issueQuantity - item.loadedQty);
+    return outQuantities[item.itemId] ?? "";
   }
 
   function getInQty(item: WarehouseEventInventory) {
-    return inQuantities[item.itemId] ?? 0;
+    return inQuantities[item.itemId] ?? "";
   }
 
   let body: React.ReactNode;
@@ -342,6 +404,19 @@ export default function WarehouseEventDetailPage() {
               </span>
             ) : null}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("damage")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+              activeTab === "damage"
+                ? "bg-orange-600 text-white shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+            )}
+          >
+            <AlertCircle className="size-4" />
+            Report Issue
+          </button>
         </div>
 
         {activeTab === "out" ? (
@@ -400,11 +475,12 @@ export default function WarehouseEventDetailPage() {
                               min={0}
                               max={remaining}
                               value={getOutQty(item)}
+                              placeholder="0"
                               onChange={(e) =>
                                 setOutQuantities((prev) => ({
                                   ...prev,
-                                  [item.itemId]: Math.min(
-                                    Number(e.target.value),
+                                  [item.itemId]: clampQuantity(
+                                    e.target.value,
                                     remaining,
                                   ),
                                 }))
@@ -425,7 +501,7 @@ export default function WarehouseEventDetailPage() {
                 size="sm"
                 disabled={
                   submitOut.isPending ||
-                  !Object.values(outQuantities).some((q) => q > 0)
+                  !Object.values(outQuantities).some((q) => Number(q) > 0)
                 }
                 onClick={handleOutSubmit}
               >
@@ -434,7 +510,7 @@ export default function WarehouseEventDetailPage() {
               </Button>
             </div>
           </Card>
-        ) : (
+        ) : activeTab === "in" ? (
           <div className="flex flex-col gap-4">
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
@@ -447,6 +523,7 @@ export default function WarehouseEventDetailPage() {
                       <th className="px-4 py-3 text-right font-semibold">Loaded</th>
                       <th className="px-4 py-3 text-right font-semibold">Returned</th>
                       <th className="px-4 py-3 text-right font-semibold">Damage</th>
+                      <th className="px-4 py-3 text-right font-semibold">Lost</th>
                       <th className="px-4 py-3 text-right font-semibold">To Return</th>
                     </tr>
                   </thead>
@@ -487,6 +564,15 @@ export default function WarehouseEventDetailPage() {
                             )}
                           </td>
                           <td className="px-4 py-3.5 text-right">
+                            {item.lostQty > 0 ? (
+                              <span className="text-xs font-medium text-amber-600">
+                                {item.lostQty}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
                             {isComplete ? (
                               <span className="text-xs font-medium text-emerald-600">
                                 Done
@@ -497,11 +583,12 @@ export default function WarehouseEventDetailPage() {
                                 min={0}
                                 max={outstanding}
                                 value={getInQty(item)}
+                                placeholder="0"
                                 onChange={(e) =>
                                   setInQuantities((prev) => ({
                                     ...prev,
-                                    [item.itemId]: Math.min(
-                                      Number(e.target.value),
+                                    [item.itemId]: clampQuantity(
+                                      e.target.value,
                                       outstanding,
                                     ),
                                   }))
@@ -522,7 +609,7 @@ export default function WarehouseEventDetailPage() {
                   size="sm"
                   disabled={
                     submitIn.isPending ||
-                    !Object.values(inQuantities).some((q) => q > 0)
+                    !Object.values(inQuantities).some((q) => Number(q) > 0)
                   }
                   onClick={handleInSubmit}
                 >
@@ -534,21 +621,278 @@ export default function WarehouseEventDetailPage() {
 
             {event.inventory.map((item) => {
               const outstanding = Math.max(0, item.loadedQty - item.returnedQty);
-              const currentReturn = inQuantities[item.itemId] ?? 0;
+              const currentReturn = Number(inQuantities[item.itemId] ?? 0);
               const newReturned = item.returnedQty + currentReturn;
               const shortfallAfterReturn = Math.max(0, item.loadedQty - newReturned);
               const showDamage =
-                currentReturn > 0 && shortfallAfterReturn > item.damageReportedQty;
+                currentReturn > 0 && shortfallAfterReturn > item.damageReportedQty + item.lostQty;
 
               return showDamage ? (
                 <DamageReportForm
                   key={item.id}
                   itemId={item.itemId}
-                  shortfall={shortfallAfterReturn - item.damageReportedQty}
+                  shortfall={shortfallAfterReturn - item.damageReportedQty - item.lostQty}
                   eventId={eventId!}
                   onSuccess={refetch}
                 />
               ) : null;
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-4 py-3 font-semibold">SKU</th>
+                      <th className="px-4 py-3 font-semibold">Item</th>
+                      <th className="px-4 py-3 font-semibold">Unit</th>
+                      <th className="px-4 py-3 text-right font-semibold">Loaded</th>
+                      <th className="px-4 py-3 text-right font-semibold">Returned</th>
+                      <th className="px-4 py-3 text-right font-semibold">Damage Reported</th>
+                      <th className="px-4 py-3 text-right font-semibold">Lost</th>
+                      <th className="px-4 py-3 text-right font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {event.inventory.map((item) => {
+                      const form = damageForms[item.itemId];
+                      const quantity = form?.quantity ?? "";
+                      const remark = form?.remark ?? "";
+                      const isFormOpen = !!form;
+                      return (
+                        <tr
+                          key={item.id}
+                          className="transition-colors hover:bg-muted/30"
+                        >
+                          <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                            {item.sku}
+                          </td>
+                          <td className="px-4 py-3.5 font-medium text-foreground">
+                            {item.itemName}
+                          </td>
+                          <td className="px-4 py-3.5 text-muted-foreground">
+                            {item.unit}
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                            {item.loadedQty}
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                            {item.returnedQty}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            {item.damageReportedQty > 0 ? (
+                              <span className="text-xs font-medium text-amber-600">
+                                {item.damageReportedQty}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            {item.lostQty > 0 ? (
+                              <span className="text-xs font-medium text-amber-600">
+                                {item.lostQty}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            {isFormOpen ? (
+                              <span className="text-xs font-medium text-emerald-600">
+                                Reporting below
+                              </span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setDamageForms((prev) => ({
+                                    ...prev,
+                                    [item.itemId]: { quantity: "", remark: "", reason: "DAMAGE" as const },
+                                  }))
+                                }
+                              >
+                                <AlertCircle className="size-3.5" />
+                                Report
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {event.inventory.map((item) => {
+              const form = damageForms[item.itemId];
+              if (!form) return null;
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-amber-200 bg-amber-50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-800">
+                          Report issue for {item.itemName}
+                        </p>
+                        <div className="mt-3 flex flex-col gap-3">
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDamageForms((prev) => ({
+                                  ...prev,
+                                  [item.itemId]: {
+                                    ...prev[item.itemId],
+                                    reason: "DAMAGE",
+                                  },
+                                }))
+                              }
+                              className={cn(
+                                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                                form.reason === "DAMAGE"
+                                  ? "bg-amber-600 text-white"
+                                  : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                              )}
+                            >
+                              Damage
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDamageForms((prev) => ({
+                                  ...prev,
+                                  [item.itemId]: {
+                                    ...prev[item.itemId],
+                                    reason: "LOST",
+                                  },
+                                }))
+                              }
+                              className={cn(
+                                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                                form.reason === "LOST"
+                                  ? "bg-amber-600 text-white"
+                                  : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                              )}
+                            >
+                              Lost
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Label
+                              htmlFor={`damage-tab-qty-${item.itemId}`}
+                              className="text-xs text-amber-700"
+                            >
+                              Qty
+                            </Label>
+                            <Input
+                              id={`damage-tab-qty-${item.itemId}`}
+                              type="number"
+                              min={1}
+                              value={form.quantity}
+                              placeholder="0"
+                              onChange={(e) =>
+                                setDamageForms((prev) => ({
+                                  ...prev,
+                                  [item.itemId]: {
+                                    ...prev[item.itemId],
+                                    quantity: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-20 rounded-lg border-amber-300 bg-white text-sm"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label
+                              htmlFor={`damage-tab-remark-${item.itemId}`}
+                              className="text-xs text-amber-700"
+                            >
+                              What happened? *
+                            </Label>
+                            <Textarea
+                              id={`damage-tab-remark-${item.itemId}`}
+                              value={form.remark}
+                              onChange={(e) =>
+                                setDamageForms((prev) => ({
+                                  ...prev,
+                                  [item.itemId]: {
+                                    ...prev[item.itemId],
+                                    remark: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Describe the damage or loss…"
+                              rows={2}
+                              className="rounded-lg border-amber-300 bg-white text-sm"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setDamageForms((prev) => {
+                                  const next = { ...prev };
+                                  delete next[item.itemId];
+                                  return next;
+                                })
+                              }
+                              className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={
+                                submitDamage.isPending ||
+                                Number(form.quantity) < 1 ||
+                                form.remark.trim() === ""
+                              }
+                              onClick={() =>
+                                submitDamage.mutate([
+                                  {
+                                    itemId: item.itemId,
+                                    quantity: Number(form.quantity),
+                                    remark: form.remark,
+                                    reason: form.reason,
+                                  },
+                                ])
+                              }
+                              className="bg-amber-600 text-white hover:bg-amber-700"
+                            >
+                              {submitDamage.isPending
+                                ? "Submitting…"
+                                : form.reason === "LOST" ? "Report Loss" : "Report Damage"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDamageForms((prev) => {
+                          const next = { ...prev };
+                          delete next[item.itemId];
+                          return next;
+                        })
+                      }
+                      className="shrink-0 text-amber-400 hover:text-amber-600"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}

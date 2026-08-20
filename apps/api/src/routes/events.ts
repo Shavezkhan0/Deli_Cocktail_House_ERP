@@ -364,7 +364,50 @@ router.get("/:id", requireAuth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    return res.json(event);
+    const movements = await prisma.stockMovement.findMany({
+      where: {
+        eventId: event.id,
+        type: { in: ["EVENT_OUT", "EVENT_IN", "EVENT_DAMAGE", "EVENT_LOST"] },
+      },
+      select: { itemId: true, type: true, quantity: true },
+    });
+
+    const aggregateMap: Record<
+      string,
+      { loadedQty: number; returnedQty: number; damageReportedQty: number; lostQty: number }
+    > = {};
+
+    for (const m of movements) {
+      if (!aggregateMap[m.itemId]) {
+        aggregateMap[m.itemId] = {
+          loadedQty: 0,
+          returnedQty: 0,
+          damageReportedQty: 0,
+          lostQty: 0,
+        };
+      }
+      const agg = aggregateMap[m.itemId]!;
+      if (m.type === "EVENT_OUT") agg.loadedQty += m.quantity;
+      else if (m.type === "EVENT_IN") agg.returnedQty += m.quantity;
+      else if (m.type === "EVENT_DAMAGE") agg.damageReportedQty += m.quantity;
+      else if (m.type === "EVENT_LOST") agg.lostQty += m.quantity;
+    }
+
+    const inventory = event.inventory.map((row) => ({
+      ...row,
+      loadedQty: aggregateMap[row.itemId]?.loadedQty ?? 0,
+      returnedQty: aggregateMap[row.itemId]?.returnedQty ?? 0,
+      damageReportedQty: aggregateMap[row.itemId]?.damageReportedQty ?? 0,
+      lostQty: aggregateMap[row.itemId]?.lostQty ?? 0,
+    }));
+
+    const damageReports = await prisma.stockMovement.findMany({
+      where: { eventId: event.id, type: { in: ["EVENT_DAMAGE", "EVENT_LOST"] } },
+      orderBy: { createdAt: "desc" },
+      include: { item: { select: { id: true, sku: true, itemName: true, unit: true } } },
+    });
+
+    return res.json({ ...event, inventory, damageReports });
   } catch (error) {
     console.error("[Events] Failed to fetch event:", error);
     return res.status(500).json({ message: "Failed to fetch event" });

@@ -39,14 +39,14 @@ router.get("/events/:eventId", async (req, res) => {
     const movements = await prisma.stockMovement.findMany({
       where: {
         eventId: event.id,
-        type: { in: ["EVENT_OUT", "EVENT_IN", "EVENT_DAMAGE"] },
+        type: { in: ["EVENT_OUT", "EVENT_IN", "EVENT_DAMAGE", "EVENT_LOST"] },
       },
       select: { itemId: true, type: true, quantity: true },
     });
 
     const aggregateMap: Record<
       string,
-      { loadedQty: number; returnedQty: number; damageReportedQty: number }
+      { loadedQty: number; returnedQty: number; damageReportedQty: number; lostQty: number }
     > = {};
 
     for (const m of movements) {
@@ -55,12 +55,14 @@ router.get("/events/:eventId", async (req, res) => {
           loadedQty: 0,
           returnedQty: 0,
           damageReportedQty: 0,
+          lostQty: 0,
         };
       }
       const agg = aggregateMap[m.itemId]!;
       if (m.type === "EVENT_OUT") agg.loadedQty += m.quantity;
       else if (m.type === "EVENT_IN") agg.returnedQty += m.quantity;
       else if (m.type === "EVENT_DAMAGE") agg.damageReportedQty += m.quantity;
+      else if (m.type === "EVENT_LOST") agg.lostQty += m.quantity;
     }
 
     const inventory = event.inventory.map((row) => ({
@@ -75,6 +77,7 @@ router.get("/events/:eventId", async (req, res) => {
       loadedQty: aggregateMap[row.itemId]?.loadedQty ?? 0,
       returnedQty: aggregateMap[row.itemId]?.returnedQty ?? 0,
       damageReportedQty: aggregateMap[row.itemId]?.damageReportedQty ?? 0,
+      lostQty: aggregateMap[row.itemId]?.lostQty ?? 0,
     }));
 
     return res.json({ ...event, inventory });
@@ -84,6 +87,8 @@ router.get("/events/:eventId", async (req, res) => {
   }
 });
 
+type DamageReason = "DAMAGE" | "LOST";
+
 function parseItems(
   body: unknown,
   remarkRequired: false,
@@ -91,18 +96,18 @@ function parseItems(
 function parseItems(
   body: unknown,
   remarkRequired: true,
-): { ok: true; data: { itemId: string; quantity: number; remark: string }[] } | { ok: false; message: string };
+): { ok: true; data: { itemId: string; quantity: number; remark: string; reason: DamageReason }[] } | { ok: false; message: string };
 function parseItems(
   body: unknown,
   remarkRequired: boolean,
-): { ok: true; data: { itemId: string; quantity: number; remark: string }[] } | { ok: false; message: string } {
+): { ok: true; data: { itemId: string; quantity: number; remark: string; reason?: DamageReason }[] } | { ok: false; message: string } {
   const items = (body as Record<string, unknown> | null)?.items;
 
   if (!Array.isArray(items) || items.length === 0) {
     return { ok: false, message: "items must be a non-empty array" };
   }
 
-  const data: { itemId: string; quantity: number; remark: string }[] = [];
+  const data: { itemId: string; quantity: number; remark: string; reason?: DamageReason }[] = [];
 
   for (const entry of items) {
     const item = entry as Record<string, unknown> | null;
@@ -117,12 +122,17 @@ function parseItems(
 
     if (remarkRequired) {
       if (!isNonEmptyString(item.remark)) {
-        return { ok: false, message: "remark is required for damage reports" };
+        return { ok: false, message: "remark is required for damage/lost reports" };
+      }
+      const reason = item.reason;
+      if (reason !== "DAMAGE" && reason !== "LOST") {
+        return { ok: false, message: "reason must be 'DAMAGE' or 'LOST'" };
       }
       data.push({
         itemId: item.itemId.trim(),
         quantity,
         remark: String(item.remark).trim(),
+        reason,
       });
     } else {
       data.push({
@@ -355,7 +365,7 @@ router.post("/events/:eventId/damage", async (req, res) => {
             data: {
               itemId: entry.itemId,
               eventId,
-              type: "EVENT_DAMAGE",
+              type: entry.reason === "LOST" ? "EVENT_LOST" : "EVENT_DAMAGE",
               quantity: entry.quantity,
               remark: entry.remark,
               createdByEmployeeId: req.employee!.id,
@@ -370,7 +380,7 @@ router.post("/events/:eventId/damage", async (req, res) => {
       { timeout: 30000 },
     );
 
-    return res.json({ message: "Damage reported", movements });
+    return res.json({ message: "Report submitted", movements });
   } catch (error) {
     if (error instanceof OperationError) {
       return res.status(400).json({ message: error.message });

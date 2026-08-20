@@ -24,13 +24,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -74,6 +67,17 @@ type EventDetail = {
   inventory: EventInventoryRecord[];
   returns: EventReturnSummaryRecord[];
   crmChecklist: EventChecklistRecord[];
+  damageReports: DamageReportRecord[];
+};
+
+type DamageReportRecord = {
+  id: string;
+  itemId: string;
+  type: "EVENT_DAMAGE" | "EVENT_LOST";
+  quantity: number;
+  remark: string | null;
+  createdAt: string;
+  item: ItemSummary;
 };
 
 type EventChecklistRecord = {
@@ -96,6 +100,10 @@ type EventInventoryRecord = {
   issueQuantity: number;
   remarks: string;
   item: ItemSummary;
+  loadedQty: number;
+  returnedQty: number;
+  damageReportedQty: number;
+  lostQty: number;
 };
 
 type EventReturnSummaryRecord = {
@@ -207,10 +215,17 @@ export function EventDetail({ eventId }: { eventId: string }) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  const [selectedItemId, setSelectedItemId] = useState("");
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
   const [rowKey, setRowKey] = useState(0);
   const [newChecklistLabel, setNewChecklistLabel] = useState("");
+  const [itemTab, setItemTab] = useState<"list" | "activity" | "damage">("list");
+  const [sectionTab, setSectionTab] = useState<"checklist" | "items">(
+    "checklist",
+  );
 
   const {
     data: event,
@@ -291,26 +306,47 @@ export function EventDetail({ eventId }: { eventId: string }) {
     return map;
   }, [event]);
 
-  const selectedItem = items?.find((item) => item.id === selectedItemId);
+  function toggleItemSelection(itemId: string) {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }
 
-  function handleAddAllocation() {
-    if (!selectedItem) {
+  function handleAddSelected() {
+    if (!items) {
       return;
     }
-    setAllocations((prev) => [
-      ...prev,
-      {
-        key: `row-${rowKey}`,
-        itemId: selectedItem.id,
-        sku: selectedItem.sku,
-        itemName: selectedItem.itemName,
-        unit: selectedItem.unit,
-        availableQuantity: selectedItem.availableStock,
-        quantity: "",
-      },
-    ]);
-    setRowKey((prev) => prev + 1);
-    setSelectedItemId("");
+    const toAdd = [...selectedItemIds];
+    if (toAdd.length === 0) {
+      return;
+    }
+    for (const itemId of toAdd) {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) {
+        continue;
+      }
+      setAllocations((prev) => [
+        ...prev,
+        {
+          key: `row-${rowKey + prev.length}`,
+          itemId: item.id,
+          sku: item.sku,
+          itemName: item.itemName,
+          unit: item.unit,
+          availableQuantity: item.availableStock,
+          quantity: "",
+        },
+      ]);
+    }
+    setRowKey((prev) => prev + toAdd.length);
+    setSelectedItemIds(new Set());
+    setItemSearchQuery("");
   }
 
   function updateAllocation(
@@ -376,6 +412,21 @@ export function EventDetail({ eventId }: { eventId: string }) {
       !allocations.some((row) => row.itemId === item.id) &&
       !inventoryByItemId.has(item.id),
   );
+
+  const filteredAddableItems = useMemo(() => {
+    if (!addableItems) {
+      return [];
+    }
+    const query = itemSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return addableItems;
+    }
+    return addableItems.filter(
+      (item) =>
+        item.sku.toLowerCase().includes(query) ||
+        item.itemName.toLowerCase().includes(query),
+    );
+  }, [addableItems, itemSearchQuery]);
 
   if (isPending) {
     return (
@@ -470,6 +521,34 @@ export function EventDetail({ eventId }: { eventId: string }) {
           </CardContent>
         </Card>
 
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSectionTab("checklist")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+              sectionTab === "checklist"
+                ? "bg-foreground text-background shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+            )}
+          >
+            CRM Checklist
+          </button>
+          <button
+            type="button"
+            onClick={() => setSectionTab("items")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+              sectionTab === "items"
+                ? "bg-foreground text-background shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+            )}
+          >
+            Item List
+          </button>
+        </div>
+
+        {sectionTab === "checklist" ? (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
             <div>
@@ -575,158 +654,353 @@ export function EventDetail({ eventId }: { eventId: string }) {
             </div>
           </CardContent>
         </Card>
-
+        ) : (
+        <>
         <Card>
           <CardHeader className="border-b">
-            <CardTitle>Item List</CardTitle>
-            <CardDescription>
-              Add the items and quantities needed for this event.
-            </CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Item List</CardTitle>
+                <CardDescription>
+                  Add the items and quantities needed for this event.
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setItemTab("list")}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                    itemTab === "list"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  )}
+                >
+                  Item List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemTab("activity")}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                    itemTab === "activity"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  )}
+                >
+                  Warehouse Activity
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemTab("damage")}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                    itemTab === "damage"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                  )}
+                >
+                  Reports
+                  {event.damageReports.length > 0 ? (
+                    <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-xs font-semibold text-amber-700">
+                      {event.damageReports.length}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-4">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="flex min-w-56 flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">
-                  Add Item
-                </span>
-                <Select
-                  value={selectedItemId}
-                  onValueChange={(value) =>
-                    setSelectedItemId(typeof value === "string" ? value : "")
-                  }
-                  disabled={isCompleted || (addableItems?.length ?? 0) === 0}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {addableItems?.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.sku} · {item.itemName} ({item.availableStock}{" "}
-                        available)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleAddAllocation}
-                disabled={
-                  isCompleted || !selectedItem || (addableItems?.length ?? 0) === 0
-                }
-              >
-                <Plus />
-                Add
-              </Button>
-            </div>
+            {itemTab === "list" ? (
+              <>
+                {!isCompleted && (addableItems?.length ?? 0) > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      value={itemSearchQuery}
+                      onChange={(e) => setItemSearchQuery(e.target.value)}
+                      placeholder="Search by SKU or item name…"
+                      disabled={isCompleted}
+                    />
+                    {filteredAddableItems.length > 0 ? (
+                      <div className="max-h-64 overflow-y-auto rounded-xl border">
+                        {filteredAddableItems.map((item) => {
+                          const checked = selectedItemIds.has(item.id);
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => toggleItemSelection(item.id)}
+                              className={cn(
+                                "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
+                                checked && "bg-muted/70",
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                                  checked
+                                    ? "border-emerald-500 bg-emerald-500 text-white"
+                                    : "border-border hover:border-emerald-500/50",
+                                )}
+                              >
+                                {checked ? (
+                                  <Check className="size-3.5" />
+                                ) : null}
+                              </span>
+                              <span className="flex-1">
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {item.sku}
+                                </span>
+                                <span className="ml-2 font-medium text-foreground">
+                                  {item.itemName}
+                                </span>
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {item.availableStock.toLocaleString()} available
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {itemSearchQuery
+                          ? "No items match your search."
+                          : "No more items to add."}
+                      </p>
+                    )}
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={handleAddSelected}
+                        disabled={selectedItemIds.size === 0}
+                      >
+                        <Plus />
+                        Add Selected
+                        {selectedItemIds.size > 0
+                          ? ` (${selectedItemIds.size})`
+                          : null}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
 
-            {allocations.length > 0 ? (
-              <div className="rounded-xl border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Available Stock</TableHead>
-                      <TableHead className="text-right">Quantity Needed</TableHead>
-                      <TableHead className="w-10" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allocations.map((row) => (
-                      <TableRow key={row.key}>
-                        <TableCell className="text-sm font-medium text-foreground">
-                          {row.itemName}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {row.sku}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {row.unit}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {row.availableQuantity.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={row.quantity}
-                            onChange={(event) =>
-                              updateAllocation(row.key, {
-                                quantity: event.target.value,
-                              })
-                            }
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Quantity needed for ${row.itemName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeAllocation(row.key)}
-                            aria-label={`Remove ${row.itemName}`}
-                          >
-                            <Trash2 />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="flex justify-end gap-2 border-t border-border p-3">
-                  <Button
-                    onClick={handleAllocate}
-                    disabled={allocate.isPending || isCompleted}
-                  >
-                    <PackagePlus />
-                    {allocate.isPending ? "Saving…" : "Save Item List"}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+                {allocations.length > 0 ? (
+                  <div className="rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Unit</TableHead>
+                          <TableHead className="text-right">Available Stock</TableHead>
+                          <TableHead className="text-right">Quantity Needed</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allocations.map((row) => (
+                          <TableRow key={row.key}>
+                            <TableCell className="text-sm font-medium text-foreground">
+                              {row.itemName}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {row.sku}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {row.unit}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {row.availableQuantity.toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={row.quantity}
+                                onChange={(event) =>
+                                  updateAllocation(row.key, {
+                                    quantity: event.target.value,
+                                  })
+                                }
+                                className="h-8 text-right tabular-nums"
+                                aria-label={`Quantity needed for ${row.itemName}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeAllocation(row.key)}
+                                aria-label={`Remove ${row.itemName}`}
+                              >
+                                <Trash2 />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="flex justify-end gap-2 border-t border-border p-3">
+                      <Button
+                        onClick={handleAllocate}
+                        disabled={allocate.isPending || isCompleted}
+                      >
+                        <PackagePlus />
+                        {allocate.isPending ? "Saving…" : "Save Item List"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
 
-            {event.inventory.length > 0 ? (
-              <div className="rounded-xl border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Available Stock</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {event.inventory.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>
-                          <div className="leading-tight">
-                            <p className="text-sm font-medium text-foreground">
+                {event.inventory.length > 0 ? (
+                  <div className="rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Available Stock</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {event.inventory.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              <div className="leading-tight">
+                                <p className="text-sm font-medium text-foreground">
+                                  {record.item.itemName}
+                                </p>
+                                <p className="font-mono text-xs text-muted-foreground">
+                                  {record.item.sku}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.requiredQuantity}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.availableQuantity}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No items added to this event yet.
+                  </p>
+                )}
+              </>
+            ) : itemTab === "activity" ? (
+              <>
+                {event.inventory.length > 0 ? (
+                  <div className="rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead className="text-right">Quantity Needed</TableHead>
+                          <TableHead className="text-right">Issued</TableHead>
+                          <TableHead className="text-right">Returned</TableHead>
+                          <TableHead className="text-right">Damage Reported</TableHead>
+                          <TableHead className="text-right">Lost</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {event.inventory.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="text-sm font-medium text-foreground">
                               {record.item.itemName}
-                            </p>
-                            <p className="font-mono text-xs text-muted-foreground">
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">
                               {record.item.sku}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {record.requiredQuantity}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {record.availableQuantity}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.requiredQuantity}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.loadedQty}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.returnedQty}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.damageReportedQty}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {record.lostQty}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No items allocated to this event yet.
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No items added to this event yet.
-              </p>
+              <>
+                {event.damageReports.length > 0 ? (
+                  <div className="rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead>Remark</TableHead>
+                          <TableHead>Reported At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {event.damageReports.map((report) => (
+                          <TableRow key={report.id}>
+                            <TableCell className="text-sm font-medium text-foreground">
+                              {report.item.itemName}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {report.item.sku}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border-transparent text-xs",
+                                  report.type === "EVENT_LOST"
+                                    ? "bg-rose-500/15 text-rose-700"
+                                    : "bg-amber-500/20 text-amber-700",
+                                )}
+                              >
+                                {report.type === "EVENT_LOST" ? "Lost" : "Damage"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {report.quantity}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {report.remark || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatDate(report.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No damage has been reported for this event.
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -735,6 +1009,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
           key={`${event.id}-${event.status}`}
           event={event}
         />
+        </>
+        )}
       </div>
     </div>
   );
