@@ -57,15 +57,7 @@ function buildStats(data: DashboardMetrics): Stat[] {
       iconClass: "bg-sky-100 text-sky-700",
       barClass: "from-sky-400 to-sky-600",
     },
-    {
-      id: "totalEvents",
-      label: "Total Events",
-      value: data.totalEvents,
-      hint: "All events scheduled",
-      icon: CalendarDays,
-      iconClass: "bg-violet-100 text-violet-700",
-      barClass: "from-violet-400 to-violet-600",
-    },
+    
     {
       id: "expiringItems",
       label: "Items to be Expired",
@@ -101,6 +93,15 @@ function buildStats(data: DashboardMetrics): Stat[] {
       icon: PackageX,
       iconClass: "bg-red-100 text-red-700",
       barClass: "from-red-400 to-red-600",
+    },
+    {
+      id: "totalEvents",
+      label: "Total Events",
+      value: data.totalEvents,
+      hint: "All events scheduled",
+      icon: CalendarDays,
+      iconClass: "bg-violet-100 text-violet-700",
+      barClass: "from-violet-400 to-violet-600",
     },
     {
       id: "openEvents",

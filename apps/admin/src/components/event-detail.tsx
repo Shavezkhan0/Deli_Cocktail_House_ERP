@@ -148,10 +148,7 @@ type AllocationRow = {
   itemName: string;
   unit: string;
   availableQuantity: number;
-  required: string;
-  reserve: string;
-  issue: string;
-  remarks: string;
+  quantity: string;
 };
 
 type ReturnRow = {
@@ -309,10 +306,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
         itemName: selectedItem.itemName,
         unit: selectedItem.unit,
         availableQuantity: selectedItem.availableStock,
-        required: "",
-        reserve: "",
-        issue: "",
-        remarks: "",
+        quantity: "",
       },
     ]);
     setRowKey((prev) => prev + 1);
@@ -354,25 +348,23 @@ export function EventDetail({ eventId }: { eventId: string }) {
 
   function handleAllocate() {
     if (allocations.length === 0) {
-      toast.error("Add at least one item to allocate");
+      toast.error("Add at least one item to save");
       return;
     }
 
     const payload: AllocationInput[] = [];
     for (const row of allocations) {
-      const required = parseQuantity(row.required);
-      const reserve = parseQuantity(row.reserve);
-      const issue = parseQuantity(row.issue);
-      if (required === null || reserve === null || issue === null) {
-        toast.error(`Invalid quantity for ${row.itemName}`);
+      const qty = parseQuantity(row.quantity);
+      if (qty === null || qty <= 0) {
+        toast.error(`Enter a valid quantity for ${row.itemName}`);
         return;
       }
       payload.push({
         itemId: row.itemId,
-        requiredQuantity: required,
-        reserveQuantity: reserve,
-        issueQuantity: issue,
-        remarks: row.remarks.trim(),
+        requiredQuantity: qty,
+        reserveQuantity: qty,
+        issueQuantity: qty,
+        remarks: "",
       });
     }
 
@@ -586,10 +578,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
 
         <Card>
           <CardHeader className="border-b">
-            <CardTitle>Inventory Allocation</CardTitle>
+            <CardTitle>Item List</CardTitle>
             <CardDescription>
-              Reserve and issue stock to the event. Reserved quantity is
-              deducted from available stock.
+              Add the items and quantities needed for this event.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-4">
@@ -636,78 +627,40 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Required</TableHead>
-                      <TableHead className="text-right">Reserve</TableHead>
-                      <TableHead className="text-right">Issue</TableHead>
-                      <TableHead>Remarks</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Available Stock</TableHead>
+                      <TableHead className="text-right">Quantity Needed</TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {allocations.map((row) => (
                       <TableRow key={row.key}>
-                        <TableCell>
-                          <div className="leading-tight">
-                            <p className="text-sm font-medium text-foreground">
-                              {row.itemName}
-                            </p>
-                            <p className="font-mono text-xs text-muted-foreground">
-                              {row.sku} · {row.availableQuantity} available
-                            </p>
-                          </div>
+                        <TableCell className="text-sm font-medium text-foreground">
+                          {row.itemName}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {row.sku}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.unit}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.availableQuantity.toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Input
                             type="number"
-                            min={0}
-                            value={row.required}
+                            min={1}
+                            value={row.quantity}
                             onChange={(event) =>
                               updateAllocation(row.key, {
-                                required: event.target.value,
+                                quantity: event.target.value,
                               })
                             }
                             className="h-8 text-right tabular-nums"
-                            aria-label={`Required quantity for ${row.itemName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={row.reserve}
-                            onChange={(event) =>
-                              updateAllocation(row.key, {
-                                reserve: event.target.value,
-                              })
-                            }
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Reserve quantity for ${row.itemName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={row.issue}
-                            onChange={(event) =>
-                              updateAllocation(row.key, {
-                                issue: event.target.value,
-                              })
-                            }
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Issue quantity for ${row.itemName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={row.remarks}
-                            onChange={(event) =>
-                              updateAllocation(row.key, {
-                                remarks: event.target.value,
-                              })
-                            }
-                            className="h-8"
-                            aria-label={`Remarks for ${row.itemName}`}
+                            aria-label={`Quantity needed for ${row.itemName}`}
                           />
                         </TableCell>
                         <TableCell>
@@ -730,7 +683,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                     disabled={allocate.isPending || isCompleted}
                   >
                     <PackagePlus />
-                    {allocate.isPending ? "Saving…" : "Allocate Inventory"}
+                    {allocate.isPending ? "Saving…" : "Save Item List"}
                   </Button>
                 </div>
               </div>
@@ -742,11 +695,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Required</TableHead>
-                      <TableHead className="text-right">Available</TableHead>
-                      <TableHead className="text-right">Reserved</TableHead>
-                      <TableHead className="text-right">Issued</TableHead>
-                      <TableHead>Remarks</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Available Stock</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -768,15 +718,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         <TableCell className="text-right tabular-nums">
                           {record.availableQuantity}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {record.reserveQuantity}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {record.issueQuantity}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {record.remarks || "—"}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -784,7 +725,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No inventory allocated to this event yet.
+                No items added to this event yet.
               </p>
             )}
           </CardContent>

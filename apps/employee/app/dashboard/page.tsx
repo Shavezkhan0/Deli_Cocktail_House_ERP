@@ -6,8 +6,6 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { RoleSidebar } from "@/components/layout/role-sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { GreetingBanner } from "@/components/common/greeting-banner";
-import { QuickStatsRow } from "@/components/common/quick-stats-row";
 import { CrmDashboardPage } from "@/modules/crm/components/CrmDashboardPage";
 import { GraphicDesignerDashboardPage } from "@/modules/graphic-designer/components/GraphicDesignerDashboardPage";
 import { OperationCoordinatorDashboardPage } from "@/modules/operation-coordinator/components/OperationCoordinatorDashboardPage";
@@ -74,8 +72,6 @@ export default function DashboardPage() {
 
       <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
-          <GreetingBanner />
-          <QuickStatsRow />
           <Dashboard />
         </div>
       </main>

@@ -91,13 +91,6 @@ export function RoleSidebar() {
           <NavLink key={item.href} item={item} designation={designation} />
         ))}
 
-        <p className="px-3 pb-2 pt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Your Profile
-        </p>
-        {PROFILE_NAV.map((item) => (
-          <NavLink key={item.href} item={item} designation={designation} />
-        ))}
-
         {designationNav.length > 0 ? (
           <>
             <p className="px-3 pb-2 pt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -108,6 +101,13 @@ export function RoleSidebar() {
             ))}
           </>
         ) : null}
+
+        <p className="px-3 pb-2 pt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Your Profile
+        </p>
+        {PROFILE_NAV.map((item) => (
+          <NavLink key={item.href} item={item} designation={designation} />
+        ))}
       </nav>
 
       <div className="border-t border-border p-4">

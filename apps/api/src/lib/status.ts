@@ -1,17 +1,17 @@
 export function calculateStatus(
   currentStock: number,
-  openingStock: number,
+  maxLevel: number | null | undefined,
 ): string {
-  if (openingStock <= 0) {
+  if (!maxLevel || maxLevel <= 0) {
     return currentStock > 0 ? "In Stock" : "Action Required";
   }
 
-  const percentage = (currentStock / openingStock) * 100;
+  const percentage = (currentStock / maxLevel) * 100;
 
-  if (percentage < 20) {
+  if (percentage < 50) {
     return "Action Required";
   }
-  if (percentage < 50) {
+  if (percentage < 70) {
     return "Low";
   }
   return "In Stock";

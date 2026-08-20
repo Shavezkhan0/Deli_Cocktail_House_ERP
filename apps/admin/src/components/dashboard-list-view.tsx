@@ -33,7 +33,9 @@ type DashboardItem = {
   itemName: string;
   category: string;
   status: string;
+  unit: string;
   openingStock: number;
+  maxLevel: number | null;
   currentStock: number;
   availableStock: number;
   expiryDate?: string | null;
@@ -187,10 +189,10 @@ function ItemsTable({
           <TableHead>Item Name</TableHead>
           <TableHead>Category</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Expiry Date</TableHead>
-          <TableHead className="text-right">Opening</TableHead>
-          <TableHead className="text-right">Current</TableHead>
-          <TableHead className="text-right">Available</TableHead>
+          <TableHead>Unit</TableHead>
+          <TableHead className="text-right">Max Level</TableHead>
+          <TableHead className="text-right">Opening Stock</TableHead>
+          <TableHead className="text-right">Current Stock</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -221,17 +223,15 @@ function ItemsTable({
                   {item.status}
                 </Badge>
               </TableCell>
-              <TableCell className="tabular-nums">
-                {item.expiryDate ? formatDate(item.expiryDate) : "—"}
+              <TableCell>{item.unit}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {item.maxLevel?.toLocaleString() ?? "—"}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {item.openingStock.toLocaleString()}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {item.currentStock.toLocaleString()}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {item.availableStock.toLocaleString()}
               </TableCell>
             </TableRow>
           ))

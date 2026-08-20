@@ -508,13 +508,14 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
   }
 
   try {
-    const inventory = await prisma.$transaction(async (tx) => {
-      const records = [];
+    const inventory = await prisma.$transaction(
+      async (tx) => {
+        const records = [];
 
-      for (const allocation of parsed.data) {
-        const item = await tx.item.findUnique({
-          where: { id: allocation.itemId },
-        });
+        for (const allocation of parsed.data) {
+          const item = await tx.item.findUnique({
+            where: { id: allocation.itemId },
+          });
         if (!item) {
           throw new OperationError(
             `Item with id ${allocation.itemId} not found`,
@@ -571,7 +572,9 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
       }
 
       return records;
-    });
+      },
+      { timeout: 30000 },
+    );
 
     return res.json({ message: "Allocation completed", inventory });
   } catch (error) {
@@ -604,10 +607,11 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const summaries = [];
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const summaries = [];
 
-      for (const summary of parsed.data) {
+        for (const summary of parsed.data) {
         const item = await tx.item.findUnique({
           where: { id: summary.itemId },
         });
@@ -626,7 +630,7 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
           data: {
             currentStock: { decrement: deduction },
             availableStock: { increment: summary.returnedQuantity },
-            status: calculateStatus(nextCurrentStock, item.openingStock),
+            status: calculateStatus(nextCurrentStock, item.maxLevel),
           },
         });
 
@@ -652,7 +656,9 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
       });
 
       return { summaries, event: updatedEvent };
-    });
+      },
+      { timeout: 30000 },
+    );
 
     return res.json({ message: "Event completed", ...result });
   } catch (error) {

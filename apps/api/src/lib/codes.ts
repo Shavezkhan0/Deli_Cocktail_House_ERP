@@ -36,6 +36,17 @@ export async function nextComplainCode(): Promise<string> {
   });
 }
 
+export async function nextItemSku(): Promise<string> {
+  return nextSequentialCode("DCH", 4, async () => {
+    const items = await prisma.item.findMany({
+      where: { sku: { startsWith: "DCH-" } },
+      orderBy: { createdAt: "desc" },
+      select: { sku: true },
+    });
+    return items.map((item) => item.sku);
+  });
+}
+
 export async function createWithSequentialCode<T>(
   generateCode: () => Promise<string>,
   create: (code: string) => Promise<T>,

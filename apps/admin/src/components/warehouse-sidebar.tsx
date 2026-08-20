@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   ArrowLeft,
   CalendarDays,
   LayoutDashboard,
@@ -21,6 +22,7 @@ const navItems: NavItem[] = [
   { href: "/warehouse/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/warehouse/inventory", label: "Inventory", icon: Package },
   { href: "/warehouse/events", label: "Events", icon: CalendarDays },
+  { href: "/warehouse/stock-movements", label: "Stock Movements", icon: Activity },
 ];
 
 function isActive(pathname: string, href: string): boolean {
