@@ -18,7 +18,41 @@ router.get("/events", async (_req, res) => {
       include: eventInclude,
     });
 
-    return res.json(events);
+    const eventIds = events.map((e) => e.id);
+    const movements = await prisma.stockMovement.groupBy({
+      by: ["eventId", "itemId", "type"],
+      where: {
+        eventId: { in: eventIds },
+        type: { in: ["EVENT_OUT", "EVENT_IN"] },
+      },
+      _sum: { quantity: true },
+    });
+
+    const aggregateMap: Record<string, Record<string, { loadedQty: number; returnedQty: number }>> = {};
+    for (const m of movements) {
+      if (!m.eventId) continue;
+      if (!aggregateMap[m.eventId]) aggregateMap[m.eventId] = {};
+      if (!aggregateMap[m.eventId]![m.itemId]) {
+        aggregateMap[m.eventId]![m.itemId] = { loadedQty: 0, returnedQty: 0 };
+      }
+      const agg = aggregateMap[m.eventId]![m.itemId]!;
+      const sum = m._sum.quantity ?? 0;
+      if (m.type === "EVENT_OUT") agg.loadedQty += sum;
+      else if (m.type === "EVENT_IN") agg.returnedQty += sum;
+    }
+
+    const eventsWithSummary = events.map((event) => {
+      let pendingDispatchCount = 0;
+      let pendingReturnCount = 0;
+      for (const row of event.inventory) {
+        const agg = aggregateMap[event.id]?.[row.itemId] ?? { loadedQty: 0, returnedQty: 0 };
+        if (agg.loadedQty < row.issueQuantity) pendingDispatchCount += 1;
+        if (agg.loadedQty > agg.returnedQty) pendingReturnCount += 1;
+      }
+      return { ...event, pendingDispatchCount, pendingReturnCount };
+    });
+
+    return res.json(eventsWithSummary);
   } catch (error) {
     console.error("[Warehouse] Failed to fetch events:", error);
     return res.status(500).json({ message: "Failed to fetch events" });

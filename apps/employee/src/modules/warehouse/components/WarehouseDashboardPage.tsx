@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarDays,
   ChevronRight,
   MapPin,
-  Package,
+  PackageCheck,
+  Send,
   Users,
   Warehouse,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { StatCard, type StatCardProps } from "@/components/common/quick-stats-row";
 
 type WarehouseEventInventory = {
   id: string;
@@ -37,6 +40,8 @@ type WarehouseEvent = {
   venue: string;
   pax: number;
   status: string;
+  pendingDispatchCount: number;
+  pendingReturnCount: number;
   inventory: WarehouseEventInventory[];
 };
 
@@ -91,6 +96,25 @@ function EventStatusBadge({
 }
 
 function WarehouseEventCard({ event }: { event: WarehouseEvent }) {
+  const actionState =
+    event.pendingDispatchCount > 0
+      ? {
+          label: `${event.pendingDispatchCount} to load`,
+          pillClass: "bg-orange-100 text-orange-700",
+          dotClass: "bg-orange-500",
+        }
+      : event.pendingReturnCount > 0
+        ? {
+            label: `${event.pendingReturnCount} to return`,
+            pillClass: "bg-sky-100 text-sky-700",
+            dotClass: "bg-sky-500",
+          }
+        : {
+            label: "All clear",
+            pillClass: "bg-emerald-100 text-emerald-700",
+            dotClass: "bg-emerald-500",
+          };
+
   return (
     <Link
       href={`/modules/warehouse/events/${event.id}`}
@@ -129,12 +153,18 @@ function WarehouseEventCard({ event }: { event: WarehouseEvent }) {
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Package className="size-3.5 shrink-0 text-orange-500" />
-          <span>
-            {event.inventory.length} item{event.inventory.length !== 1 ? "s" : ""} allocated
-          </span>
-        </div>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+            actionState.pillClass,
+          )}
+        >
+          <span
+            className={cn("size-1.5 rounded-full", actionState.dotClass)}
+            aria-hidden
+          />
+          {actionState.label}
+        </span>
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-all duration-300 group-hover:border-orange-500/40 group-hover:bg-orange-100 group-hover:text-orange-700">
           <ChevronRight className="size-3.5" />
         </span>
@@ -144,6 +174,9 @@ function WarehouseEventCard({ event }: { event: WarehouseEvent }) {
 }
 
 export function WarehouseDashboardPage() {
+  const [activeFilter, setActiveFilter] = useState<"active" | "completed" | "all">("active");
+  const [statFilter, setStatFilter] = useState<"dispatch" | "return" | null>(null);
+
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-events"],
     queryFn: () => apiFetch<WarehouseEvent[]>("/api/employee/warehouse/events"),
@@ -180,38 +213,118 @@ export function WarehouseDashboardPage() {
     );
   } else {
     const events = data ?? [];
+    const toDispatchCount = events.filter((event) => event.pendingDispatchCount > 0).length;
+    const toReturnCount = events.filter((event) => event.pendingReturnCount > 0).length;
+
+    const stats: (Pick<StatCardProps, "label" | "icon" | "accent" | "onClick" | "active"> & { count: number })[] = [
+      {
+        label: "Events to Dispatch",
+        icon: Send,
+        accent: "bg-orange-100 text-orange-700",
+        count: toDispatchCount,
+        onClick: () =>
+          setStatFilter((prev) => (prev === "dispatch" ? null : "dispatch")),
+        active: statFilter === "dispatch",
+      },
+      {
+        label: "Pending Returns",
+        icon: PackageCheck,
+        accent: "bg-sky-100 text-sky-700",
+        count: toReturnCount,
+        onClick: () =>
+          setStatFilter((prev) => (prev === "return" ? null : "return")),
+        active: statFilter === "return",
+      },
+    ];
+
+    const filteredEvents = statFilter
+      ? events.filter((event) =>
+          statFilter === "dispatch"
+            ? event.pendingDispatchCount > 0
+            : event.pendingReturnCount > 0,
+        )
+      : events.filter((event) => {
+          if (activeFilter === "active") {
+            return event.status === "UPCOMING" || event.status === "ONGOING";
+          }
+          if (activeFilter === "completed") {
+            return event.status === "COMPLETED";
+          }
+          return true;
+        });
+
+    const sortedEvents = statFilter
+      ? filteredEvents
+      : [...filteredEvents].sort(
+          (a, b) =>
+            Number(b.pendingDispatchCount > 0 || b.pendingReturnCount > 0) -
+            Number(a.pendingDispatchCount > 0 || a.pendingReturnCount > 0),
+        );
 
     content = (
       <div className="flex flex-col gap-8">
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {(["active", "completed", "all"] as const).map((tab) => {
-              const isActive = tab === "active";
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-orange-600 text-white shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                  )}
-                >
-                  <Warehouse className="size-4" />
-                  {tab === "active"
-                    ? "Active Events"
-                    : tab === "completed"
-                      ? "Completed"
-                      : "All"}
-                </button>
-              );
-            })}
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {stats.map((stat) => (
+            <StatCard
+              key={stat.label}
+              label={stat.label}
+              icon={stat.icon}
+              accent={stat.accent}
+              onClick={stat.onClick}
+              active={stat.active}
+            >
+              {stat.count}
+            </StatCard>
+          ))}
+        </div>
 
-          {events.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          {statFilter ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-muted-foreground">
+                {statFilter === "dispatch"
+                  ? "Showing events that need dispatch"
+                  : "Showing events with pending returns"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setStatFilter(null)}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Clear filter
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {(["active", "completed", "all"] as const).map((tab) => {
+                const isActive = activeFilter === tab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveFilter(tab)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-orange-600 text-white shadow-sm"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                    )}
+                  >
+                    <Warehouse className="size-4" />
+                    {tab === "active"
+                      ? "Active Events"
+                      : tab === "completed"
+                        ? "Completed"
+                        : "All"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {sortedEvents.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((event) => (
+              {sortedEvents.map((event) => (
                 <WarehouseEventCard key={event.id} event={event} />
               ))}
             </div>
@@ -220,9 +333,17 @@ export function WarehouseDashboardPage() {
               <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                 <Warehouse className="size-5" />
               </span>
-              <p className="text-sm font-medium text-foreground">No events yet</p>
+              <p className="text-sm font-medium text-foreground">
+                {statFilter === "dispatch"
+                  ? "Nothing needs dispatch right now"
+                  : statFilter === "return"
+                    ? "No pending returns right now"
+                    : "No events yet"}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Events will appear here when they are scheduled.
+                {statFilter
+                  ? "Check back later or clear the filter."
+                  : "Events will appear here when they are scheduled."}
               </p>
             </div>
           )}
@@ -233,14 +354,6 @@ export function WarehouseDashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground">
-          Warehouse Overview
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Track event dispatches, inventory allocation and stock movements.
-        </p>
-      </div>
       {content}
     </div>
   );

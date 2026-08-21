@@ -24,6 +24,15 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ErrorState } from "@/components/common/states";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -226,9 +235,13 @@ export default function WarehouseEventDetailPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("out");
   const [outQuantities, setOutQuantities] = useState<Record<string, string>>({});
   const [inQuantities, setInQuantities] = useState<Record<string, string>>({});
-  const [damageForms, setDamageForms] = useState<
-    Record<string, { quantity: string; remark: string; reason: "DAMAGE" | "LOST" }>
-  >({});
+  const [reportTarget, setReportTarget] = useState<{
+    itemId: string;
+    itemName: string;
+    quantity: string;
+    remark: string;
+    reason: "DAMAGE" | "LOST";
+  } | null>(null);
 
   const { data: event, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-event", eventId],
@@ -279,7 +292,6 @@ export default function WarehouseEventDetailPage() {
       }),
     onSuccess: () => {
       toast.success("Damage reported");
-      setDamageForms({});
       queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
     },
@@ -657,10 +669,6 @@ export default function WarehouseEventDetailPage() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {event.inventory.map((item) => {
-                      const form = damageForms[item.itemId];
-                      const quantity = form?.quantity ?? "";
-                      const remark = form?.remark ?? "";
-                      const isFormOpen = !!form;
                       return (
                         <tr
                           key={item.id}
@@ -700,25 +708,25 @@ export default function WarehouseEventDetailPage() {
                             )}
                           </td>
                           <td className="px-4 py-3.5 text-right">
-                            {isFormOpen ? (
-                              <span className="text-xs font-medium text-emerald-600">
-                                Reporting below
-                              </span>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  setDamageForms((prev) => ({
-                                    ...prev,
-                                    [item.itemId]: { quantity: "", remark: "", reason: "DAMAGE" as const },
-                                  }))
-                                }
-                              >
-                                <AlertCircle className="size-3.5" />
-                                Report
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={reportTarget?.itemId === item.itemId}
+                              onClick={() =>
+                                setReportTarget({
+                                  itemId: item.itemId,
+                                  itemName: item.itemName,
+                                  quantity: "",
+                                  remark: "",
+                                  reason: "DAMAGE",
+                                })
+                              }
+                            >
+                              <AlertCircle className="size-3.5" />
+                              {reportTarget?.itemId === item.itemId
+                                ? "Reporting…"
+                                : "Report"}
+                            </Button>
                           </td>
                         </tr>
                       );
@@ -728,172 +736,125 @@ export default function WarehouseEventDetailPage() {
               </div>
             </Card>
 
-            {event.inventory.map((item) => {
-              const form = damageForms[item.itemId];
-              if (!form) return null;
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-amber-200 bg-amber-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-amber-800">
-                          Report issue for {item.itemName}
-                        </p>
-                        <div className="mt-3 flex flex-col gap-3">
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setDamageForms((prev) => ({
-                                  ...prev,
-                                  [item.itemId]: {
-                                    ...prev[item.itemId],
-                                    reason: "DAMAGE",
-                                  },
-                                }))
-                              }
-                              className={cn(
-                                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                                form.reason === "DAMAGE"
-                                  ? "bg-amber-600 text-white"
-                                  : "bg-amber-100 text-amber-700 hover:bg-amber-200",
-                              )}
-                            >
-                              Damage
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setDamageForms((prev) => ({
-                                  ...prev,
-                                  [item.itemId]: {
-                                    ...prev[item.itemId],
-                                    reason: "LOST",
-                                  },
-                                }))
-                              }
-                              className={cn(
-                                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                                form.reason === "LOST"
-                                  ? "bg-amber-600 text-white"
-                                  : "bg-amber-100 text-amber-700 hover:bg-amber-200",
-                              )}
-                            >
-                              Lost
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Label
-                              htmlFor={`damage-tab-qty-${item.itemId}`}
-                              className="text-xs text-amber-700"
-                            >
-                              Qty
-                            </Label>
-                            <Input
-                              id={`damage-tab-qty-${item.itemId}`}
-                              type="number"
-                              min={1}
-                              value={form.quantity}
-                              placeholder="0"
-                              onChange={(e) =>
-                                setDamageForms((prev) => ({
-                                  ...prev,
-                                  [item.itemId]: {
-                                    ...prev[item.itemId],
-                                    quantity: e.target.value,
-                                  },
-                                }))
-                              }
-                              className="w-20 rounded-lg border-amber-300 bg-white text-sm"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <Label
-                              htmlFor={`damage-tab-remark-${item.itemId}`}
-                              className="text-xs text-amber-700"
-                            >
-                              What happened? *
-                            </Label>
-                            <Textarea
-                              id={`damage-tab-remark-${item.itemId}`}
-                              value={form.remark}
-                              onChange={(e) =>
-                                setDamageForms((prev) => ({
-                                  ...prev,
-                                  [item.itemId]: {
-                                    ...prev[item.itemId],
-                                    remark: e.target.value,
-                                  },
-                                }))
-                              }
-                              placeholder="Describe the damage or loss…"
-                              rows={2}
-                              className="rounded-lg border-amber-300 bg-white text-sm"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                setDamageForms((prev) => {
-                                  const next = { ...prev };
-                                  delete next[item.itemId];
-                                  return next;
-                                })
-                              }
-                              className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              disabled={
-                                submitDamage.isPending ||
-                                Number(form.quantity) < 1 ||
-                                form.remark.trim() === ""
-                              }
-                              onClick={() =>
-                                submitDamage.mutate([
-                                  {
-                                    itemId: item.itemId,
-                                    quantity: Number(form.quantity),
-                                    remark: form.remark,
-                                    reason: form.reason,
-                                  },
-                                ])
-                              }
-                              className="bg-amber-600 text-white hover:bg-amber-700"
-                            >
-                              {submitDamage.isPending
-                                ? "Submitting…"
-                                : form.reason === "LOST" ? "Report Loss" : "Report Damage"}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+            <Dialog
+              open={reportTarget !== null}
+              onOpenChange={(open) => {
+                if (!open) setReportTarget(null);
+              }}
+            >
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Report {reportTarget?.itemName}</DialogTitle>
+                  <DialogDescription>
+                    Report this item as damaged or lost.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() =>
-                        setDamageForms((prev) => {
-                          const next = { ...prev };
-                          delete next[item.itemId];
-                          return next;
-                        })
+                        setReportTarget((prev) =>
+                          prev ? { ...prev, reason: "DAMAGE" } : prev,
+                        )
                       }
-                      className="shrink-0 text-amber-400 hover:text-amber-600"
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                        reportTarget?.reason === "DAMAGE"
+                          ? "bg-amber-600 text-white"
+                          : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                      )}
                     >
-                      <X className="size-4" />
+                      Damage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReportTarget((prev) =>
+                          prev ? { ...prev, reason: "LOST" } : prev,
+                        )
+                      }
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                        reportTarget?.reason === "LOST"
+                          ? "bg-amber-600 text-white"
+                          : "bg-amber-100 text-amber-700 hover:bg-amber-200",
+                      )}
+                    >
+                      Lost
                     </button>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="damage-dialog-qty" className="text-xs text-amber-700">
+                      Qty
+                    </Label>
+                    <Input
+                      id="damage-dialog-qty"
+                      type="number"
+                      min={1}
+                      value={reportTarget?.quantity ?? ""}
+                      placeholder="0"
+                      onChange={(e) =>
+                        setReportTarget((prev) =>
+                          prev ? { ...prev, quantity: e.target.value } : prev,
+                        )
+                      }
+                      className="w-20 rounded-lg border-amber-300 bg-white text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label
+                      htmlFor="damage-dialog-remark"
+                      className="text-xs text-amber-700"
+                    >
+                      What happened? *
+                    </Label>
+                    <Textarea
+                      id="damage-dialog-remark"
+                      value={reportTarget?.remark ?? ""}
+                      onChange={(e) =>
+                        setReportTarget((prev) =>
+                          prev ? { ...prev, remark: e.target.value } : prev,
+                        )
+                      }
+                      placeholder="Describe the damage or loss…"
+                      rows={2}
+                      className="rounded-lg border-amber-300 bg-white text-sm"
+                    />
+                  </div>
                 </div>
-              );
-            })}
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline" type="button">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    disabled={
+                      submitDamage.isPending ||
+                      Number(reportTarget?.quantity) < 1 ||
+                      !reportTarget?.remark.trim()
+                    }
+                    onClick={() => {
+                      if (!reportTarget) return;
+                      submitDamage.mutate(
+                        [
+                          {
+                            itemId: reportTarget.itemId,
+                            quantity: Number(reportTarget.quantity),
+                            remark: reportTarget.remark,
+                            reason: reportTarget.reason,
+                          },
+                        ],
+                        { onSuccess: () => setReportTarget(null) },
+                      );
+                    }}
+                  >
+                    {submitDamage.isPending ? "Submitting…" : "Report"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>
