@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   Hourglass,
+  Layers,
   Loader2,
   MessageSquareWarning,
   Package,
@@ -18,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import DashboardListView from "@/components/dashboard-list-view";
+import { CategoryBreakdownView } from "@/components/category-breakdown-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,7 +59,16 @@ function buildStats(data: DashboardMetrics): Stat[] {
       iconClass: "bg-sky-100 text-sky-700",
       barClass: "from-sky-400 to-sky-600",
     },
-    
+    {
+      id: "itemsByCategory",
+      label: "Item by Category",
+      value: data.totalItems,
+      hint: "Browse items grouped by category",
+      icon: Layers,
+      iconClass: "bg-teal-100 text-teal-700",
+      barClass: "from-teal-400 to-teal-600",
+    },
+
     {
       id: "expiringItems",
       label: "Items to be Expired",
@@ -287,6 +298,8 @@ export default function WarehouseDashboardPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : activeView === "itemsByCategory" ? (
+        <CategoryBreakdownView onBack={() => setActiveView(null)} />
       ) : activeView ? (
         <DashboardListView
           viewId={activeView}

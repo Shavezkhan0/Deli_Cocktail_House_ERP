@@ -27,7 +27,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-type DashboardItem = {
+export type DashboardItem = {
   id: string;
   sku: string;
   itemName: string;
@@ -169,7 +169,7 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
   );
 }
 
-function ItemsTable({
+export function ItemsTable({
   items,
   isPending,
   isError,
