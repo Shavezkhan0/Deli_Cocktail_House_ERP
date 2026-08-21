@@ -49,7 +49,7 @@ type DashboardEvent = {
   pax: number;
 };
 
-type LostItem = {
+export type LostItem = {
   id: string;
   lostQuantity: number;
   item: { itemName: string };
@@ -301,7 +301,7 @@ function EventsTable({
   );
 }
 
-function LostItemsTable({
+export function LostItemsTable({
   items,
   isPending,
   isError,
@@ -338,6 +338,64 @@ function LostItemsTable({
               <TableCell>{item.event?.eventName}</TableCell>
               <TableCell className="tabular-nums">
                 {item.lostQuantity.toLocaleString()}
+              </TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </>
+  );
+}
+
+export type DamagedItem = {
+  id: string;
+  quantity: number;
+  remark: string | null;
+  item: { itemName: string };
+  event: { eventName: string };
+};
+
+export function DamagedItemsTable({
+  items,
+  isPending,
+  isError,
+  onRetry,
+}: {
+  items: DamagedItem[];
+  isPending: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  const colSpan = 4;
+  return (
+    <>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Item Name</TableHead>
+          <TableHead>Event Name</TableHead>
+          <TableHead>Quantity</TableHead>
+          <TableHead>Remark</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isPending ? (
+          <LoadingRow colSpan={colSpan} />
+        ) : isError ? (
+          <ErrorRow colSpan={colSpan} onRetry={onRetry} />
+        ) : items.length === 0 ? (
+          <EmptyRow colSpan={colSpan} label="No damaged items found." />
+        ) : (
+          items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="font-medium text-foreground">
+                {item.item?.itemName}
+              </TableCell>
+              <TableCell>{item.event?.eventName}</TableCell>
+              <TableCell className="tabular-nums">
+                {item.quantity.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {item.remark || "—"}
               </TableCell>
             </TableRow>
           ))

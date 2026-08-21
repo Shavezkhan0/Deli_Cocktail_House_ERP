@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import DashboardListView from "@/components/dashboard-list-view";
 import { CategoryBreakdownView } from "@/components/category-breakdown-view";
+import { LostAndDamageView } from "@/components/lost-and-damage-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +36,7 @@ type DashboardMetrics = {
   actionNeededItems: number;
   openEvents: number;
   totalLostItems: number;
+  totalDamagedItems: number;
   totalComplains: number;
 };
 
@@ -98,8 +100,8 @@ function buildStats(data: DashboardMetrics): Stat[] {
     },
     {
       id: "lostItems",
-      label: "Lost Items",
-      value: data.totalLostItems,
+      label: "Lost and Damage",
+      value: data.totalLostItems + data.totalDamagedItems,
       hint: "Reported across events",
       icon: PackageX,
       iconClass: "bg-red-100 text-red-700",
@@ -300,6 +302,8 @@ export default function WarehouseDashboardPage() {
         </Card>
       ) : activeView === "itemsByCategory" ? (
         <CategoryBreakdownView onBack={() => setActiveView(null)} />
+      ) : activeView === "lostItems" ? (
+        <LostAndDamageView onBack={() => setActiveView(null)} />
       ) : activeView ? (
         <DashboardListView
           viewId={activeView}

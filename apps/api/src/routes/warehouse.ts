@@ -8,15 +8,57 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 router.get("/lost-items", requireAuth, async (_req, res) => {
   try {
-    const lostItems = await prisma.eventReturnSummary.findMany({
-      where: { lostQuantity: { gt: 0 } },
-      include: { item: true, event: true },
-    });
+    const [returnSummaryLost, stockMovementLost] = await Promise.all([
+      prisma.eventReturnSummary.findMany({
+        where: { lostQuantity: { gt: 0 } },
+        include: { item: true, event: true },
+      }),
+      prisma.stockMovement.findMany({
+        where: { type: "EVENT_LOST" },
+        include: { item: true, event: true },
+      }),
+    ]);
 
-    return res.json(lostItems);
+    const fromReturnSummary = returnSummaryLost.map((r) => ({
+      id: r.id,
+      lostQuantity: r.lostQuantity,
+      item: { itemName: r.item.itemName },
+      event: { eventName: r.event.eventName },
+    }));
+
+    const fromStockMovement = stockMovementLost.map((m) => ({
+      id: m.id,
+      lostQuantity: m.quantity,
+      item: { itemName: m.item.itemName },
+      event: { eventName: m.event?.eventName ?? "—" },
+    }));
+
+    return res.json([...fromReturnSummary, ...fromStockMovement]);
   } catch (error) {
     console.error("[Warehouse] Failed to fetch lost items:", error);
     return res.status(500).json({ message: "Failed to fetch lost items" });
+  }
+});
+
+router.get("/damaged-items", requireAuth, async (_req, res) => {
+  try {
+    const damagedItems = await prisma.stockMovement.findMany({
+      where: { type: "EVENT_DAMAGE" },
+      include: { item: true, event: true },
+    });
+
+    const result = damagedItems.map((m) => ({
+      id: m.id,
+      quantity: m.quantity,
+      remark: m.remark,
+      item: { itemName: m.item.itemName },
+      event: { eventName: m.event?.eventName ?? "—" },
+    }));
+
+    return res.json(result);
+  } catch (error) {
+    console.error("[Warehouse] Failed to fetch damaged items:", error);
+    return res.status(500).json({ message: "Failed to fetch damaged items" });
   }
 });
 
@@ -33,6 +75,8 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
       actionNeededItems,
       openEvents,
       lostItemsAggregate,
+      lostMovementsAggregate,
+      damagedItemsAggregate,
       totalComplains,
     ] = await Promise.all([
       prisma.item.count(),
@@ -61,6 +105,14 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
       prisma.eventReturnSummary.aggregate({
         _sum: { lostQuantity: true },
       }),
+      prisma.stockMovement.aggregate({
+        where: { type: "EVENT_LOST" },
+        _sum: { quantity: true },
+      }),
+      prisma.stockMovement.aggregate({
+        where: { type: "EVENT_DAMAGE" },
+        _sum: { quantity: true },
+      }),
       prisma.complain.count(),
     ]);
 
@@ -71,7 +123,10 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
       lowStockItems,
       actionNeededItems,
       openEvents,
-      totalLostItems: lostItemsAggregate._sum.lostQuantity ?? 0,
+      totalLostItems:
+        (lostItemsAggregate._sum.lostQuantity ?? 0) +
+        (lostMovementsAggregate._sum.quantity ?? 0),
+      totalDamagedItems: damagedItemsAggregate._sum.quantity ?? 0,
       totalComplains,
     });
   } catch (error) {
