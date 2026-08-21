@@ -379,7 +379,7 @@ export default function WarehouseEventDetailPage() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveTab("out")}
@@ -433,79 +433,144 @@ export default function WarehouseEventDetailPage() {
 
         {activeTab === "out" ? (
           <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3 font-semibold">SKU</th>
-                    <th className="px-4 py-3 font-semibold">Item</th>
-                    <th className="px-4 py-3 font-semibold">Unit</th>
-                    <th className="px-4 py-3 text-right font-semibold">Required</th>
-                    <th className="px-4 py-3 text-right font-semibold">Issued</th>
-                    <th className="px-4 py-3 text-right font-semibold">Loaded</th>
-                    <th className="px-4 py-3 text-right font-semibold">To Load</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {event.inventory.map((item) => {
-                    const remaining = Math.max(0, item.issueQuantity - item.loadedQty);
-                    const isComplete = remaining === 0;
-                    return (
-                      <tr
-                        key={item.id}
-                        className={cn(
-                          "transition-colors hover:bg-muted/30",
-                          isComplete && "opacity-60",
-                        )}
-                      >
-                        <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                          {item.sku}
-                        </td>
-                        <td className="px-4 py-3.5 font-medium text-foreground">
-                          {item.itemName}
-                        </td>
-                        <td className="px-4 py-3.5 text-muted-foreground">
-                          {item.unit}
-                        </td>
-                        <td className="px-4 py-3.5 text-right text-muted-foreground">
-                          {item.requiredQuantity}
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                          {item.issueQuantity}
-                        </td>
-                        <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                          {item.loadedQty}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
-                          {isComplete ? (
-                            <span className="text-xs font-medium text-emerald-600">
-                              Done
-                            </span>
-                          ) : (
-                            <Input
-                              type="number"
-                              min={0}
-                              max={remaining}
-                              value={getOutQty(item)}
-                              placeholder="0"
-                              onChange={(e) =>
-                                setOutQuantities((prev) => ({
-                                  ...prev,
-                                  [item.itemId]: clampQuantity(
-                                    e.target.value,
-                                    remaining,
-                                  ),
-                                }))
-                              }
-                              className="w-20 rounded-lg py-1.5 text-right text-xs"
-                            />
+            <div className="hidden lg:block">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-4 py-3 font-semibold">SKU</th>
+                      <th className="px-4 py-3 font-semibold">Item</th>
+                      <th className="px-4 py-3 font-semibold">Unit</th>
+                        <th className="px-4 py-3 text-right font-semibold">Required</th>
+                        <th className="px-4 py-3 text-right font-semibold">Loaded</th>
+                        <th className="px-4 py-3 text-right font-semibold">To Load</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {event.inventory.map((item) => {
+                      const remaining = Math.max(0, item.issueQuantity - item.loadedQty);
+                      const isComplete = remaining === 0;
+                      return (
+                        <tr
+                          key={item.id}
+                          className={cn(
+                            "transition-colors hover:bg-muted/30",
+                            isComplete && "opacity-60",
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        >
+                          <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                            {item.sku}
+                          </td>
+                          <td className="px-4 py-3.5 font-medium text-foreground">
+                            {item.itemName}
+                          </td>
+                          <td className="px-4 py-3.5 text-muted-foreground">
+                            {item.unit}
+                          </td>
+                          <td className="px-4 py-3.5 text-right text-muted-foreground">
+                            {item.requiredQuantity}
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                            {item.loadedQty}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            {isComplete ? (
+                              <span className="text-xs font-medium text-emerald-600">
+                                Done
+                              </span>
+                            ) : (
+                              <Input
+                                type="number"
+                                min={0}
+                                max={remaining}
+                                value={getOutQty(item)}
+                                placeholder="0"
+                                onChange={(e) =>
+                                  setOutQuantities((prev) => ({
+                                    ...prev,
+                                    [item.itemId]: clampQuantity(
+                                      e.target.value,
+                                      remaining,
+                                    ),
+                                  }))
+                                }
+                                className="w-20 rounded-lg py-1.5 text-right text-xs"
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:hidden">
+              {event.inventory.map((item) => {
+                const remaining = Math.max(0, item.issueQuantity - item.loadedQty);
+                const isComplete = remaining === 0;
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "rounded-xl border border-border p-4",
+                      isComplete && "opacity-60",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">
+                          {item.itemName}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {item.sku} · {item.unit}
+                        </p>
+                      </div>
+                      {isComplete ? (
+                        <span className="shrink-0 text-xs font-medium text-emerald-600">
+                          Done
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-2 text-center text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Required</p>
+                        <p className="font-medium text-foreground">
+                          {item.requiredQuantity}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Loaded</p>
+                        <p className="font-medium text-foreground">
+                          {item.loadedQty}
+                        </p>
+                      </div>
+                    </div>
+                    {!isComplete ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <Label className="shrink-0 text-xs text-muted-foreground">
+                          To Load
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={remaining}
+                          value={getOutQty(item)}
+                          placeholder="0"
+                          onChange={(e) =>
+                            setOutQuantities((prev) => ({
+                              ...prev,
+                              [item.itemId]: clampQuantity(e.target.value, remaining),
+                            }))
+                          }
+                          className="h-11 text-right text-base"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex items-center justify-end border-t border-border px-4 py-3">
@@ -525,95 +590,184 @@ export default function WarehouseEventDetailPage() {
         ) : activeTab === "in" ? (
           <div className="flex flex-col gap-4">
             <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 font-semibold">SKU</th>
-                      <th className="px-4 py-3 font-semibold">Item</th>
-                      <th className="px-4 py-3 font-semibold">Unit</th>
-                      <th className="px-4 py-3 text-right font-semibold">Loaded</th>
-                      <th className="px-4 py-3 text-right font-semibold">Returned</th>
-                      <th className="px-4 py-3 text-right font-semibold">Damage</th>
-                      <th className="px-4 py-3 text-right font-semibold">Lost</th>
-                      <th className="px-4 py-3 text-right font-semibold">To Return</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {event.inventory.map((item) => {
-                      const outstanding = Math.max(0, item.loadedQty - item.returnedQty);
-                      const isComplete = outstanding === 0;
-                      return (
-                        <tr
-                          key={item.id}
-                          className={cn(
-                            "transition-colors hover:bg-muted/30",
-                            isComplete && "opacity-60",
-                          )}
-                        >
-                          <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                            {item.sku}
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-foreground">
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">SKU</th>
+                        <th className="px-4 py-3 font-semibold">Item</th>
+                        <th className="px-4 py-3 font-semibold">Unit</th>
+                        <th className="px-4 py-3 text-right font-semibold">Loaded</th>
+                        <th className="px-4 py-3 text-right font-semibold">Returned</th>
+                        <th className="px-4 py-3 text-right font-semibold">Damage</th>
+                        <th className="px-4 py-3 text-right font-semibold">Lost</th>
+                        <th className="px-4 py-3 text-right font-semibold">To Return</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {event.inventory.map((item) => {
+                        const outstanding = Math.max(0, item.loadedQty - item.returnedQty);
+                        const isComplete = outstanding === 0;
+                        return (
+                          <tr
+                            key={item.id}
+                            className={cn(
+                              "transition-colors hover:bg-muted/30",
+                              isComplete && "opacity-60",
+                            )}
+                          >
+                            <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                              {item.sku}
+                            </td>
+                            <td className="px-4 py-3.5 font-medium text-foreground">
+                              {item.itemName}
+                            </td>
+                            <td className="px-4 py-3.5 text-muted-foreground">
+                              {item.unit}
+                            </td>
+                            <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                              {item.loadedQty}
+                            </td>
+                            <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                              {item.returnedQty}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              {item.damageReportedQty > 0 ? (
+                                <span className="text-xs font-medium text-amber-600">
+                                  {item.damageReportedQty}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">0</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              {item.lostQty > 0 ? (
+                                <span className="text-xs font-medium text-amber-600">
+                                  {item.lostQty}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">0</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              {isComplete ? (
+                                <span className="text-xs font-medium text-emerald-600">
+                                  Done
+                                </span>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={outstanding}
+                                  value={getInQty(item)}
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    setInQuantities((prev) => ({
+                                      ...prev,
+                                      [item.itemId]: clampQuantity(
+                                        e.target.value,
+                                        outstanding,
+                                      ),
+                                    }))
+                                  }
+                                  className="w-20 rounded-lg py-1.5 text-right text-xs"
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                {event.inventory.map((item) => {
+                  const outstanding = Math.max(0, item.loadedQty - item.returnedQty);
+                  const isComplete = outstanding === 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "rounded-xl border border-border p-4",
+                        isComplete && "opacity-60",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
                             {item.itemName}
-                          </td>
-                          <td className="px-4 py-3.5 text-muted-foreground">
-                            {item.unit}
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                            {item.loadedQty}
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                            {item.returnedQty}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            {item.damageReportedQty > 0 ? (
-                              <span className="text-xs font-medium text-amber-600">
-                                {item.damageReportedQty}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
+                          </p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {item.sku} · {item.unit}
+                          </p>
+                        </div>
+                        {isComplete ? (
+                          <span className="shrink-0 text-xs font-medium text-emerald-600">
+                            Done
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-muted/40 p-2 text-center text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Loaded</p>
+                          <p className="font-medium text-foreground">{item.loadedQty}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Returned</p>
+                          <p className="font-medium text-foreground">{item.returnedQty}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Damage</p>
+                          <p
+                            className={cn(
+                              "font-medium",
+                              item.damageReportedQty > 0
+                                ? "text-amber-600"
+                                : "text-foreground",
                             )}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            {item.lostQty > 0 ? (
-                              <span className="text-xs font-medium text-amber-600">
-                                {item.lostQty}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
+                          >
+                            {item.damageReportedQty}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Lost</p>
+                          <p
+                            className={cn(
+                              "font-medium",
+                              item.lostQty > 0 ? "text-amber-600" : "text-foreground",
                             )}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            {isComplete ? (
-                              <span className="text-xs font-medium text-emerald-600">
-                                Done
-                              </span>
-                            ) : (
-                              <Input
-                                type="number"
-                                min={0}
-                                max={outstanding}
-                                value={getInQty(item)}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  setInQuantities((prev) => ({
-                                    ...prev,
-                                    [item.itemId]: clampQuantity(
-                                      e.target.value,
-                                      outstanding,
-                                    ),
-                                  }))
-                                }
-                                className="w-20 rounded-lg py-1.5 text-right text-xs"
-                              />
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          >
+                            {item.lostQty}
+                          </p>
+                        </div>
+                      </div>
+                      {!isComplete ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          <Label className="shrink-0 text-xs text-muted-foreground">
+                            To Return
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={outstanding}
+                            value={getInQty(item)}
+                            placeholder="0"
+                            onChange={(e) =>
+                              setInQuantities((prev) => ({
+                                ...prev,
+                                [item.itemId]: clampQuantity(e.target.value, outstanding),
+                              }))
+                            }
+                            className="h-11 text-right text-base"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-end border-t border-border px-4 py-3">
@@ -653,86 +807,157 @@ export default function WarehouseEventDetailPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 font-semibold">SKU</th>
-                      <th className="px-4 py-3 font-semibold">Item</th>
-                      <th className="px-4 py-3 font-semibold">Unit</th>
-                      <th className="px-4 py-3 text-right font-semibold">Loaded</th>
-                      <th className="px-4 py-3 text-right font-semibold">Returned</th>
-                      <th className="px-4 py-3 text-right font-semibold">Damage Reported</th>
-                      <th className="px-4 py-3 text-right font-semibold">Lost</th>
-                      <th className="px-4 py-3 text-right font-semibold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {event.inventory.map((item) => {
-                      return (
-                        <tr
-                          key={item.id}
-                          className="transition-colors hover:bg-muted/30"
-                        >
-                          <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                            {item.sku}
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-foreground">
-                            {item.itemName}
-                          </td>
-                          <td className="px-4 py-3.5 text-muted-foreground">
-                            {item.unit}
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                            {item.loadedQty}
-                          </td>
-                          <td className="px-4 py-3.5 text-right font-medium text-foreground">
-                            {item.returnedQty}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            {item.damageReportedQty > 0 ? (
-                              <span className="text-xs font-medium text-amber-600">
-                                {item.damageReportedQty}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3 font-semibold">SKU</th>
+                        <th className="px-4 py-3 font-semibold">Item</th>
+                        <th className="px-4 py-3 font-semibold">Unit</th>
+                        <th className="px-4 py-3 text-right font-semibold">Loaded</th>
+                        <th className="px-4 py-3 text-right font-semibold">Returned</th>
+                        <th className="px-4 py-3 text-right font-semibold">Damage Reported</th>
+                        <th className="px-4 py-3 text-right font-semibold">Lost</th>
+                        <th className="px-4 py-3 text-right font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {event.inventory.map((item) => {
+                        return (
+                          <tr
+                            key={item.id}
+                            className="transition-colors hover:bg-muted/30"
+                          >
+                            <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                              {item.sku}
+                            </td>
+                            <td className="px-4 py-3.5 font-medium text-foreground">
+                              {item.itemName}
+                            </td>
+                            <td className="px-4 py-3.5 text-muted-foreground">
+                              {item.unit}
+                            </td>
+                            <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                              {item.loadedQty}
+                            </td>
+                            <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                              {item.returnedQty}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              {item.damageReportedQty > 0 ? (
+                                <span className="text-xs font-medium text-amber-600">
+                                  {item.damageReportedQty}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">0</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              {item.lostQty > 0 ? (
+                                <span className="text-xs font-medium text-amber-600">
+                                  {item.lostQty}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">0</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={reportTarget?.itemId === item.itemId}
+                                onClick={() =>
+                                  setReportTarget({
+                                    itemId: item.itemId,
+                                    itemName: item.itemName,
+                                    quantity: "",
+                                    remark: "",
+                                    reason: "DAMAGE",
+                                  })
+                                }
+                              >
+                                <AlertCircle className="size-3.5" />
+                                {reportTarget?.itemId === item.itemId
+                                  ? "Reporting…"
+                                  : "Report"}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:hidden">
+                {event.inventory.map((item) => {
+                  return (
+                    <div key={item.id} className="rounded-xl border border-border p-4">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">
+                          {item.itemName}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {item.sku} · {item.unit}
+                        </p>
+                      </div>
+                      <div className="mt-3 grid grid-cols-4 gap-2 rounded-lg bg-muted/40 p-2 text-center text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Loaded</p>
+                          <p className="font-medium text-foreground">{item.loadedQty}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Returned</p>
+                          <p className="font-medium text-foreground">{item.returnedQty}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Damage</p>
+                          <p
+                            className={cn(
+                              "font-medium",
+                              item.damageReportedQty > 0
+                                ? "text-amber-600"
+                                : "text-foreground",
                             )}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            {item.lostQty > 0 ? (
-                              <span className="text-xs font-medium text-amber-600">
-                                {item.lostQty}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">0</span>
+                          >
+                            {item.damageReportedQty}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Lost</p>
+                          <p
+                            className={cn(
+                              "font-medium",
+                              item.lostQty > 0 ? "text-amber-600" : "text-foreground",
                             )}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={reportTarget?.itemId === item.itemId}
-                              onClick={() =>
-                                setReportTarget({
-                                  itemId: item.itemId,
-                                  itemName: item.itemName,
-                                  quantity: "",
-                                  remark: "",
-                                  reason: "DAMAGE",
-                                })
-                              }
-                            >
-                              <AlertCircle className="size-3.5" />
-                              {reportTarget?.itemId === item.itemId
-                                ? "Reporting…"
-                                : "Report"}
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          >
+                            {item.lostQty}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-3 w-full"
+                        disabled={reportTarget?.itemId === item.itemId}
+                        onClick={() =>
+                          setReportTarget({
+                            itemId: item.itemId,
+                            itemName: item.itemName,
+                            quantity: "",
+                            remark: "",
+                            reason: "DAMAGE",
+                          })
+                        }
+                      >
+                        <AlertCircle className="size-3.5" />
+                        {reportTarget?.itemId === item.itemId ? "Reporting…" : "Report"}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
 
@@ -742,7 +967,7 @@ export default function WarehouseEventDetailPage() {
                 if (!open) setReportTarget(null);
               }}
             >
-              <DialogContent className="sm:max-w-sm">
+              <DialogContent className="sm:max-w-sm max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Report {reportTarget?.itemName}</DialogTitle>
                   <DialogDescription>

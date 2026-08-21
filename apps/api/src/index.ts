@@ -37,6 +37,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
+      "http://192.168.1.32:3000",
+      "http://192.168.1.32:3001",
 
       // Old AWS direct access
       "http://13.60.186.249:3000",

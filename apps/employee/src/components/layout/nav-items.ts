@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Star,
   Tag,
+  UserRound,
   Wallet,
   Warehouse,
   type LucideIcon,
@@ -49,4 +50,5 @@ export const BOTTOM_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Attendance", href: "/common/attendance", icon: CalendarCheck },
   { label: "My Salary", href: "/common/salary", icon: Wallet },
+  { label: "Your Profile", href: "/common/profile", icon: UserRound },
 ];
