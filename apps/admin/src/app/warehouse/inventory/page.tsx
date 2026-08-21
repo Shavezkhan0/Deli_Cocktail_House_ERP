@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createColumnHelper,
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -61,7 +62,7 @@ type InventoryItem = {
   unit: string;
   openingStock: number;
   currentStock: number;
-  availableStock: number;
+  maxLevel: number;
   status: string;
   expiryDate?: string | null;
   createdAt: string;
@@ -74,6 +75,7 @@ type CreateItemPayload = {
   category: string;
   unit: string;
   openingStock: number;
+  maxLevel: number;
   subCategory?: string;
   brand?: string;
   vendor?: string;
@@ -86,8 +88,8 @@ type UpdateItemPayload = {
   category: string;
   unit: string;
   openingStock: number;
+  maxLevel: number;
   currentStock?: number;
-  availableStock?: number;
   subCategory?: string;
   brand?: string;
   vendor?: string;
@@ -99,17 +101,20 @@ const CATEGORIES = [
   { value: "UNIFORM", label: "Uniform" },
   { value: "GLASSWARE", label: "Glassware" },
   { value: "DISPOSALS", label: "Disposals" },
-  { value: "CONSUMABLE", label: "Consumable" },
+  { value: "CONSUMABLE", label: "Consumable Item" },
+  { value: "SYRUP", label: "Syrup" },
+  { value: "BEVERAGE", label: "Beverage" },
+  { value: "ENTERTAINMENT", label: "Entertainment" },
+  { value: "CARTS", label: "Carts" },
+  { value: "OTHER", label: "Other" },
 ] as const;
 
 const SUBCATEGORIES: Record<string, { value: string; label: string }[]> = {
   SETUP: [
-    { value: "ELECTRONIC", label: "Electronic" },
-    { value: "NON_ELECTRONIC", label: "Non Electronic" },
+    { value: "ELECTRONIC", label: "Electric" },
+    { value: "NON_ELECTRONIC", label: "Non Electric" },
   ],
   CONSUMABLE: [
-    { value: "BEVERAGE", label: "Beverage" },
-    { value: "SYRUPS", label: "Syrups" },
     { value: "INGREDIENTS", label: "Ingredients" },
   ],
 };
@@ -117,6 +122,9 @@ const SUBCATEGORIES: Record<string, { value: string; label: string }[]> = {
 const UNITS = [
   { value: "PCS", label: "PCS" },
   { value: "BOX", label: "BOX" },
+  { value: "CASES", label: "Cases" },
+  { value: "SET", label: "Set" },
+  { value: "PAIR", label: "Pair" },
 ] as const;
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -125,6 +133,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   GLASSWARE: "bg-emerald-100 text-emerald-700",
   DISPOSALS: "bg-amber-100 text-amber-700",
   CONSUMABLE: "bg-rose-100 text-rose-700",
+  SYRUP: "bg-pink-100 text-pink-700",
+  BEVERAGE: "bg-cyan-100 text-cyan-700",
+  ENTERTAINMENT: "bg-purple-100 text-purple-700",
+  CARTS: "bg-orange-100 text-orange-700",
+  OTHER: "bg-slate-100 text-slate-700",
 };
 
 function categoryColor(category: string): string {
@@ -153,6 +166,8 @@ const optionalInt = z
     "Must be a non-negative whole number",
   );
 
+const EXPIRY_CATEGORIES = ["CONSUMABLE", "SYRUP", "BEVERAGE"] as const;
+
 const itemSchema = z
   .object({
     sku: z.string().trim().optional(),
@@ -160,11 +175,22 @@ const itemSchema = z
     brand: z.string().trim().optional(),
     vendor: z.string().trim().optional(),
     openingStock: nonNegativeInt,
+    maxLevel: nonNegativeInt,
     currentStock: optionalInt,
-    availableStock: optionalInt,
-    category: z.enum(["SETUP", "UNIFORM", "GLASSWARE", "DISPOSALS", "CONSUMABLE"]),
+    category: z.enum([
+      "SETUP",
+      "UNIFORM",
+      "GLASSWARE",
+      "DISPOSALS",
+      "CONSUMABLE",
+      "SYRUP",
+      "BEVERAGE",
+      "ENTERTAINMENT",
+      "CARTS",
+      "OTHER",
+    ]),
     subCategory: z.string().trim().optional(),
-    unit: z.enum(["PCS", "BOX"]),
+    unit: z.enum(["PCS", "BOX", "CASES", "SET", "PAIR"]),
     expiryDate: z.string().trim().optional(),
   })
   .superRefine((values, ctx) => {
@@ -185,8 +211,8 @@ type ItemFormValues = {
   brand: string;
   vendor: string;
   openingStock: string;
+  maxLevel: string;
   currentStock: string;
-  availableStock: string;
   category: string;
   subCategory: string;
   unit: string;
@@ -199,8 +225,8 @@ const emptyForm: ItemFormValues = {
   brand: "",
   vendor: "",
   openingStock: "",
+  maxLevel: "",
   currentStock: "",
-  availableStock: "",
   category: "",
   subCategory: "",
   unit: "",
@@ -208,7 +234,6 @@ const emptyForm: ItemFormValues = {
 };
 
 const features = tableFeatures({});
-const EMPTY_ITEMS: InventoryItem[] = [];
 
 function Qty({ value }: { value: number }) {
   return (
@@ -231,13 +256,23 @@ function ItemActions({
   item,
   onEdit,
   onDelete,
+  onAdjust,
 }: {
   item: InventoryItem;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
+  onAdjust: (item: InventoryItem) => void;
 }) {
   return (
     <div className="flex items-center justify-end gap-1">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onAdjust(item)}
+        aria-label={`Adjust stock for ${item.itemName}`}
+      >
+        <ArrowUpFromLine />
+      </Button>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -266,12 +301,15 @@ function toCreatePayload(data: z.infer<typeof itemSchema>): CreateItemPayload {
     category: data.category,
     unit: data.unit,
     openingStock: data.openingStock,
+    maxLevel: data.maxLevel,
     ...(data.subCategory?.trim()
       ? { subCategory: data.subCategory.trim() }
       : {}),
     ...(data.brand?.trim() ? { brand: data.brand.trim() } : {}),
     ...(data.vendor?.trim() ? { vendor: data.vendor.trim() } : {}),
-    ...(data.category === "CONSUMABLE" && data.expiryDate
+    ...(EXPIRY_CATEGORIES.includes(
+      data.category as (typeof EXPIRY_CATEGORIES)[number],
+    ) && data.expiryDate
       ? { expiryDate: new Date(data.expiryDate).toISOString() }
       : {}),
   };
@@ -284,16 +322,16 @@ function toUpdatePayload(data: z.infer<typeof itemSchema>): UpdateItemPayload {
     category: data.category,
     unit: data.unit,
     openingStock: data.openingStock,
+    maxLevel: data.maxLevel,
     ...(data.currentStock !== undefined ? { currentStock: data.currentStock } : {}),
-    ...(data.availableStock !== undefined
-      ? { availableStock: data.availableStock }
-      : {}),
     ...(data.subCategory?.trim()
       ? { subCategory: data.subCategory.trim() }
       : {}),
     ...(data.brand?.trim() ? { brand: data.brand.trim() } : {}),
     ...(data.vendor?.trim() ? { vendor: data.vendor.trim() } : {}),
-    ...(data.expiryDate
+    ...(EXPIRY_CATEGORIES.includes(
+      data.category as (typeof EXPIRY_CATEGORIES)[number],
+    ) && data.expiryDate
       ? { expiryDate: new Date(data.expiryDate).toISOString() }
       : {}),
   };
@@ -326,8 +364,22 @@ export default function WarehouseInventoryPage() {
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<InventoryItem | null>(null);
+  const [adjustForm, setAdjustForm] = useState({
+    type: "INCREASE",
+    quantity: "",
+    remark: "",
+  });
   const [form, setForm] = useState<ItemFormValues>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   const { data: items, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-items"],
@@ -396,6 +448,30 @@ export default function WarehouseInventoryPage() {
     },
   });
 
+  const adjustStock = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { type: string; quantity: number; remark?: string };
+    }) =>
+      apiFetch<InventoryItem>(`/api/items/${id}/stock-adjustments`, {
+        method: "POST",
+        body: payload,
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Stock adjusted");
+      invalidateQueries();
+      setAdjustTarget(null);
+      setAdjustForm({ type: "INCREASE", quantity: "", remark: "" });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   function invalidateQueries() {
     queryClient.invalidateQueries({ queryKey: ["warehouse-items"] });
     queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
@@ -425,8 +501,8 @@ export default function WarehouseInventoryPage() {
       brand: item.brand ?? "",
       vendor: item.vendor ?? "",
       openingStock: String(item.openingStock),
+      maxLevel: String(item.maxLevel ?? 0),
       currentStock: String(item.currentStock),
-      availableStock: String(item.availableStock),
       category: item.category,
       subCategory: item.subCategory ?? "",
       unit: item.unit,
@@ -435,6 +511,25 @@ export default function WarehouseInventoryPage() {
     setErrors({});
     setOpen(true);
   }
+
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return (items ?? []).filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.sku.toLowerCase().includes(query) ||
+        item.itemName.toLowerCase().includes(query);
+      const matchesCategory = !categoryFilter || item.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [items, searchQuery, categoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedItems = useMemo(
+    () => filteredItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredItems, safePage, pageSize],
+  );
 
   const columnHelper = createColumnHelper<typeof features, InventoryItem>();
 
@@ -472,12 +567,16 @@ export default function WarehouseInventoryPage() {
       header: "Unit",
       cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
     }),
-    columnHelper.accessor("currentStock", {
-      header: () => <div className="text-right">Current Stock</div>,
+    columnHelper.accessor("maxLevel", {
+      header: () => <div className="text-right">Max Level</div>,
+      cell: (info) => <Qty value={info.getValue() ?? 0} />,
+    }),
+    columnHelper.accessor("openingStock", {
+      header: () => <div className="text-right">Opening Stock</div>,
       cell: (info) => <Qty value={info.getValue()} />,
     }),
-    columnHelper.accessor("availableStock", {
-      header: () => <div className="text-right">Available Stock</div>,
+    columnHelper.accessor("currentStock", {
+      header: () => <div className="text-right">Current Stock</div>,
       cell: (info) => <Qty value={info.getValue()} />,
     }),
     columnHelper.accessor("id", {
@@ -487,6 +586,7 @@ export default function WarehouseInventoryPage() {
           item={info.row.original}
           onEdit={handleEdit}
           onDelete={setDeleteTarget}
+          onAdjust={setAdjustTarget}
         />
       ),
     }),
@@ -495,7 +595,7 @@ export default function WarehouseInventoryPage() {
   const table = useTable({
     features,
     columns,
-    data: items ?? EMPTY_ITEMS,
+    data: paginatedItems,
   });
 
   const subCategoryOptions = SUBCATEGORIES[form.category] ?? [];
@@ -529,17 +629,18 @@ export default function WarehouseInventoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Inventory
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Browse all warehouse stock, available quantities and stock levels.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Inventory
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Browse all warehouse stock, available quantities and stock levels.
+            </p>
+          </div>
 
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+          <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger render={<Button onClick={startCreate} />}>
             <Plus />
             Add Item
@@ -676,6 +777,17 @@ export default function WarehouseInventoryPage() {
                   />
                 </Field>
 
+                <Field label="Max Level" error={errors.maxLevel}>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.maxLevel}
+                    onChange={(event) => update("maxLevel", event.target.value)}
+                    placeholder="0"
+                    aria-invalid={Boolean(errors.maxLevel)}
+                  />
+                </Field>
+
                 {editingItem ? (
                   <>
                     <Field label="Current Stock" error={errors.currentStock}>
@@ -690,23 +802,12 @@ export default function WarehouseInventoryPage() {
                         aria-invalid={Boolean(errors.currentStock)}
                       />
                     </Field>
-
-                    <Field label="Available Stock" error={errors.availableStock}>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={form.availableStock}
-                        onChange={(event) =>
-                          update("availableStock", event.target.value)
-                        }
-                        placeholder="0"
-                        aria-invalid={Boolean(errors.availableStock)}
-                      />
-                    </Field>
                   </>
                 ) : null}
 
-                {form.category === "CONSUMABLE" ? (
+                {EXPIRY_CATEGORIES.includes(
+                  form.category as (typeof EXPIRY_CATEGORIES)[number],
+                ) ? (
                   <Field
                     label="Expiry Date"
                     error={errors.expiryDate}
@@ -739,6 +840,34 @@ export default function WarehouseInventoryPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search by SKU or item name…"
+            className="w-full sm:max-w-xs"
+          />
+          <Select
+            value={categoryFilter}
+            onValueChange={(value) =>
+              setCategoryFilter(typeof value === "string" ? value : "")
+            }
+          >
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Categories</SelectItem>
+              {CATEGORIES.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -794,6 +923,15 @@ export default function WarehouseInventoryPage() {
                     No items yet. Add your first inventory item.
                   </TableCell>
                 </TableRow>
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    No items match your search/filter.
+                  </TableCell>
+                </TableRow>
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
@@ -808,6 +946,54 @@ export default function WarehouseInventoryPage() {
             </TableBody>
           </Table>
         </CardContent>
+        {filteredItems.length > pageSize ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-36" size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 15, 25, 35, 50].map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size} per page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">
+                Showing {paginatedItems.length} of {filteredItems.length} items
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {safePage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       <Dialog
@@ -839,6 +1025,107 @@ export default function WarehouseInventoryPage() {
               }}
             >
               {deleteItem.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={adjustTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setAdjustTarget(null);
+            setAdjustForm({ type: "INCREASE", quantity: "", remark: "" });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adjust Stock</DialogTitle>
+            <DialogDescription>
+              {adjustTarget
+                ? `Adjust stock for ${adjustTarget.itemName} (${adjustTarget.sku})`
+                : "Adjust stock for this item."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <Field label="Type">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={adjustForm.type === "INCREASE" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() =>
+                    setAdjustForm((prev) => ({ ...prev, type: "INCREASE" }))
+                  }
+                >
+                  <ArrowUpFromLine className="mr-1 size-4" />
+                  Increase
+                </Button>
+                <Button
+                  type="button"
+                  variant={adjustForm.type === "DECREASE" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() =>
+                    setAdjustForm((prev) => ({ ...prev, type: "DECREASE" }))
+                  }
+                >
+                  <ArrowDownToLine className="mr-1 size-4" />
+                  Decrease
+                </Button>
+              </div>
+            </Field>
+            <Field label="Quantity">
+              <Input
+                type="number"
+                min={1}
+                value={adjustForm.quantity}
+                onChange={(e) =>
+                  setAdjustForm((prev) => ({ ...prev, quantity: e.target.value }))
+                }
+                placeholder="Enter quantity"
+              />
+            </Field>
+            <Field label="Remark (optional)">
+              <Textarea
+                value={adjustForm.remark}
+                onChange={(e) =>
+                  setAdjustForm((prev) => ({ ...prev, remark: e.target.value }))
+                }
+                placeholder="Reason for adjustment"
+                rows={3}
+              />
+            </Field>
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              disabled={
+                adjustStock.isPending ||
+                !adjustForm.quantity ||
+                Number(adjustForm.quantity) < 1
+              }
+              onClick={() => {
+                if (!adjustTarget) return;
+                const qty = Number(adjustForm.quantity);
+                if (!qty || qty < 1) return;
+                adjustStock.mutate({
+                  id: adjustTarget.id,
+                  payload: {
+                    type: adjustForm.type,
+                    quantity: qty,
+                    ...(adjustForm.remark.trim()
+                      ? { remark: adjustForm.remark.trim() }
+                      : {}),
+                  },
+                });
+              }}
+            >
+              {adjustStock.isPending ? "Saving…" : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>

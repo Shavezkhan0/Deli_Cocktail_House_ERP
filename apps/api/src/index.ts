@@ -25,7 +25,9 @@ import expenseRouter from "./routes/employee-portal/expense";
 import vendorRouter from "./routes/employee-portal/vendor";
 import travelRouter from "./routes/employee-portal/travel";
 import salesRouter from "./routes/employee-portal/sales";
+import employeeWarehouseRouter from "./routes/employee-portal/warehouse";
 import { employeeAuth } from "./middleware/employeeAuth";
+import { requireDesignation } from "./middleware/requireDesignation";
 import { markAbsentEmployeesForToday } from "./services/mark-absent-job";
 
 const app = express();
@@ -35,6 +37,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
+      "http://192.168.1.32:3000",
+      "http://192.168.1.32:3001",
 
       // Old AWS direct access
       "http://13.60.186.249:3000",
@@ -82,6 +86,12 @@ app.use("/api/employee", [
   travelRouter,
   salesRouter,
 ]);
+app.use(
+  "/api/employee/warehouse",
+  employeeAuth,
+  requireDesignation("WAREHOUSE_MANAGER"),
+  employeeWarehouseRouter,
+);
 
 app.get("/", (_req, res) => {
   res.send("Backend is Running");

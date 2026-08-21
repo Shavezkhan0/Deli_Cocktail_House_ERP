@@ -364,7 +364,50 @@ router.get("/:id", requireAuth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    return res.json(event);
+    const movements = await prisma.stockMovement.findMany({
+      where: {
+        eventId: event.id,
+        type: { in: ["EVENT_OUT", "EVENT_IN", "EVENT_DAMAGE", "EVENT_LOST"] },
+      },
+      select: { itemId: true, type: true, quantity: true },
+    });
+
+    const aggregateMap: Record<
+      string,
+      { loadedQty: number; returnedQty: number; damageReportedQty: number; lostQty: number }
+    > = {};
+
+    for (const m of movements) {
+      if (!aggregateMap[m.itemId]) {
+        aggregateMap[m.itemId] = {
+          loadedQty: 0,
+          returnedQty: 0,
+          damageReportedQty: 0,
+          lostQty: 0,
+        };
+      }
+      const agg = aggregateMap[m.itemId]!;
+      if (m.type === "EVENT_OUT") agg.loadedQty += m.quantity;
+      else if (m.type === "EVENT_IN") agg.returnedQty += m.quantity;
+      else if (m.type === "EVENT_DAMAGE") agg.damageReportedQty += m.quantity;
+      else if (m.type === "EVENT_LOST") agg.lostQty += m.quantity;
+    }
+
+    const inventory = event.inventory.map((row) => ({
+      ...row,
+      loadedQty: aggregateMap[row.itemId]?.loadedQty ?? 0,
+      returnedQty: aggregateMap[row.itemId]?.returnedQty ?? 0,
+      damageReportedQty: aggregateMap[row.itemId]?.damageReportedQty ?? 0,
+      lostQty: aggregateMap[row.itemId]?.lostQty ?? 0,
+    }));
+
+    const damageReports = await prisma.stockMovement.findMany({
+      where: { eventId: event.id, type: { in: ["EVENT_DAMAGE", "EVENT_LOST"] } },
+      orderBy: { createdAt: "desc" },
+      include: { item: { select: { id: true, sku: true, itemName: true, unit: true } } },
+    });
+
+    return res.json({ ...event, inventory, damageReports });
   } catch (error) {
     console.error("[Events] Failed to fetch event:", error);
     return res.status(500).json({ message: "Failed to fetch event" });
@@ -508,37 +551,19 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
   }
 
   try {
-    const inventory = await prisma.$transaction(async (tx) => {
-      const records = [];
+    const inventory = await prisma.$transaction(
+      async (tx) => {
+        const records = [];
 
-      for (const allocation of parsed.data) {
-        const item = await tx.item.findUnique({
-          where: { id: allocation.itemId },
-        });
+        for (const allocation of parsed.data) {
+          const item = await tx.item.findUnique({
+            where: { id: allocation.itemId },
+          });
         if (!item) {
           throw new OperationError(
             `Item with id ${allocation.itemId} not found`,
           );
         }
-
-        const decremented = await tx.item.updateMany({
-          where: {
-            id: allocation.itemId,
-            availableStock: { gte: allocation.reserveQuantity },
-          },
-          data: {
-            availableStock: { decrement: allocation.reserveQuantity },
-          },
-        });
-        if (decremented.count === 0) {
-          throw new OperationError(
-            `Insufficient available stock for item ${item.itemName} (SKU ${item.sku})`,
-          );
-        }
-
-        const updatedItem = await tx.item.findUniqueOrThrow({
-          where: { id: allocation.itemId },
-        });
 
         const existing = await tx.eventInventory.findFirst({
           where: { eventId: id, itemId: allocation.itemId },
@@ -551,7 +576,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
                 requiredQuantity: allocation.requiredQuantity,
                 reserveQuantity: allocation.reserveQuantity,
                 issueQuantity: allocation.issueQuantity,
-                availableQuantity: updatedItem.availableStock,
                 remarks: allocation.remarks,
               },
             })
@@ -562,7 +586,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
                 requiredQuantity: allocation.requiredQuantity,
                 reserveQuantity: allocation.reserveQuantity,
                 issueQuantity: allocation.issueQuantity,
-                availableQuantity: updatedItem.availableStock,
                 remarks: allocation.remarks,
               },
             });
@@ -571,7 +594,9 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
       }
 
       return records;
-    });
+      },
+      { timeout: 30000 },
+    );
 
     return res.json({ message: "Allocation completed", inventory });
   } catch (error) {
@@ -604,10 +629,11 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const summaries = [];
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const summaries = [];
 
-      for (const summary of parsed.data) {
+        for (const summary of parsed.data) {
         const item = await tx.item.findUnique({
           where: { id: summary.itemId },
         });
@@ -619,14 +645,14 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
           summary.lostQuantity +
           summary.damagedQuantity +
           summary.consumedQuantity;
-        const nextCurrentStock = item.currentStock - deduction;
+        const nextCurrentStock =
+          item.currentStock + summary.returnedQuantity - deduction;
 
         await tx.item.update({
           where: { id: summary.itemId },
           data: {
-            currentStock: { decrement: deduction },
-            availableStock: { increment: summary.returnedQuantity },
-            status: calculateStatus(nextCurrentStock, item.openingStock),
+            currentStock: { increment: summary.returnedQuantity - deduction },
+            status: calculateStatus(nextCurrentStock, item.maxLevel),
           },
         });
 
@@ -652,7 +678,9 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
       });
 
       return { summaries, event: updatedEvent };
-    });
+      },
+      { timeout: 30000 },
+    );
 
     return res.json({ message: "Event completed", ...result });
   } catch (error) {

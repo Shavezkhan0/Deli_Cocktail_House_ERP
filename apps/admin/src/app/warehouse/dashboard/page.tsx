@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   Hourglass,
+  Layers,
   Loader2,
   MessageSquareWarning,
   Package,
@@ -18,6 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import DashboardListView from "@/components/dashboard-list-view";
+import { CategoryBreakdownView } from "@/components/category-breakdown-view";
+import { LostAndDamageView } from "@/components/lost-and-damage-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +36,7 @@ type DashboardMetrics = {
   actionNeededItems: number;
   openEvents: number;
   totalLostItems: number;
+  totalDamagedItems: number;
   totalComplains: number;
 };
 
@@ -46,6 +50,8 @@ type Stat = {
   barClass: string;
 };
 
+const TOTAL_ITEM_CATEGORIES = 10; // SETUP, UNIFORM, GLASSWARE, DISPOSALS, CONSUMABLE, SYRUP, BEVERAGE, ENTERTAINMENT, CARTS, OTHER — keep this in sync with the CATEGORIES list in apps/admin/src/components/category-breakdown-view.tsx if categories are ever added/removed there.
+
 function buildStats(data: DashboardMetrics): Stat[] {
   return [
     {
@@ -58,14 +64,15 @@ function buildStats(data: DashboardMetrics): Stat[] {
       barClass: "from-sky-400 to-sky-600",
     },
     {
-      id: "totalEvents",
-      label: "Total Events",
-      value: data.totalEvents,
-      hint: "All events scheduled",
-      icon: CalendarDays,
-      iconClass: "bg-violet-100 text-violet-700",
-      barClass: "from-violet-400 to-violet-600",
+      id: "itemsByCategory",
+      label: "Item by Category",
+      value: TOTAL_ITEM_CATEGORIES,
+      hint: `${TOTAL_ITEM_CATEGORIES} categories to browse`,
+      icon: Layers,
+      iconClass: "bg-teal-100 text-teal-700",
+      barClass: "from-teal-400 to-teal-600",
     },
+
     {
       id: "expiringItems",
       label: "Items to be Expired",
@@ -95,12 +102,21 @@ function buildStats(data: DashboardMetrics): Stat[] {
     },
     {
       id: "lostItems",
-      label: "Lost Items",
-      value: data.totalLostItems,
+      label: "Lost and Damage",
+      value: data.totalLostItems + data.totalDamagedItems,
       hint: "Reported across events",
       icon: PackageX,
       iconClass: "bg-red-100 text-red-700",
       barClass: "from-red-400 to-red-600",
+    },
+    {
+      id: "totalEvents",
+      label: "Total Events",
+      value: data.totalEvents,
+      hint: "All events scheduled",
+      icon: CalendarDays,
+      iconClass: "bg-violet-100 text-violet-700",
+      barClass: "from-violet-400 to-violet-600",
     },
     {
       id: "openEvents",
@@ -286,6 +302,10 @@ export default function WarehouseDashboardPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : activeView === "itemsByCategory" ? (
+        <CategoryBreakdownView onBack={() => setActiveView(null)} />
+      ) : activeView === "lostItems" ? (
+        <LostAndDamageView onBack={() => setActiveView(null)} />
       ) : activeView ? (
         <DashboardListView
           viewId={activeView}

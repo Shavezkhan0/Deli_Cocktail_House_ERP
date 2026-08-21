@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PackagePlus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { DEFAULT_CRM_CHECKLIST } from "@repo/database/src/default-checklist";
@@ -17,6 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -91,6 +100,35 @@ type EmployeeOption = {
 type EventStatus = "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED";
 
 type CrmChecklistSection = { title: string; items: string[] };
+
+type ItemSummary = {
+  id: string;
+  sku: string;
+  itemName: string;
+  unit: string;
+  category: string;
+};
+
+type InventoryItem = ItemSummary & {
+  currentStock: number;
+};
+
+type AllocationRow = {
+  key: string;
+  itemId: string;
+  sku: string;
+  itemName: string;
+  unit: string;
+  quantity: string;
+};
+
+type AllocationInput = {
+  itemId: string;
+  requiredQuantity: number;
+  reserveQuantity: number;
+  issueQuantity: number;
+  remarks: string;
+};
 
 const EVENT_STATUS_OPTIONS: { value: EventStatus; label: string }[] = [
   { value: "UPCOMING", label: "Upcoming" },
@@ -257,6 +295,17 @@ function Field({
   );
 }
 
+function parseQuantity(value: string): number | null {
+  if (value.trim() === "") {
+    return 0;
+  }
+  if (!/^\d+$/.test(value.trim())) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 export function EventForm({ initialData }: { initialData?: EventFormData }) {
   const isEditing = initialData !== undefined;
   const { token } = useAuth();
@@ -267,11 +316,113 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
     initialData ? toFormValues(initialData) : emptyForm,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sectionTab, setSectionTab] = useState<"checklist" | "items">(
+    "checklist",
+  );
+  const [itemTab, setItemTab] = useState<"list">("list");
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [allocations, setAllocations] = useState<AllocationRow[]>([]);
+  const [rowKey, setRowKey] = useState(0);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["office-employees"],
     queryFn: () => apiFetch<EmployeeOption[]>("/api/office/employees", { token }),
   });
+
+  const { data: items } = useQuery({
+    queryKey: ["warehouse-items"],
+    queryFn: () => apiFetch<InventoryItem[]>("/api/items", { token }),
+  });
+
+  const inventoryByItemId = useMemo(() => {
+    const map = new Map<string, { itemId: string }>();
+    return map;
+  }, []);
+
+  const selectedItem = items?.find((item) => item.id === selectedItemId);
+
+  const addableItems = items?.filter(
+    (item) =>
+      !allocations.some((row) => row.itemId === item.id) &&
+      !inventoryByItemId.has(item.id),
+  );
+
+  function handleAddAllocation() {
+    if (!selectedItem) {
+      return;
+    }
+    setAllocations((prev) => [
+      ...prev,
+      {
+        key: `row-${rowKey}`,
+        itemId: selectedItem.id,
+        sku: selectedItem.sku,
+        itemName: selectedItem.itemName,
+        unit: selectedItem.unit,
+        quantity: "",
+      },
+    ]);
+    setRowKey((prev) => prev + 1);
+    setSelectedItemId("");
+  }
+
+  function updateAllocation(
+    key: string,
+    patch: Partial<AllocationRow>,
+  ) {
+    setAllocations((prev) =>
+      prev.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function removeAllocation(key: string) {
+    setAllocations((prev) => prev.filter((row) => row.key !== key));
+  }
+
+  const allocate = useMutation({
+    mutationFn: (payload: AllocationInput[]) =>
+      apiFetch(`/api/events/${initialData?.id}/allocate`, {
+        method: "POST",
+        body: payload,
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Item list saved");
+      setAllocations([]);
+      queryClient.invalidateQueries({ queryKey: ["warehouse-event", initialData?.id] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-items"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  function handleAllocate() {
+    if (allocations.length === 0) {
+      toast.error("Add at least one item to save");
+      return;
+    }
+
+    const payload: AllocationInput[] = [];
+    for (const row of allocations) {
+      const qty = parseQuantity(row.quantity);
+      if (qty === null || qty <= 0) {
+        toast.error(`Enter a valid quantity for ${row.itemName}`);
+        return;
+      }
+      payload.push({
+        itemId: row.itemId,
+        requiredQuantity: qty,
+        reserveQuantity: qty,
+        issueQuantity: qty,
+        remarks: "",
+      });
+    }
+
+    allocate.mutate(payload);
+  }
 
   const saveEvent = useMutation({
     mutationFn: (payload: CreateEventPayload) =>
@@ -702,102 +853,260 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
             </Field>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">
-                CRM Checklist
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {form.crmChecklist.reduce(
-                  (total, section) => total + section.items.length,
-                  0,
-                )}{" "}
-                tasks
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Tasks the assigned CRM will tick off while preparing this event,
-              divided into sections.
-            </p>
-            <div className="flex flex-col gap-4">
-              {form.crmChecklist.map((section, sectionIndex) => (
-                <div
-                  key={sectionIndex}
-                  className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/20 p-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={section.title}
-                      onChange={(event) =>
-                        updateSectionTitle(sectionIndex, event.target.value)
-                      }
-                      placeholder="Section title"
-                      aria-label={`CRM checklist section ${sectionIndex + 1} title`}
-                      className="font-medium"
-                    />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSectionTab("checklist")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                sectionTab === "checklist"
+                  ? "bg-foreground text-background shadow-sm"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+              )}
+            >
+              CRM Checklist
+            </button>
+            <button
+              type="button"
+              onClick={() => setSectionTab("items")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                sectionTab === "items"
+                  ? "bg-foreground text-background shadow-sm"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+              )}
+            >
+              Item List
+            </button>
+          </div>
+
+          {sectionTab === "checklist" ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">
+                  CRM Checklist
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {form.crmChecklist.reduce(
+                    (total, section) => total + section.items.length,
+                    0,
+                  )}{" "}
+                  tasks
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tasks the assigned CRM will tick off while preparing this event,
+                divided into sections.
+              </p>
+              <div className="flex flex-col gap-4">
+                {form.crmChecklist.map((section, sectionIndex) => (
+                  <div
+                    key={sectionIndex}
+                    className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/20 p-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={section.title}
+                        onChange={(event) =>
+                          updateSectionTitle(sectionIndex, event.target.value)
+                        }
+                        placeholder="Section title"
+                        aria-label={`CRM checklist section ${sectionIndex + 1} title`}
+                        className="font-medium"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeSection(sectionIndex)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {section.items.map((item, itemIndex) => (
+                        <div
+                          key={itemIndex}
+                          className="flex items-center gap-2"
+                        >
+                          <Input
+                            value={item}
+                            onChange={(event) =>
+                              updateSectionItem(
+                                sectionIndex,
+                                itemIndex,
+                                event.target.value,
+                              )
+                            }
+                            placeholder={`Task ${itemIndex + 1}`}
+                            aria-label={`Task ${itemIndex + 1} in ${section.title}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              removeSectionItem(sectionIndex, itemIndex)
+                            }
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeSection(sectionIndex)}
+                      className="self-start"
+                      onClick={() => addSectionItem(sectionIndex)}
                     >
-                      Remove
+                      Add Task
                     </Button>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {section.items.map((item, itemIndex) => (
-                      <div
-                        key={itemIndex}
-                        className="flex items-center gap-2"
-                      >
-                        <Input
-                          value={item}
-                          onChange={(event) =>
-                            updateSectionItem(
-                              sectionIndex,
-                              itemIndex,
-                              event.target.value,
-                            )
-                          }
-                          placeholder={`Task ${itemIndex + 1}`}
-                          aria-label={`Task ${itemIndex + 1} in ${section.title}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            removeSectionItem(sectionIndex, itemIndex)
-                          }
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="self-start"
+                onClick={addSection}
+              >
+                Add Section
+              </Button>
+            </div>
+          ) : isEditing ? (
+            <Card>
+              <CardHeader className="border-b">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>Item List</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Add the items and quantities needed for this event.
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4 pt-4">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex min-w-56 flex-1 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-foreground">
+                      Add Item
+                    </span>
+                    <Select
+                      value={selectedItemId}
+                      onValueChange={(value) =>
+                        setSelectedItemId(typeof value === "string" ? value : "")
+                      }
+                      disabled={(addableItems?.length ?? 0) === 0}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select an item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {addableItems?.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.sku} · {item.itemName} (
+                            {item.currentStock.toLocaleString()} in stock)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="self-start"
-                    onClick={() => addSectionItem(sectionIndex)}
+                    onClick={handleAddAllocation}
+                    disabled={!selectedItem || (addableItems?.length ?? 0) === 0}
                   >
-                    Add Task
+                    <Plus />
+                    Add
                   </Button>
                 </div>
-              ))}
+
+                {allocations.length > 0 ? (
+                  <div className="rounded-xl border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Unit</TableHead>
+                          <TableHead className="text-right">
+                            Quantity Needed
+                          </TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allocations.map((row) => (
+                          <TableRow key={row.key}>
+                            <TableCell className="text-sm font-medium text-foreground">
+                              {row.itemName}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {row.sku}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {row.unit}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={row.quantity}
+                                onChange={(event) =>
+                                  updateAllocation(row.key, {
+                                    quantity: event.target.value,
+                                  })
+                                }
+                                className="h-8 text-right tabular-nums"
+                                aria-label={`Quantity needed for ${row.itemName}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeAllocation(row.key)}
+                                aria-label={`Remove ${row.itemName}`}
+                              >
+                                <Trash2 />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="flex justify-end gap-2 border-t border-border p-3">
+                      <Button
+                        type="button"
+                        onClick={handleAllocate}
+                        disabled={allocate.isPending}
+                      >
+                        <PackagePlus />
+                        {allocate.isPending ? "Saving…" : "Save Item List"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No items added yet. Select an item above to add it to this
+                    event.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Save the event first to manage the item list.
+              </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="self-start"
-              onClick={addSection}
-            >
-              Add Section
-            </Button>
-          </div>
+          )}
 
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button

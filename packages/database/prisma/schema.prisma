@@ -51,11 +51,19 @@ enum ItemCategory {
   GLASSWARE
   DISPOSALS
   CONSUMABLE
+  SYRUP
+  BEVERAGE
+  ENTERTAINMENT
+  CARTS
+  OTHER
 }
 
 enum ItemUnit {
   PCS
   BOX
+  CASES
+  SET
+  PAIR
 }
 
 enum EventStatus {
@@ -145,13 +153,14 @@ model Item {
   unit           ItemUnit
   openingStock   Int
   currentStock   Int
-  availableStock Int
+  maxLevel       Int?
   status         String
   expiryDate     DateTime?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   inventory      EventInventory[]
   returns        EventReturnSummary[]
+  stockMovements StockMovement[]
 }
 
 model Event {
@@ -191,6 +200,7 @@ model Event {
   inventory    EventInventory[]
   returns      EventReturnSummary[]
   crmChecklist EventCrmChecklistItem[]
+  stockMovements StockMovement[]
 }
 
 model EventCrmChecklistItem {
@@ -212,7 +222,6 @@ model EventInventory {
   eventId           String
   itemId            String
   requiredQuantity  Int
-  availableQuantity Int
   reserveQuantity   Int
   issueQuantity     Int
   remarks           String
@@ -232,6 +241,29 @@ model EventReturnSummary {
   remarks          String
   event            Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   item             Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+enum StockMovementType {
+  EVENT_OUT
+  EVENT_IN
+  EVENT_DAMAGE
+  EVENT_LOST
+  ADMIN_INCREASE
+  ADMIN_DECREASE
+}
+
+model StockMovement {
+  id                  String            @id @default(cuid())
+  itemId              String
+  item                Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  eventId             String?
+  event               Event?            @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  type                StockMovementType
+  quantity            Int
+  remark              String?
+  createdByAdminId    String?
+  createdByEmployeeId String?
+  createdAt           DateTime          @default(now())
 }
 
 model Complain {

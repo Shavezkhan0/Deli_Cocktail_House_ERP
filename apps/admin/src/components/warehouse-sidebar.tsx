@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   ArrowLeft,
   CalendarDays,
   LayoutDashboard,
@@ -10,10 +11,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 type NavItem = {
   href: string;
   label: string;
+  shortLabel?: string;
   icon: LucideIcon;
 };
 
@@ -21,6 +24,7 @@ const navItems: NavItem[] = [
   { href: "/warehouse/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/warehouse/inventory", label: "Inventory", icon: Package },
   { href: "/warehouse/events", label: "Events", icon: CalendarDays },
+  { href: "/warehouse/stock-movements", label: "Stock Movements", shortLabel: "Stock", icon: Activity },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -56,9 +60,7 @@ export function WarehouseSidebar() {
 
   return (
     <>
-      <nav className="flex items-center gap-1 overflow-x-auto rounded-xl border bg-card p-1 lg:hidden">
-        {navItems.map((item) => renderLink(item, true))}
-      </nav>
+      <BottomTabBar items={navItems} />
 
       <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm lg:flex">
         <nav className="mt-3 flex flex-col gap-1">

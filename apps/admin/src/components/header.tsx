@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronDown,
   GlassWater,
+  LayoutGrid,
   LogOut,
   Warehouse,
   type LucideIcon,
@@ -73,6 +74,10 @@ export function Header() {
     };
   const BrandIcon = branding.icon;
 
+  function handleBackToModules() {
+    router.push("/dashboard");
+  }
+
   function handleLogout() {
     logout();
     router.push("/login");
@@ -126,6 +131,10 @@ export function Header() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
           </DropdownMenuGroup>
+          <DropdownMenuItem onClick={handleBackToModules}>
+            <LayoutGrid />
+            Back to Modules
+          </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onClick={handleLogout}>
             <LogOut />
             Log out

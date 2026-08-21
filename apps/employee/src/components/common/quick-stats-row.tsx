@@ -37,40 +37,57 @@ type LeaveBalanceRecord = {
   availableLeaveBalance: number;
 };
 
-type StatCardProps = {
+export type StatCardProps = {
   label: string;
   icon: LucideIcon;
   accent: string;
   children: React.ReactNode;
   sub?: React.ReactNode;
   loading?: boolean;
+  onClick?: () => void;
+  active?: boolean;
 };
 
-function StatCard({ label, icon: Icon, accent, children, sub, loading }: StatCardProps) {
-  return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-      <div className="flex items-center gap-4">
-        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", accent)}>
-          <Icon className="size-5" />
-        </span>
+export function StatCard({ label, icon: Icon, accent, children, sub, loading, onClick, active }: StatCardProps) {
+  const classes = cn(
+    "rounded-xl bg-card p-5 ring-1 ring-foreground/10",
+    active && "ring-2 ring-primary/40",
+    onClick &&
+      "w-full cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-2 hover:ring-primary/20",
+  );
 
-        {loading ? (
-          <div className="w-full space-y-2">
-            <div className="h-3 w-24 animate-pulse rounded-md bg-muted" />
-            <div className="h-4 w-16 animate-pulse rounded-md bg-muted" />
-          </div>
-        ) : (
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {label}
-            </p>
-            <div className="mt-1 text-lg font-semibold text-foreground">{children}</div>
-            {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
-          </div>
-        )}
-      </div>
+  const body = (
+    <div className="flex items-center gap-4">
+      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", accent)}>
+        <Icon className="size-5" />
+      </span>
+
+      {loading ? (
+        <div className="w-full space-y-2">
+          <div className="h-3 w-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-4 w-16 animate-pulse rounded-md bg-muted" />
+        </div>
+      ) : (
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <div className="mt-1 text-lg font-semibold text-foreground">{children}</div>
+          {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
+        </div>
+      )}
     </div>
   );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={classes}>
+        {body}
+      </button>
+    );
+  }
+
+  return <div className={classes}>{body}</div>;
 }
 
 const currency = new Intl.NumberFormat("en-IN", {

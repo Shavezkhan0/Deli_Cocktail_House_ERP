@@ -16,7 +16,6 @@ export type CrmEventInventory = {
   eventId: string;
   itemId: string;
   requiredQuantity: number;
-  availableQuantity: number;
   reserveQuantity: number;
   issueQuantity: number;
   remarks: string;

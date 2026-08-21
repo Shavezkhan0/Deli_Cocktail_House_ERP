@@ -65,8 +65,10 @@ async function getEffectiveLocation(designation: string) {
 const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
 
 const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 30 }; // at or before → PRESENT (Full)
-const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 45 }; // at or before → SHORT_LEAVE
+const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
 const CHECK_IN_HALF_CUTOFF = { hour: 14, minute: 30 }; // at or before → HALF_DAY, after → blocked
+
+const CHECKOUT_MID_AFTERNOON = { hour: 15, minute: 0 }; // 3pm
 
 function toMinutes(date: Date): number {
   const { hour, minute } = istHourMinute(date);
@@ -87,13 +89,29 @@ function statusForCheckIn(now: Date): AttendanceStatus | null {
   return null;
 }
 
-function statusForCheckOut(current: AttendanceStatus, now: Date): AttendanceStatus {
-  const minutes = toMinutes(now);
-  const shiftEndMinutes = timeToMinutes(SHIFT_END.hour, SHIFT_END.minute);
-  if (minutes < shiftEndMinutes && current === AttendanceStatus.PRESENT) {
+function statusForCheckOut(checkInTime: Date, now: Date): AttendanceStatus {
+  const checkInMinutes = toMinutes(checkInTime);
+  const checkOutMinutes = toMinutes(now);
+  const midAfternoon = timeToMinutes(CHECKOUT_MID_AFTERNOON.hour, CHECKOUT_MID_AFTERNOON.minute);
+  const shiftEnd = timeToMinutes(SHIFT_END.hour, SHIFT_END.minute);
+  const fullCutoff = timeToMinutes(CHECK_IN_FULL_CUTOFF.hour, CHECK_IN_FULL_CUTOFF.minute);
+  const shortCutoff = timeToMinutes(CHECK_IN_SHORT_CUTOFF.hour, CHECK_IN_SHORT_CUTOFF.minute);
+
+  if (checkInMinutes <= fullCutoff) {
+    // checked in on time or early
+    if (checkOutMinutes < midAfternoon) return AttendanceStatus.HALF_DAY;
+    if (checkOutMinutes < shiftEnd) return AttendanceStatus.SHORT_LEAVE;
+    return AttendanceStatus.PRESENT;
+  }
+
+  if (checkInMinutes <= shortCutoff) {
+    // checked in a bit late — capped, can never become PRESENT
+    if (checkOutMinutes < shiftEnd) return AttendanceStatus.HALF_DAY;
     return AttendanceStatus.SHORT_LEAVE;
   }
-  return current;
+
+  // checked in later still (up to the 2:30pm block) — always HALF_DAY, checkout time doesn't matter for this bracket
+  return AttendanceStatus.HALF_DAY;
 }
 
 function distanceMeters(
@@ -285,7 +303,7 @@ router.post("/attendance/mark", async (req, res) => {
       return res.status(409).json({ message: "Already checked out for today" });
     }
 
-    const status = statusForCheckOut(existing.status, now);
+    const status = statusForCheckOut(existing.checkInTime!, now);
     const attendance = await prisma.attendance.update({
       where: { id: existing.id },
       data: {

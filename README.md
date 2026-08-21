@@ -44,6 +44,30 @@ Built with a pnpm + Turborepo workspace containing a Next.js admin dashboard, an
 - **Event Detail** — per-event inventory allocation (required/available/reserved/issued quantities) and return summaries (issued/returned/damaged/lost/consumed).
 - **Complaints** — log and track complaints against events.
 
+### Accounting (Finance)
+
+- **Dashboard** — financial overview: revenue, expenses, profit margins, and cash flow summaries.
+- **Invoices** — create, send, and track invoices with line items, tax calculations, and payment status.
+- **Expenses** — log and categorize business expenses with receipts and approval workflows.
+- **Payments** — track incoming and outgoing payments, reconcile with invoices and expenses.
+- **Financial Reports** — generate profit & loss statements, balance sheets, and cash flow reports.
+
+### Sales (CRM)
+
+- **Customers** — manage customer profiles with contact details, purchase history, and preferences.
+- **Orders** — create and track orders from placement to fulfillment with status updates.
+- **Sales Pipeline** — visual pipeline to track leads through stages (Lead → Proposal → Negotiation → Closed Won/Lost).
+- **Quotes** — generate and send quotes to customers, convert approved quotes to orders.
+- **Sales Analytics** — sales performance dashboards, revenue trends, and customer insights.
+
+### Inventory Management
+
+- **Stock Management** — real-time stock levels with automatic updates on orders and returns.
+- **Categories & Units** — organize items by categories with support for multiple unit types.
+- **Stock Alerts** — configurable low-stock alerts and reorder point notifications.
+- **Stock Movements** — track all stock in/out movements with timestamps and reasons.
+- **Stocktake** — physical inventory count reconciliation with variance reporting.
+
 ## Getting Started
 
 ### Prerequisites

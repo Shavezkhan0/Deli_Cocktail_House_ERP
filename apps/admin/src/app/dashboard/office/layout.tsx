@@ -15,9 +15,9 @@ export default function OfficeLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="-m-6 flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-0 sm:p-2 lg:flex-row">
+    <div className="-m-6 flex min-h-[calc(100vh-4rem)] flex-col gap-4 p-4 lg:p-2 lg:flex-row">
       <ModuleSidebar basePath="/dashboard/office" tabs={tabs} />
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1 pb-24 lg:pb-0">{children}</div>
     </div>
   );
 }
