@@ -73,7 +73,7 @@ export function RoleSidebar() {
   }
 
   return (
-    <aside className="no-print sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col rounded-2xl border border-border bg-card p-3 shadow-sm lg:flex">
+    <aside className="no-print sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col rounded-2xl border border-border bg-card p-3 shadow-sm lg:ml-6 lg:flex">
       <div className="-mx-3 -mt-3 flex items-center gap-3 border-b border-border px-6 py-5">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <GlassWater className="size-5" />
