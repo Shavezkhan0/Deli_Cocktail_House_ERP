@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export type ModuleTab = {
   href: string;
@@ -52,11 +53,9 @@ export function ModuleSidebar({
 
   return (
     <>
-      <nav className="flex items-center gap-1 overflow-x-auto rounded-xl border bg-card p-1 md:hidden">
-        {tabs.map((tab) => renderLink(tab, true))}
-      </nav>
+      <BottomTabBar items={tabs} />
 
-      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm md:flex">
+      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm lg:flex">
         <nav className="mt-3 flex flex-col gap-1">
           {tabs.map((tab) => renderLink(tab))}
         </nav>
