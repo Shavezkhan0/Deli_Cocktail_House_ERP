@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -26,6 +26,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ItemsTable, type DashboardItem } from "@/components/dashboard-list-view";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -83,6 +90,12 @@ export function CategoryBreakdownView({
 }) {
   const { token } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
 
   const { data: items, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-items"],
@@ -108,6 +121,14 @@ export function CategoryBreakdownView({
       ),
     enabled: selectedCategory !== null,
   });
+
+  const categoryItems = categoryItemsQuery.data ?? [];
+  const totalPages = Math.max(1, Math.ceil(categoryItems.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedCategoryItems = useMemo(
+    () => categoryItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [categoryItems, safePage, pageSize],
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,17 +163,68 @@ export function CategoryBreakdownView({
 
           <Card>
             <CardHeader className="border-b">
-              <CardTitle>{selected.label}</CardTitle>
+              <CardTitle>
+                {selected.label} ({counts[selected.value] ?? 0} items)
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <Table>
                 <ItemsTable
-                  items={categoryItemsQuery.data ?? []}
+                  items={paginatedCategoryItems}
                   isPending={categoryItemsQuery.isPending}
                   isError={categoryItemsQuery.isError}
                   onRetry={() => categoryItemsQuery.refetch()}
                 />
               </Table>
+              {categoryItems.length > pageSize ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(value) => {
+                        setPageSize(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-36" size="sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 15, 25, 35, 50].map((size) => (
+                          <SelectItem key={size} value={String(size)}>
+                            {size} per page
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs text-muted-foreground">
+                      Showing {paginatedCategoryItems.length} of{" "}
+                      {categoryItems.length} items
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

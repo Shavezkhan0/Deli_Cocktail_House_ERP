@@ -565,25 +565,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
           );
         }
 
-        const decremented = await tx.item.updateMany({
-          where: {
-            id: allocation.itemId,
-            availableStock: { gte: allocation.reserveQuantity },
-          },
-          data: {
-            availableStock: { decrement: allocation.reserveQuantity },
-          },
-        });
-        if (decremented.count === 0) {
-          throw new OperationError(
-            `Insufficient available stock for item ${item.itemName} (SKU ${item.sku})`,
-          );
-        }
-
-        const updatedItem = await tx.item.findUniqueOrThrow({
-          where: { id: allocation.itemId },
-        });
-
         const existing = await tx.eventInventory.findFirst({
           where: { eventId: id, itemId: allocation.itemId },
         });
@@ -595,7 +576,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
                 requiredQuantity: allocation.requiredQuantity,
                 reserveQuantity: allocation.reserveQuantity,
                 issueQuantity: allocation.issueQuantity,
-                availableQuantity: updatedItem.availableStock,
                 remarks: allocation.remarks,
               },
             })
@@ -606,7 +586,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
                 requiredQuantity: allocation.requiredQuantity,
                 reserveQuantity: allocation.reserveQuantity,
                 issueQuantity: allocation.issueQuantity,
-                availableQuantity: updatedItem.availableStock,
                 remarks: allocation.remarks,
               },
             });
@@ -666,13 +645,13 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
           summary.lostQuantity +
           summary.damagedQuantity +
           summary.consumedQuantity;
-        const nextCurrentStock = item.currentStock - deduction;
+        const nextCurrentStock =
+          item.currentStock + summary.returnedQuantity - deduction;
 
         await tx.item.update({
           where: { id: summary.itemId },
           data: {
-            currentStock: { decrement: deduction },
-            availableStock: { increment: summary.returnedQuantity },
+            currentStock: { increment: summary.returnedQuantity - deduction },
             status: calculateStatus(nextCurrentStock, item.maxLevel),
           },
         });

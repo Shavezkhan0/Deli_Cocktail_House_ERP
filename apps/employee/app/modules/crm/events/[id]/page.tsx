@@ -389,7 +389,6 @@ export default function CrmEventDetailPage() {
                           ["Required", entry.requiredQuantity],
                           ["Reserved", entry.reserveQuantity],
                           ["Issued", entry.issueQuantity],
-                          ["Available", entry.availableQuantity],
                         ].map(([label, value]) => (
                           <div
                             key={label as string}

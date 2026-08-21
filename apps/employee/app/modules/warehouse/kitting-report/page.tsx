@@ -100,9 +100,6 @@ export default function KittingReportPage() {
                         Required
                       </th>
                       <th className="px-4 py-3 text-right font-semibold">
-                        Available
-                      </th>
-                      <th className="px-4 py-3 text-right font-semibold">
                         Issued
                       </th>
                     </tr>
@@ -131,9 +128,6 @@ export default function KittingReportPage() {
                         <td className="px-4 py-3.5 text-right font-semibold text-white/90">
                           {entry.requiredQuantity}
                         </td>
-                        <td className="px-4 py-3.5 text-right text-white/60">
-                          {entry.availableQuantity}
-                        </td>
                         <td className="px-4 py-3.5 text-right font-semibold text-white/90">
                           {entry.issueQuantity}
                         </td>
@@ -148,12 +142,6 @@ export default function KittingReportPage() {
                       <td className="px-4 py-3.5 text-right">
                         {selected.inventory.reduce(
                           (sum, entry) => sum + entry.requiredQuantity,
-                          0,
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-white/60">
-                        {selected.inventory.reduce(
-                          (sum, entry) => sum + entry.availableQuantity,
                           0,
                         )}
                       </td>

@@ -50,6 +50,8 @@ type Stat = {
   barClass: string;
 };
 
+const TOTAL_ITEM_CATEGORIES = 10; // SETUP, UNIFORM, GLASSWARE, DISPOSALS, CONSUMABLE, SYRUP, BEVERAGE, ENTERTAINMENT, CARTS, OTHER — keep this in sync with the CATEGORIES list in apps/admin/src/components/category-breakdown-view.tsx if categories are ever added/removed there.
+
 function buildStats(data: DashboardMetrics): Stat[] {
   return [
     {
@@ -64,8 +66,8 @@ function buildStats(data: DashboardMetrics): Stat[] {
     {
       id: "itemsByCategory",
       label: "Item by Category",
-      value: data.totalItems,
-      hint: "Browse items grouped by category",
+      value: TOTAL_ITEM_CATEGORIES,
+      hint: `${TOTAL_ITEM_CATEGORIES} categories to browse`,
       icon: Layers,
       iconClass: "bg-teal-100 text-teal-700",
       barClass: "from-teal-400 to-teal-600",

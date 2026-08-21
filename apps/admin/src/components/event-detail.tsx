@@ -95,7 +95,6 @@ type EventInventoryRecord = {
   id: string;
   itemId: string;
   requiredQuantity: number;
-  availableQuantity: number;
   reserveQuantity: number;
   issueQuantity: number;
   remarks: string;
@@ -128,7 +127,6 @@ type ItemSummary = {
 
 type InventoryItem = ItemSummary & {
   currentStock: number;
-  availableStock: number;
 };
 
 type AllocationInput = {
@@ -155,7 +153,6 @@ type AllocationRow = {
   sku: string;
   itemName: string;
   unit: string;
-  availableQuantity: number;
   quantity: string;
 };
 
@@ -339,7 +336,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
           sku: item.sku,
           itemName: item.itemName,
           unit: item.unit,
-          availableQuantity: item.availableStock,
           quantity: "",
         },
       ]);
@@ -756,7 +752,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                                 </span>
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {item.availableStock.toLocaleString()} available
+                                {item.currentStock.toLocaleString()} in stock
                               </span>
                             </button>
                           );
@@ -793,7 +789,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
                           <TableHead>Item</TableHead>
                           <TableHead>SKU</TableHead>
                           <TableHead>Unit</TableHead>
-                          <TableHead className="text-right">Available Stock</TableHead>
                           <TableHead className="text-right">Quantity Needed</TableHead>
                           <TableHead className="w-10" />
                         </TableRow>
@@ -809,9 +804,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {row.unit}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {row.availableQuantity.toLocaleString()}
                             </TableCell>
                             <TableCell>
                               <Input
@@ -860,7 +852,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         <TableRow>
                           <TableHead>Item</TableHead>
                           <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Available Stock</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -878,9 +869,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
                               {record.requiredQuantity}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {record.availableQuantity}
                             </TableCell>
                           </TableRow>
                         ))}

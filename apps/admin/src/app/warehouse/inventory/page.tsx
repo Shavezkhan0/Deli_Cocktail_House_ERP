@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createColumnHelper,
@@ -62,7 +62,6 @@ type InventoryItem = {
   unit: string;
   openingStock: number;
   currentStock: number;
-  availableStock: number;
   maxLevel: number;
   status: string;
   expiryDate?: string | null;
@@ -91,7 +90,6 @@ type UpdateItemPayload = {
   openingStock: number;
   maxLevel: number;
   currentStock?: number;
-  availableStock?: number;
   subCategory?: string;
   brand?: string;
   vendor?: string;
@@ -179,7 +177,6 @@ const itemSchema = z
     openingStock: nonNegativeInt,
     maxLevel: nonNegativeInt,
     currentStock: optionalInt,
-    availableStock: optionalInt,
     category: z.enum([
       "SETUP",
       "UNIFORM",
@@ -216,7 +213,6 @@ type ItemFormValues = {
   openingStock: string;
   maxLevel: string;
   currentStock: string;
-  availableStock: string;
   category: string;
   subCategory: string;
   unit: string;
@@ -231,7 +227,6 @@ const emptyForm: ItemFormValues = {
   openingStock: "",
   maxLevel: "",
   currentStock: "",
-  availableStock: "",
   category: "",
   subCategory: "",
   unit: "",
@@ -239,7 +234,6 @@ const emptyForm: ItemFormValues = {
 };
 
 const features = tableFeatures({});
-const EMPTY_ITEMS: InventoryItem[] = [];
 
 function Qty({ value }: { value: number }) {
   return (
@@ -330,9 +324,6 @@ function toUpdatePayload(data: z.infer<typeof itemSchema>): UpdateItemPayload {
     openingStock: data.openingStock,
     maxLevel: data.maxLevel,
     ...(data.currentStock !== undefined ? { currentStock: data.currentStock } : {}),
-    ...(data.availableStock !== undefined
-      ? { availableStock: data.availableStock }
-      : {}),
     ...(data.subCategory?.trim()
       ? { subCategory: data.subCategory.trim() }
       : {}),
@@ -381,6 +372,14 @@ export default function WarehouseInventoryPage() {
   });
   const [form, setForm] = useState<ItemFormValues>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   const { data: items, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-items"],
@@ -504,7 +503,6 @@ export default function WarehouseInventoryPage() {
       openingStock: String(item.openingStock),
       maxLevel: String(item.maxLevel ?? 0),
       currentStock: String(item.currentStock),
-      availableStock: String(item.availableStock),
       category: item.category,
       subCategory: item.subCategory ?? "",
       unit: item.unit,
@@ -513,6 +511,25 @@ export default function WarehouseInventoryPage() {
     setErrors({});
     setOpen(true);
   }
+
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return (items ?? []).filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.sku.toLowerCase().includes(query) ||
+        item.itemName.toLowerCase().includes(query);
+      const matchesCategory = !categoryFilter || item.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [items, searchQuery, categoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedItems = useMemo(
+    () => filteredItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredItems, safePage, pageSize],
+  );
 
   const columnHelper = createColumnHelper<typeof features, InventoryItem>();
 
@@ -578,7 +595,7 @@ export default function WarehouseInventoryPage() {
   const table = useTable({
     features,
     columns,
-    data: items ?? EMPTY_ITEMS,
+    data: paginatedItems,
   });
 
   const subCategoryOptions = SUBCATEGORIES[form.category] ?? [];
@@ -612,17 +629,18 @@ export default function WarehouseInventoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Inventory
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Browse all warehouse stock, available quantities and stock levels.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Inventory
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Browse all warehouse stock, available quantities and stock levels.
+            </p>
+          </div>
 
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+          <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger render={<Button onClick={startCreate} />}>
             <Plus />
             Add Item
@@ -784,19 +802,6 @@ export default function WarehouseInventoryPage() {
                         aria-invalid={Boolean(errors.currentStock)}
                       />
                     </Field>
-
-                    <Field label="Available Stock" error={errors.availableStock}>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={form.availableStock}
-                        onChange={(event) =>
-                          update("availableStock", event.target.value)
-                        }
-                        placeholder="0"
-                        aria-invalid={Boolean(errors.availableStock)}
-                      />
-                    </Field>
                   </>
                 ) : null}
 
@@ -835,6 +840,34 @@ export default function WarehouseInventoryPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search by SKU or item name…"
+            className="w-full sm:max-w-xs"
+          />
+          <Select
+            value={categoryFilter}
+            onValueChange={(value) =>
+              setCategoryFilter(typeof value === "string" ? value : "")
+            }
+          >
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Categories</SelectItem>
+              {CATEGORIES.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -890,6 +923,15 @@ export default function WarehouseInventoryPage() {
                     No items yet. Add your first inventory item.
                   </TableCell>
                 </TableRow>
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    No items match your search/filter.
+                  </TableCell>
+                </TableRow>
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id}>
@@ -904,6 +946,54 @@ export default function WarehouseInventoryPage() {
             </TableBody>
           </Table>
         </CardContent>
+        {filteredItems.length > pageSize ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-36" size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 15, 25, 35, 50].map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size} per page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">
+                Showing {paginatedItems.length} of {filteredItems.length} items
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {safePage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       <Dialog

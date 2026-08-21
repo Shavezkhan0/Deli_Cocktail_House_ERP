@@ -313,7 +313,6 @@ router.post("/events/:eventId/in", async (req, res) => {
             where: { id: entry.itemId },
             data: {
               currentStock: { increment: entry.quantity },
-              availableStock: { increment: entry.quantity },
             },
           });
 

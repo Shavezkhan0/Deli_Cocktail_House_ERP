@@ -111,7 +111,6 @@ type ItemSummary = {
 
 type InventoryItem = ItemSummary & {
   currentStock: number;
-  availableStock: number;
 };
 
 type AllocationRow = {
@@ -120,7 +119,6 @@ type AllocationRow = {
   sku: string;
   itemName: string;
   unit: string;
-  availableQuantity: number;
   quantity: string;
 };
 
@@ -361,7 +359,6 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
         sku: selectedItem.sku,
         itemName: selectedItem.itemName,
         unit: selectedItem.unit,
-        availableQuantity: selectedItem.availableStock,
         quantity: "",
       },
     ]);
@@ -1011,8 +1008,8 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                       <SelectContent>
                         {addableItems?.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
-                            {item.sku} · {item.itemName} ({item.availableStock}{" "}
-                            available)
+                            {item.sku} · {item.itemName} (
+                            {item.currentStock.toLocaleString()} in stock)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1038,9 +1035,6 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                           <TableHead>SKU</TableHead>
                           <TableHead>Unit</TableHead>
                           <TableHead className="text-right">
-                            Available Stock
-                          </TableHead>
-                          <TableHead className="text-right">
                             Quantity Needed
                           </TableHead>
                           <TableHead className="w-10" />
@@ -1057,9 +1051,6 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {row.unit}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {row.availableQuantity.toLocaleString()}
                             </TableCell>
                             <TableCell>
                               <Input

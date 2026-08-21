@@ -193,7 +193,6 @@ router.post("/", requireAuth, async (req, res) => {
     unit: unit as ItemUnit,
     openingStock: openingStockValue,
     currentStock: openingStockValue,
-    availableStock: openingStockValue,
     ...(maxLevelValue !== null ? { maxLevel: maxLevelValue } : {}),
     status: calculateStatus(openingStockValue, maxLevelValue),
     ...(isNonEmptyString(subCategory) ? { subCategory: subCategory.trim() } : {}),
@@ -267,7 +266,7 @@ router.put("/:id", requireAuth, async (req, res) => {
     data.unit = body.unit as ItemUnit;
   }
 
-  for (const field of ["openingStock", "currentStock", "availableStock", "maxLevel"] as const) {
+  for (const field of ["openingStock", "currentStock", "maxLevel"] as const) {
     if (body[field] !== undefined) {
       const value = toNonNegativeInt(body[field], -1);
       if (value === null || value < 0) {
@@ -384,7 +383,6 @@ router.post("/:id/stock-adjustments", requireAuth, async (req, res) => {
               where: { id },
               data: {
                 currentStock: { increment: quantityValue },
-                availableStock: { increment: quantityValue },
               },
             })
           : await tx.item.update({ where: { id }, data: {} });

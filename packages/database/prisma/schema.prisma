@@ -153,7 +153,6 @@ model Item {
   unit           ItemUnit
   openingStock   Int
   currentStock   Int
-  availableStock Int
   maxLevel       Int?
   status         String
   expiryDate     DateTime?
@@ -223,7 +222,6 @@ model EventInventory {
   eventId           String
   itemId            String
   requiredQuantity  Int
-  availableQuantity Int
   reserveQuantity   Int
   issueQuantity     Int
   remarks           String

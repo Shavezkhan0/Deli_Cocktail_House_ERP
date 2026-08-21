@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -17,6 +17,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DamagedItemsTable,
   LostItemsTable,
@@ -71,6 +78,12 @@ export function LostAndDamageView({
 }) {
   const { token } = useAuth();
   const [selectedKind, setSelectedKind] = useState<Kind | null>(null);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedKind]);
 
   const lostQuery = useQuery({
     queryKey: ["warehouse-lost-items"],
@@ -112,6 +125,18 @@ export function LostAndDamageView({
 
   const selected =
     KIND_CARDS.find((card) => card.kind === selectedKind) ?? null;
+
+  const activeItems: (LostItem | DamagedItem)[] =
+    selectedKind === "lost"
+      ? (lostQuery.data ?? [])
+      : (damagedQuery.data ?? []);
+
+  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedActiveItems = useMemo(
+    () => activeItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [activeItems, safePage, pageSize],
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,7 +181,7 @@ export function LostAndDamageView({
               {selected.kind === "lost" ? (
                 <Table>
                   <LostItemsTable
-                    items={lostQuery.data ?? []}
+                    items={paginatedActiveItems as LostItem[]}
                     isPending={lostQuery.isPending}
                     isError={lostQuery.isError}
                     onRetry={() => lostQuery.refetch()}
@@ -165,13 +190,62 @@ export function LostAndDamageView({
               ) : (
                 <Table>
                   <DamagedItemsTable
-                    items={damagedQuery.data ?? []}
+                    items={paginatedActiveItems as DamagedItem[]}
                     isPending={damagedQuery.isPending}
                     isError={damagedQuery.isError}
                     onRetry={() => damagedQuery.refetch()}
                   />
                 </Table>
               )}
+              {activeItems.length > pageSize ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                  <div className="flex items-center gap-3">
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(value) => {
+                        setPageSize(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-36" size="sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 15, 25, 35, 50].map((size) => (
+                          <SelectItem key={size} value={String(size)}>
+                            {size} per page
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs text-muted-foreground">
+                      Showing {paginatedActiveItems.length} of{" "}
+                      {activeItems.length} items
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

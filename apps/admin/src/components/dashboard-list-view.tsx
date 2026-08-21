@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, PackageX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -484,12 +493,44 @@ export default function DashboardListView({
 }) {
   const { token } = useAuth();
   const config = VIEW_CONFIG[viewId];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["dashboard-list", viewId],
     queryFn: () => apiFetch<unknown[]>(config?.url ?? "", { token }),
     enabled: Boolean(config),
   });
+
+  const itemsData = (data ?? []) as DashboardItem[];
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(itemsData.map((item) => item.category))).sort(),
+    [itemsData],
+  );
+  const filteredItemsData = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return itemsData.filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.sku.toLowerCase().includes(query) ||
+        item.itemName.toLowerCase().includes(query);
+      const matchesCategory = !categoryFilter || item.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [itemsData, searchQuery, categoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItemsData.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedItemsData = useMemo(
+    () => filteredItemsData.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredItemsData, safePage, pageSize],
+  );
 
   if (!config) {
     return (
@@ -534,10 +575,38 @@ export default function DashboardListView({
           <CardTitle>{config.title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
+          {config.kind === "items" ? (
+            <div className="flex flex-wrap items-center gap-3 pb-4">
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by SKU or item name…"
+                className="w-full sm:max-w-xs"
+              />
+              <Select
+                value={categoryFilter}
+                onValueChange={(value) =>
+                  setCategoryFilter(typeof value === "string" ? value : "")
+                }
+              >
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  {categoryOptions.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <Table>
             {config.kind === "items" ? (
               <ItemsTable
-                items={(data ?? []) as DashboardItem[]}
+                items={paginatedItemsData}
                 isPending={isPending}
                 isError={isError}
                 onRetry={refetch}
@@ -565,6 +634,54 @@ export default function DashboardListView({
               />
             )}
           </Table>
+          {config.kind === "items" && filteredItemsData.length > pageSize ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <div className="flex items-center gap-3">
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-36" size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 15, 25, 35, 50].map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size} per page
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">
+                  Showing {paginatedItemsData.length} of {filteredItemsData.length} items
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
