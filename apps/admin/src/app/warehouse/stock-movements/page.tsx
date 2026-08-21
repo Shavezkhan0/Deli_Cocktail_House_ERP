@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   createColumnHelper,
@@ -15,6 +15,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -38,7 +46,7 @@ type StockMovement = {
   createdByAdminId: string | null;
   createdByEmployeeId: string | null;
   createdAt: string;
-  item: { sku: string; itemName: string };
+  item: { sku: string; itemName: string; category: string };
   event: { eventName: string } | null;
 };
 
@@ -81,6 +89,14 @@ function TypeBadge({ type }: { type: string }) {
 export default function StockMovementsPage() {
   const { token } = useAuth();
   const [typeFilter, setTypeFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter, categoryFilter]);
 
   const typeParam =
     typeFilter === "ADMIN"
@@ -100,12 +116,36 @@ export default function StockMovementsPage() {
     },
   });
 
-  const filteredMovements =
+  const typeFiltered =
     typeFilter === "ADMIN"
       ? (movements ?? []).filter(
           (m) => m.type === "ADMIN_INCREASE" || m.type === "ADMIN_DECREASE",
         )
       : movements ?? EMPTY_MOVEMENTS;
+
+  const categoryOptions = useMemo(
+    () => Array.from(new Set((movements ?? []).map((m) => m.item.category))).sort(),
+    [movements],
+  );
+
+  const search = searchQuery.trim().toLowerCase();
+  const filteredMovements = (search || categoryFilter)
+    ? typeFiltered.filter(
+        (m) =>
+          (!search ||
+            m.item.itemName.toLowerCase().includes(search) ||
+            m.item.sku.toLowerCase().includes(search) ||
+            (m.event?.eventName ?? "").toLowerCase().includes(search)) &&
+          (!categoryFilter || m.item.category === categoryFilter),
+      )
+    : typeFiltered;
+
+  const totalPages = Math.max(1, Math.ceil(filteredMovements.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedMovements = useMemo(
+    () => filteredMovements.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredMovements, safePage, pageSize],
+  );
 
   const columnHelper = createColumnHelper<typeof features, StockMovement>();
 
@@ -168,7 +208,7 @@ export default function StockMovementsPage() {
   const table = useTable({
     features,
     columns,
-    data: filteredMovements,
+    data: paginatedMovements,
   });
 
   return (
@@ -186,17 +226,43 @@ export default function StockMovementsPage() {
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle>All Movements</CardTitle>
-            <div className="flex gap-1">
-              {QUICK_FILTERS.map((filter) => (
-                <Button
-                  key={filter.value}
-                  variant={typeFilter === filter.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter(filter.value)}
-                >
-                  {filter.label}
-                </Button>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by item, SKU, or event…"
+                className="w-full sm:w-64"
+              />
+              <Select
+                value={categoryFilter}
+                onValueChange={(value) =>
+                  setCategoryFilter(typeof value === "string" ? value : "")
+                }
+              >
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  {categoryOptions.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1">
+                {QUICK_FILTERS.map((filter) => (
+                  <Button
+                    key={filter.value}
+                    variant={typeFilter === filter.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTypeFilter(filter.value)}
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -269,6 +335,55 @@ export default function StockMovementsPage() {
               )}
             </TableBody>
           </Table>
+          {filteredMovements.length > pageSize ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <div className="flex items-center gap-3">
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-36" size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 15, 25, 35, 50].map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size} per page
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">
+                  Showing {paginatedMovements.length} of {filteredMovements.length}{" "}
+                  movements
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

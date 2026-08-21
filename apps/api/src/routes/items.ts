@@ -102,7 +102,7 @@ router.get("/stock-movements", requireAuth, async (req, res) => {
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        item: { select: { sku: true, itemName: true } },
+        item: { select: { sku: true, itemName: true, category: true } },
         event: { select: { eventName: true } },
       },
     });
