@@ -45,8 +45,8 @@ app.use(
       "http://13.60.186.249:3001",
 
       // Old AWS direct access
-      "http://13.60.186.249:6000",
-      "http://13.60.186.249:6001",
+      "http://13.60.186.249:5000",
+      "http://13.60.186.249:5001",
 
       // Production HTTP
       "http://delicocktailhouse.in",
