@@ -248,6 +248,7 @@ router.post("/attendance/mark", async (req, res) => {
       });
       const isHoliday = !!holiday;
 
+      let isForceWorkDay = false;
       if (isSunday || isHoliday) {
         const workOverride = await prisma.attendanceOverride.findFirst({
           where: {
@@ -263,15 +264,19 @@ router.post("/attendance/mark", async (req, res) => {
               "Today is a holiday. You are not scheduled to work today — contact admin if this is a mistake.",
           });
         }
+        isForceWorkDay = true;
       }
 
-      const status = statusForCheckIn(now);
+      let status = statusForCheckIn(now);
       if (status === null) {
         return res.status(403).json({
           error: "ATTENDANCE_WINDOW_CLOSED",
           message:
             "Attendance can no longer be marked for today. The window closed at 2:30 PM.",
         });
+      }
+      if (isForceWorkDay) {
+        status = AttendanceStatus.PRESENT;
       }
       const attendance = existing
         ? await prisma.attendance.update({
@@ -303,7 +308,28 @@ router.post("/attendance/mark", async (req, res) => {
       return res.status(409).json({ message: "Already checked out for today" });
     }
 
-    const status = statusForCheckOut(existing.checkInTime!, now);
+    let status: AttendanceStatus;
+    const existingDayIsSunday = istDayOfWeek(existing.date) === 0;
+    const existingDayIsHoliday = !!(await prisma.holiday.findFirst({
+      where: { date: { gte: today, lt: tomorrow } },
+    }));
+    if (existingDayIsSunday || existingDayIsHoliday) {
+      const forceWorkOverride = await prisma.attendanceOverride.findFirst({
+        where: {
+          employeeId,
+          date: { gte: today, lt: tomorrow },
+          type: OverrideType.FORCE_WORK,
+        },
+      });
+      if (forceWorkOverride) {
+        status = AttendanceStatus.PRESENT;
+      } else {
+        status = statusForCheckOut(existing.checkInTime!, now);
+      }
+    } else {
+      status = statusForCheckOut(existing.checkInTime!, now);
+    }
+
     const attendance = await prisma.attendance.update({
       where: { id: existing.id },
       data: {

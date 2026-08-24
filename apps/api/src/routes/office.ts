@@ -14,9 +14,21 @@ import { markAbsentEmployeesForToday } from "../services/mark-absent-job";
 
 const router: Router = Router();
 
+function parseDateString(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const year = Number(y);
+  const month = Number(m);
+  const day = Number(d);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  return new Date(year, month - 1, day);
+}
+
 router.get("/dashboard", requireAuth, async (_req, res) => {
   try {
-    const today = new Date();
+    const today = parseDateString(_req.query.date) ?? new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -73,9 +85,9 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
 
 router.get("/employees", requireAuth, async (req, res) => {
   try {
-    const { attendanceStatus, employeeStatus } = req.query;
+    const { attendanceStatus, employeeStatus, date: dateQuery } = req.query;
 
-    const today = new Date();
+    const today = parseDateString(dateQuery) ?? new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -501,6 +513,73 @@ router.get("/employees/:id/attendance", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("[Office] Failed to fetch employee attendance:", error);
     return res.status(500).json({ message: "Failed to fetch employee attendance" });
+  }
+});
+
+// POST /employees/:id/attendance-status — admin sets/corrects an employee's
+// attendance status for a date { date, status }. Unlike attendance-override
+// (which governs whether a holiday/Sunday counts as a working day), this
+// directly edits the actual attendance record — e.g. to fix a mis-marked
+// ABSENT/HALF_DAY that should have been PRESENT. If a record already exists
+// for that date, only its status changes (check-in/out times are preserved);
+// otherwise a new record is created with no check-in/out times. When the
+// status actually changes, previousStatus/correctedByAdmin/correctedAt are
+// stamped so both admin and the employee can see it was manually corrected.
+router.post("/employees/:id/attendance-status", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id } });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const { date, status } = req.body ?? {};
+    const dayStart = parseDateString(date);
+    if (!dayStart) {
+      return res.status(400).json({ message: "A valid date is required" });
+    }
+    if (!Object.values(AttendanceStatus).includes(status)) {
+      return res.status(400).json({ message: "A valid status is required" });
+    }
+
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const existing = await prisma.attendance.findFirst({
+      where: { employeeId: id, date: { gte: dayStart, lt: dayEnd } },
+    });
+
+    const attendance =
+      existing && existing.status !== status
+        ? await prisma.attendance.update({
+            where: { id: existing.id },
+            data: {
+              status,
+              previousStatus: existing.status,
+              correctedByAdmin: true,
+              correctedAt: new Date(),
+            },
+          })
+        : existing
+          ? existing
+          : await prisma.attendance.create({
+              data: {
+                employeeId: id,
+                date: dayStart,
+                status,
+                correctedByAdmin: true,
+                correctedAt: new Date(),
+              },
+            });
+
+    return res.json(attendance);
+  } catch (error) {
+    console.error("[Office] Failed to update attendance status:", error);
+    return res.status(500).json({ message: "Failed to update attendance status" });
   }
 });
 
