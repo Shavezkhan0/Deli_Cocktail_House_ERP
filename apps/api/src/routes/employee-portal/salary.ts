@@ -80,6 +80,32 @@ router.get("/salary/leave-balance", async (req, res) => {
   }
 });
 
+router.get("/salary/extra-days", async (req, res) => {
+  try {
+    const employeeId = req.employee?.id;
+    if (!employeeId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { month, year } = currentMonthYear();
+
+    const breakdown = await calculateEmployeeSalary(employeeId, month, year);
+
+    return res.json({
+      month,
+      year,
+      compensatoryLeaves: breakdown.compensatoryLeaves,
+      availableLeaveBalance: breakdown.availableLeaveBalance,
+      entries: breakdown.compensatoryEntries,
+    });
+  } catch (error) {
+    console.error("[Employee] Failed to fetch extra days:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to fetch extra days" });
+  }
+});
+
 router.get("/salary/previous", async (req, res) => {
   try {
     const employeeId = req.employee?.id;

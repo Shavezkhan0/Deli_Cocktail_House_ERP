@@ -30,14 +30,18 @@ function DetailRow({
   icon: Icon,
   label,
   value,
+  accent,
 }: {
   icon: typeof User;
   label: string;
   value: string;
+  accent: string;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-border px-6 py-4 last:border-b-0">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <span
+        className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${accent}`}
+      >
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
@@ -88,17 +92,29 @@ export default function ProfilePage() {
         </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <DetailRow icon={Mail} label="Email" value={data.email ?? "—"} />
-          <DetailRow icon={Phone} label="Contact" value={data.contact ?? "—"} />
+          <DetailRow
+            icon={Mail}
+            label="Email"
+            value={data.email ?? "—"}
+            accent="bg-sky-100 text-sky-700"
+          />
+          <DetailRow
+            icon={Phone}
+            label="Contact"
+            value={data.contact ?? "—"}
+            accent="bg-emerald-100 text-emerald-700"
+          />
           <DetailRow
             icon={CalendarDays}
             label="Joining Date"
             value={formatDate(data.joiningDate)}
+            accent="bg-violet-100 text-violet-700"
           />
           <DetailRow
             icon={Wallet}
             label="Base Salary"
             value={formatCurrency(data.baseSalary)}
+            accent="bg-amber-100 text-amber-700"
           />
         </section>
       </div>

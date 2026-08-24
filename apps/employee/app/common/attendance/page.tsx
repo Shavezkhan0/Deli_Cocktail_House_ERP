@@ -49,6 +49,9 @@ type AttendanceRecord = {
   longitude?: number | null;
   createdAt: string;
   updatedAt: string;
+  correctedByAdmin?: boolean;
+  previousStatus?: AttendanceStatus | null;
+  correctedAt?: string | null;
 };
 
 type MarkAttendanceResponse = {
@@ -670,7 +673,15 @@ export default function AttendancePage() {
                     day: "numeric",
                   });
                   const title = record
-                    ? `${label} — ${STATUS_CONFIG[record.status].label}`
+                    ? `${label} — ${STATUS_CONFIG[record.status].label}${
+                        record.correctedByAdmin
+                          ? ` (corrected by admin, was ${
+                              record.previousStatus
+                                ? STATUS_CONFIG[record.previousStatus].label
+                                : "no record"
+                            })`
+                          : ""
+                      }`
                     : isHolidayCell
                       ? holiday
                         ? `${label} — Holiday (${holiday.name})`
@@ -698,6 +709,9 @@ export default function AttendancePage() {
                       }
                     >
                       <span className="text-sm font-bold leading-none">{day}</span>
+                      {record?.correctedByAdmin ? (
+                        <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-400 ring-1 ring-white/70" />
+                      ) : null}
                     </div>
                   );
                 })}
@@ -723,6 +737,10 @@ export default function AttendancePage() {
                   style={{ backgroundColor: HOLIDAY_COLOR }}
                 />
                 Holiday
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <span className="size-2.5 rounded-full bg-amber-400" />
+                Corrected by admin
               </span>
             </div>
           </div>
@@ -780,6 +798,15 @@ export default function AttendancePage() {
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge status={record.status} />
+                        {record.correctedByAdmin ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Admin corrected:{" "}
+                            {record.previousStatus
+                              ? STATUS_CONFIG[record.previousStatus].label
+                              : "no record"}{" "}
+                            → {STATUS_CONFIG[record.status].label}
+                          </p>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

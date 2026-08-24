@@ -37,6 +37,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
+      "http://localhost:5000",
+      "http://localhost:5001",
       "http://192.168.1.32:3000",
       "http://192.168.1.32:3001",
 

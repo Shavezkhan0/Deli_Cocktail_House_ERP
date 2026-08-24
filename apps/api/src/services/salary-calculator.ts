@@ -6,6 +6,14 @@ const LEAVE_WEIGHTS: Record<string, number> = {
   SHORT_LEAVE: 0.25,
 };
 
+export type CompensatoryEntry = {
+  date: string;
+  source: "SUNDAY" | "HOLIDAY" | "FORCE_WORK";
+  status: "PRESENT" | "HALF_DAY" | "SHORT_LEAVE";
+  credit: number;
+  banked: boolean;
+};
+
 export type SalaryBreakdown = {
   employeeId: string;
   employeeNumber: string;
@@ -17,6 +25,7 @@ export type SalaryBreakdown = {
   monthsSinceJoining: number;
   earnedLeaves: number;
   compensatoryLeaves: number;
+  compensatoryEntries: CompensatoryEntry[];
   usedLeaves: number;
   availableLeaveBalance: number;
   attendance: {
@@ -64,6 +73,7 @@ export async function calculateEmployeeSalary(
 ): Promise<SalaryBreakdown> {
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 1);
+  const compensatoryEntries: CompensatoryEntry[] = [];
 
   const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
   if (!employee) {
@@ -170,8 +180,16 @@ export async function calculateEmployeeSalary(
     const isSunday = day.getDay() === 0;
     const isHoliday = priorHolidaySet.has(key);
     const isForceWork = priorForceWorkSet.has(key);
+    const source = isForceWork ? "FORCE_WORK" : isHoliday ? "HOLIDAY" : "SUNDAY";
     if (isSunday || isHoliday || isForceWork) {
       compensatoryLeaves += LEAVE_WEIGHTS[record.status] ?? 1;
+      compensatoryEntries.push({
+        date: key,
+        source,
+        status: record.status as "PRESENT" | "HALF_DAY" | "SHORT_LEAVE",
+        credit: LEAVE_WEIGHTS[record.status] ?? 1,
+        banked: true,
+      });
     }
   }
 
@@ -186,6 +204,11 @@ export async function calculateEmployeeSalary(
   );
   const overrideSet = new Set(
     monthOverrides.map((override) => dateKey(startOfDay(new Date(override.date)))),
+  );
+  const forceWorkSet = new Set(
+    monthOverrides
+      .filter((override) => override.type === OverrideType.FORCE_WORK)
+      .map((override) => dateKey(startOfDay(new Date(override.date)))),
   );
 
   const attendance = {
@@ -207,8 +230,19 @@ export async function calculateEmployeeSalary(
     const isHoliday = holidaySet.has(key);
     const isSunday = day.getDay() === 0;
     const isOverride = overrideSet.has(key);
+    const isForceWork = forceWorkSet.has(key);
 
     if (record.status === AttendanceStatus.PRESENT) {
+      const source = isForceWork ? "FORCE_WORK" : isHoliday ? "HOLIDAY" : isSunday ? "SUNDAY" : null;
+      if (source) {
+        compensatoryEntries.push({
+          date: key,
+          source,
+          status: "PRESENT",
+          credit: 1,
+          banked: false,
+        });
+      }
       attendance.PRESENT += 1;
       continue;
     }
@@ -227,6 +261,23 @@ export async function calculateEmployeeSalary(
         attendance.overriddenAbsences += 1;
       }
       totalLeavesTaken += 1;
+      continue;
+    }
+
+    if (record.status === AttendanceStatus.HALF_DAY || record.status === AttendanceStatus.SHORT_LEAVE) {
+      const statusKey = record.status === AttendanceStatus.HALF_DAY ? "HALF_DAY" : "SHORT_LEAVE";
+      const source = isForceWork ? "FORCE_WORK" : isHoliday ? "HOLIDAY" : isSunday ? "SUNDAY" : null;
+      if (source) {
+        compensatoryEntries.push({
+          date: key,
+          source,
+          status: statusKey,
+          credit: LEAVE_WEIGHTS[record.status] ?? 1,
+          banked: false,
+        });
+      }
+      attendance[record.status] += 1;
+      totalLeavesTaken += LEAVE_WEIGHTS[record.status] ?? 0;
       continue;
     }
 
@@ -259,6 +310,9 @@ export async function calculateEmployeeSalary(
     monthsSinceJoining,
     earnedLeaves,
     compensatoryLeaves,
+    compensatoryEntries: compensatoryEntries.sort(
+      (a, b) => b.date.localeCompare(a.date),
+    ),
     usedLeaves,
     availableLeaveBalance,
     attendance,

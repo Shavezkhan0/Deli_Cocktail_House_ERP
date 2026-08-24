@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarCheck,
+  CalendarClock,
   CalendarRange,
   Star,
   Wallet,
@@ -35,6 +37,22 @@ type LeaveBalanceRecord = {
   compensatoryLeaves: number;
   usedLeaves: number;
   availableLeaveBalance: number;
+};
+
+type ExtraDaysEntry = {
+  date: string;
+  source: "SUNDAY" | "HOLIDAY" | "FORCE_WORK";
+  status: "PRESENT" | "HALF_DAY" | "SHORT_LEAVE";
+  credit: number;
+  banked: boolean;
+};
+
+type ExtraDaysRecord = {
+  month: number;
+  year: number;
+  compensatoryLeaves: number;
+  availableLeaveBalance: number;
+  entries: ExtraDaysEntry[];
 };
 
 export type StatCardProps = {
@@ -97,6 +115,8 @@ const currency = new Intl.NumberFormat("en-IN", {
 });
 
 export function QuickStatsRow() {
+  const router = useRouter();
+
   const attendance = useQuery({
     queryKey: ["attendance", "today"],
     queryFn: () =>
@@ -119,6 +139,12 @@ export function QuickStatsRow() {
     queryKey: ["salary", "leave-balance"],
     queryFn: () =>
       apiFetch<LeaveBalanceRecord | null>("/api/employee/salary/leave-balance"),
+  });
+
+  const extraDays = useQuery({
+    queryKey: ["salary", "extra-days"],
+    queryFn: () =>
+      apiFetch<ExtraDaysRecord | null>("/api/employee/salary/extra-days"),
   });
 
   const todayLabel = new Date().toLocaleDateString("en-IN", {
@@ -170,6 +196,30 @@ export function QuickStatsRow() {
                 leaveBalance.data.availableLeaveBalance === 1 ? "" : "s"
               }`
             : "No record"}
+      </StatCard>
+
+      <StatCard
+        label="Extra Days"
+        icon={CalendarClock}
+        accent="bg-violet-100 text-violet-700"
+        loading={extraDays.isPending}
+        onClick={() => router.push("/common/extra-days")}
+        sub={
+          extraDays.data && extraDays.data.entries.length > 0 ? (
+            <span className="text-xs font-medium text-muted-foreground">
+              {extraDays.data.entries.filter((e) => !e.banked).length} pending ·{" "}
+              {extraDays.data.entries.filter((e) => e.banked).length} banked
+            </span>
+          ) : null
+        }
+      >
+        {extraDays.isError
+          ? "Unavailable"
+          : extraDays.data
+            ? `${extraDays.data.entries.length} day${
+                extraDays.data.entries.length === 1 ? "" : "s"
+              }`
+            : "No extra days"}
       </StatCard>
 
       <StatCard

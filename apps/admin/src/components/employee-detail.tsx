@@ -9,6 +9,8 @@ import {
   CalendarDays,
   CalendarPlus,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   FileText,
   Loader2,
@@ -124,6 +126,9 @@ type AttendanceRecord = {
   checkInTime: string | null;
   checkOutTime: string | null;
   createdAt: string;
+  correctedByAdmin?: boolean;
+  previousStatus?: string | null;
+  correctedAt?: string | null;
 };
 
 type Holiday = {
@@ -410,6 +415,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     useState<OverrideTypeValue>("FORCE_WORK");
   const [overrideDialogReason, setOverrideDialogReason] = useState("");
 
+  const [attendanceStatusValue, setAttendanceStatusValue] = useState("");
+
   const [breakdownMonth, setBreakdownMonth] = useState(currentMonth);
   const [breakdownYear, setBreakdownYear] = useState(currentYear);
 
@@ -670,6 +677,35 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     },
   });
 
+  const updateAttendanceStatus = useMutation({
+    mutationFn: (payload: { date: string; status: string }) =>
+      apiFetch<AttendanceRecord>(
+        `/api/office/employees/${employeeId}/attendance-status`,
+        { method: "POST", body: payload, token },
+      ),
+    onSuccess: () => {
+      toast.success("Attendance status updated");
+      setOverrideDialogDate(null);
+      setOverrideDialogReason("");
+      setAttendanceStatusValue("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-employee-attendance", employeeId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-salary-breakdown-current"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["office-leave-balance"],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const createExpense = useMutation({
     mutationFn: (payload: {
       amount: number;
@@ -700,13 +736,44 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     },
   });
 
+  function goToPreviousAttendanceMonth() {
+    setAttendanceMonth((prevMonth) => {
+      if (prevMonth === 1) {
+        setAttendanceYear((prevYear) => prevYear - 1);
+        return 12;
+      }
+      return prevMonth - 1;
+    });
+  }
+
+  function goToNextAttendanceMonth() {
+    setAttendanceMonth((prevMonth) => {
+      if (prevMonth === 12) {
+        setAttendanceYear((prevYear) => prevYear + 1);
+        return 1;
+      }
+      return prevMonth + 1;
+    });
+  }
+
   function openOverrideDialog(date: string) {
     const existing = (workingOverridesQuery.data ?? []).find(
       (override) => dateKeyFromTimestamp(override.date) === date,
     );
     setOverrideType(existing?.type ?? "FORCE_WORK");
     setOverrideDialogReason(existing?.reason ?? "");
+    setAttendanceStatusValue(attendanceRecordsByDate.get(date)?.status ?? "");
     setOverrideDialogDate(date);
+  }
+
+  function handleAttendanceStatusSave() {
+    if (!overrideDialogDate || !attendanceStatusValue) {
+      return;
+    }
+    updateAttendanceStatus.mutate({
+      date: overrideDialogDate,
+      status: attendanceStatusValue,
+    });
   }
 
   function handleOverrideSave() {
@@ -1287,6 +1354,26 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={goToPreviousAttendanceMonth}
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={goToNextAttendanceMonth}
+                      aria-label="Next month"
+                    >
+                      <ChevronRight />
+                    </Button>
+                  </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-foreground">
                       Month
@@ -1366,7 +1453,15 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         ? `${formatDate(record.date)} — ${record.status.replace(
                             "_",
                             " ",
-                          )}`
+                          )}${
+                            record.correctedByAdmin
+                              ? ` (corrected by admin, was ${
+                                  record.previousStatus
+                                    ? record.previousStatus.replace("_", " ")
+                                    : "no record"
+                                })`
+                              : ""
+                          }`
                         : isHolidayCell
                           ? holiday
                             ? `Holiday — ${holiday.name}`
@@ -1407,6 +1502,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               OVERRIDE_DOT_COLORS[override.type],
                             )}
                           />
+                        ) : null}
+                        {record?.correctedByAdmin ? (
+                          <span className="absolute top-1 left-1 size-1.5 rounded-full bg-amber-400 ring-1 ring-white/70" />
                         ) : null}
                         <span
                           className={cn(
@@ -1458,6 +1556,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     style={{ backgroundColor: HOLIDAY_COLOR }}
                   />
                   Holiday
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2.5 rounded-full bg-amber-400" />
+                  Corrected by admin
                 </span>
               </div>
             </CardContent>
@@ -1577,6 +1679,15 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               >
                                 {record.status.replace("_", " ")}
                               </Badge>
+                              {record.correctedByAdmin ? (
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  Admin corrected:{" "}
+                                  {record.previousStatus
+                                    ? record.previousStatus.replace("_", " ")
+                                    : "no record"}{" "}
+                                  → {record.status.replace("_", " ")}
+                                </p>
+                              ) : null}
                             </TableCell>
                           </TableRow>
                         );
@@ -1679,12 +1790,13 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
           if (!open) {
             setOverrideDialogDate(null);
             setOverrideDialogReason("");
+            setAttendanceStatusValue("");
           }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Attendance Override</DialogTitle>
+            <DialogTitle>Manage Attendance Day</DialogTitle>
             <DialogDescription>
               {overrideDialogDate
                 ? new Date(`${overrideDialogDate}T00:00:00`).toLocaleDateString(
@@ -1700,10 +1812,52 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
               <label className="text-sm font-medium text-foreground">
-                Action
+                Attendance Status
               </label>
+              <p className="text-xs text-muted-foreground">
+                Correct this employee&apos;s recorded status for the day —
+                e.g. change a mis-marked Absent to Present.
+              </p>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={attendanceStatusValue}
+                  onValueChange={(value) =>
+                    setAttendanceStatusValue(value ?? "")
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="No record for this day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PRESENT">Present</SelectItem>
+                    <SelectItem value="ABSENT">Absent</SelectItem>
+                    <SelectItem value="HALF_DAY">Half Day</SelectItem>
+                    <SelectItem value="SHORT_LEAVE">Short Leave</SelectItem>
+                    <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={
+                    updateAttendanceStatus.isPending || !attendanceStatusValue
+                  }
+                  onClick={handleAttendanceStatusSave}
+                >
+                  {updateAttendanceStatus.isPending ? "Saving…" : "Save Status"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <label className="text-sm font-medium text-foreground">
+                Attendance Override
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Separately, assign this holiday/Sunday as a working day for
+                this employee, or grant a leave.
+              </p>
               <Select
                 value={overrideType}
                 onValueChange={(value) =>
@@ -1720,50 +1874,59 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   <SelectItem value="FORCE_LEAVE">Assign Leave</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Reason{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </label>
+                <Textarea
+                  value={overrideDialogReason}
+                  onChange={(event) =>
+                    setOverrideDialogReason(event.target.value)
+                  }
+                  placeholder="e.g. Compensating for last week"
+                />
+              </div>
+              {selectedOverride ? (
+                <p className="text-xs text-muted-foreground">
+                  An override already exists for this date. Saving will
+                  update it.
+                </p>
+              ) : null}
+              <div className="flex items-center justify-end gap-2">
+                {selectedOverride ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleteOverride.isPending}
+                    onClick={() => deleteOverride.mutate(selectedOverride.id)}
+                  >
+                    <Trash2 />
+                    Remove
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saveOverride.isPending}
+                  onClick={handleOverrideSave}
+                >
+                  {saveOverride.isPending
+                    ? "Saving…"
+                    : selectedOverride
+                      ? "Update Override"
+                      : "Save Override"}
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Reason{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </label>
-              <Textarea
-                value={overrideDialogReason}
-                onChange={(event) => setOverrideDialogReason(event.target.value)}
-                placeholder="e.g. Compensating for last week"
-              />
-            </div>
-            {selectedOverride ? (
-              <p className="text-xs text-muted-foreground">
-                An override already exists for this date. Saving will update it.
-              </p>
-            ) : null}
           </div>
           <DialogFooter>
-            {selectedOverride ? (
-              <Button
-                variant="destructive"
-                disabled={deleteOverride.isPending}
-                onClick={() => deleteOverride.mutate(selectedOverride.id)}
-              >
-                <Trash2 />
-                Remove
-              </Button>
-            ) : null}
             <DialogClose render={<Button variant="outline" type="button" />}>
               Cancel
             </DialogClose>
-            <Button
-              disabled={saveOverride.isPending}
-              onClick={handleOverrideSave}
-            >
-              {saveOverride.isPending
-                ? "Saving…"
-                : selectedOverride
-                  ? "Update Override"
-                  : "Save Override"}
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

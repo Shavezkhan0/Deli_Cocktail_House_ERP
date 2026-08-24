@@ -1,16 +1,26 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarX2, Info, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -31,6 +41,23 @@ type Holiday = {
   name: string;
   createdAt: string;
 };
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const HOLIDAY_COLOR = "#8b5cf6";
+
+function dateKeyFromParts(year: number, month: number, day: number): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+function dateKeyFromTimestamp(value: string): string {
+  const date = new Date(value);
+  return dateKeyFromParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
 
 function Field({
   label,
@@ -56,14 +83,29 @@ export default function HolidaysPage() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  const [date, setDate] = useState("");
-  const [name, setName] = useState("");
-  const [errors, setErrors] = useState<{ date?: string; name?: string }>({});
+  const now = new Date();
+  const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1);
+  const [calendarYear, setCalendarYear] = useState(now.getFullYear());
+
+  const [dialogDate, setDialogDate] = useState<string | null>(null);
+  const [dialogHolidayId, setDialogHolidayId] = useState<string | null>(null);
+  const [dialogName, setDialogName] = useState("");
+  const [dialogError, setDialogError] = useState<string | undefined>();
+
+  const [deleteTarget, setDeleteTarget] = useState<Holiday | null>(null);
 
   const { data: holidays, isPending, isError, refetch } = useQuery({
     queryKey: ["office-holidays"],
     queryFn: () => apiFetch<Holiday[]>("/api/office/holidays", { token }),
   });
+
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, Holiday>();
+    for (const holiday of holidays ?? []) {
+      map.set(dateKeyFromTimestamp(holiday.date), holiday);
+    }
+    return map;
+  }, [holidays]);
 
   const createHoliday = useMutation({
     mutationFn: (payload: { date: string; name: string }) =>
@@ -74,9 +116,23 @@ export default function HolidaysPage() {
       }),
     onSuccess: () => {
       toast.success("Holiday added");
-      setDate("");
-      setName("");
-      setErrors({});
+      queryClient.invalidateQueries({ queryKey: ["office-holidays"] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateHoliday = useMutation({
+    mutationFn: (payload: { id: string; date: string; name: string }) =>
+      apiFetch<Holiday>(`/api/office/holidays/${payload.id}`, {
+        method: "PATCH",
+        body: { date: payload.date, name: payload.name },
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Holiday updated");
+      closeDialog();
       queryClient.invalidateQueries({ queryKey: ["office-holidays"] });
     },
     onError: (error) => {
@@ -92,6 +148,8 @@ export default function HolidaysPage() {
       }),
     onSuccess: () => {
       toast.success("Holiday removed");
+      closeDialog();
+      setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["office-holidays"] });
     },
     onError: (error) => {
@@ -99,23 +157,78 @@ export default function HolidaysPage() {
     },
   });
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function goToPreviousMonth() {
+    setCalendarMonth((prevMonth) => {
+      if (prevMonth === 1) {
+        setCalendarYear((prevYear) => prevYear - 1);
+        return 12;
+      }
+      return prevMonth - 1;
+    });
+  }
 
-    const nextErrors: { date?: string; name?: string } = {};
-    if (!date) {
-      nextErrors.date = "Select a date";
-    }
-    if (!name.trim()) {
-      nextErrors.name = "Holiday name is required";
-    }
-    setErrors(nextErrors);
-    if (nextErrors.date || nextErrors.name) {
+  function goToNextMonth() {
+    setCalendarMonth((prevMonth) => {
+      if (prevMonth === 12) {
+        setCalendarYear((prevYear) => prevYear + 1);
+        return 1;
+      }
+      return prevMonth + 1;
+    });
+  }
+
+  function openDialogForDate(key: string) {
+    const existing = holidaysByDate.get(key);
+    setDialogDate(key);
+    setDialogHolidayId(existing?.id ?? null);
+    setDialogName(existing?.name ?? "");
+    setDialogError(undefined);
+  }
+
+  function openDialogForHoliday(holiday: Holiday) {
+    openDialogForDate(dateKeyFromTimestamp(holiday.date));
+  }
+
+  function closeDialog() {
+    setDialogDate(null);
+    setDialogHolidayId(null);
+    setDialogName("");
+    setDialogError(undefined);
+  }
+
+  function handleDialogSave() {
+    if (!dialogDate) {
       return;
     }
-
-    createHoliday.mutate({ date, name: name.trim() });
+    if (!dialogName.trim()) {
+      setDialogError("Holiday name is required");
+      return;
+    }
+    if (dialogHolidayId) {
+      updateHoliday.mutate({
+        id: dialogHolidayId,
+        date: dialogDate,
+        name: dialogName.trim(),
+      });
+    } else {
+      createHoliday.mutate(
+        { date: dialogDate, name: dialogName.trim() },
+        { onSuccess: () => closeDialog() },
+      );
+    }
   }
+
+  const calendarFirstDay = new Date(calendarYear, calendarMonth - 1, 1);
+  const calendarLeadingBlanks = calendarFirstDay.getDay();
+  const calendarDaysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+  const calendarTodayKey = dateKeyFromParts(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+  );
+  const calendarMonthLabel = `${MONTH_NAMES[calendarMonth - 1]} ${calendarYear}`;
+  const isEditingExisting = dialogHolidayId !== null;
+  const dialogSaving = createHoliday.isPending || updateHoliday.isPending;
 
   return (
     <div className="flex flex-col gap-6">
@@ -125,50 +238,117 @@ export default function HolidaysPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           Manage system-wide holidays. Holidays are non-working days and are
-          excluded from salary deductions.
+          excluded from salary deductions. Past dates can be added or edited
+          too — useful for backfilling holidays that were missed.
         </p>
       </div>
 
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            <CalendarX2 className="size-4 text-muted-foreground" />
-            Add Holiday
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Date" error={errors.date}>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                  aria-invalid={Boolean(errors.date)}
-                />
-              </Field>
-              <Field label="Holiday Name" error={errors.name}>
-                <Input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="e.g. Diwali, Republic Day"
-                  aria-invalid={Boolean(errors.name)}
-                />
-              </Field>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>Holiday Calendar</CardTitle>
+              <CardDescription>
+                Click any date — past or future — to add or edit a holiday.
+              </CardDescription>
             </div>
-
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="size-3.5 shrink-0" />
-              Employees are not penalised for absence on this date.
-            </p>
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={createHoliday.isPending}>
-                <Plus />
-                {createHoliday.isPending ? "Adding…" : "Add Holiday"}
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={goToPreviousMonth}
+                aria-label="Previous month"
+              >
+                <ChevronLeft />
+              </Button>
+              <span className="min-w-32 text-center text-sm font-semibold text-foreground">
+                {calendarMonthLabel}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                onClick={goToNextMonth}
+                aria-label="Next month"
+              >
+                <ChevronRight />
               </Button>
             </div>
-          </form>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="mx-auto w-full max-w-xl">
+            <div className="grid grid-cols-7 gap-1">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {day}
+                </div>
+              ))}
+              {Array.from({ length: calendarLeadingBlanks }).map((_, index) => (
+                <div key={`blank-${index}`} />
+              ))}
+              {Array.from({ length: calendarDaysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const key = dateKeyFromParts(calendarYear, calendarMonth, day);
+                const holiday = holidaysByDate.get(key);
+                const isSunday =
+                  new Date(calendarYear, calendarMonth - 1, day).getDay() === 0;
+                const isToday = key === calendarTodayKey;
+                const label = new Date(
+                  calendarYear,
+                  calendarMonth - 1,
+                  day,
+                ).toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                });
+                const title = holiday
+                  ? `${label} — Holiday (${holiday.name})`
+                  : isSunday
+                    ? `${label} — Sunday`
+                    : `${label} — click to add a holiday`;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => openDialogForDate(key)}
+                    title={title}
+                    className={cn(
+                      "relative flex aspect-square min-h-9 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                      holiday
+                        ? "text-white shadow-sm"
+                        : "bg-muted/60 text-muted-foreground",
+                      isToday
+                        ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                        : "",
+                    )}
+                    style={holiday ? { backgroundColor: HOLIDAY_COLOR } : undefined}
+                  >
+                    <span className="text-sm font-bold leading-none">{day}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span
+                className="size-2.5 rounded-full"
+                style={{ backgroundColor: HOLIDAY_COLOR }}
+              />
+              Holiday
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="size-2.5 rounded-full bg-muted-foreground/30" />
+              No holiday — click to add
+            </span>
+          </div>
         </CardContent>
       </Card>
 
@@ -228,13 +408,21 @@ export default function HolidaysPage() {
                       {holiday.name}
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openDialogForHoliday(holiday)}
+                          aria-label={`Edit ${holiday.name}`}
+                        >
+                          <Pencil />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           className="text-destructive hover:bg-destructive/10"
                           disabled={deleteHoliday.isPending}
-                          onClick={() => deleteHoliday.mutate(holiday.id)}
+                          onClick={() => setDeleteTarget(holiday)}
                           aria-label={`Remove ${holiday.name}`}
                         >
                           <Trash2 />
@@ -248,6 +436,119 @@ export default function HolidaysPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={dialogDate !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditingExisting ? "Edit Holiday" : "Add Holiday"}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogDate
+                ? new Date(`${dialogDate}T00:00:00`).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Field label="Holiday Name" error={dialogError}>
+            <Input
+              value={dialogName}
+              onChange={(event) => {
+                setDialogName(event.target.value);
+                setDialogError(undefined);
+              }}
+              placeholder="e.g. Diwali, Republic Day"
+              aria-invalid={Boolean(dialogError)}
+              autoFocus
+            />
+          </Field>
+
+          <DialogFooter className="gap-2 sm:justify-between">
+            {isEditingExisting ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10"
+                disabled={deleteHoliday.isPending}
+                onClick={() => {
+                  const target = (holidays ?? []).find(
+                    (holiday) => holiday.id === dialogHolidayId,
+                  );
+                  closeDialog();
+                  if (target) {
+                    setDeleteTarget(target);
+                  }
+                }}
+              >
+                <Trash2 />
+                Remove
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <DialogClose render={<Button variant="outline" type="button" />}>
+                Cancel
+              </DialogClose>
+              <Button
+                type="button"
+                onClick={handleDialogSave}
+                disabled={dialogSaving}
+              >
+                {dialogSaving ? "Saving…" : isEditingExisting ? "Save Changes" : "Add Holiday"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Holiday</DialogTitle>
+            <DialogDescription>
+              {deleteTarget
+                ? `Are you sure you want to delete "${deleteTarget.name}" (${formatDate(deleteTarget.date)})?`
+                : "Are you sure you want to delete this holiday?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancel
+            </DialogClose>
+            <Button
+              variant="destructive"
+              disabled={deleteHoliday.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteHoliday.mutate(deleteTarget.id);
+                }
+              }}
+            >
+              {deleteHoliday.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

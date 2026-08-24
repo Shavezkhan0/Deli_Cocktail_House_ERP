@@ -6,6 +6,8 @@ import {
   CalendarCheck2,
   CalendarClock,
   CalendarX2,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   RotateCw,
   UserCheck,
@@ -17,6 +19,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function todayString(): string {
+  return toLocalDateString(new Date());
+}
+
+function shiftDate(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return toLocalDateString(date);
+}
+
+function formatDateLong(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 type DashboardMetrics = {
   totalEmployees: number;
@@ -38,7 +68,8 @@ type Stat = {
   barClass: string;
 };
 
-function buildStats(data: DashboardMetrics): Stat[] {
+function buildStats(data: DashboardMetrics, isToday: boolean): Stat[] {
+  const dayLabel = isToday ? "today" : "for the selected day";
   return [
     {
       id: "activeEmployees",
@@ -51,27 +82,27 @@ function buildStats(data: DashboardMetrics): Stat[] {
     },
     {
       id: "presentToday",
-      label: "Present Today",
+      label: isToday ? "Present Today" : "Present — Selected Day",
       value: data.presentToday,
-      hint: "Marked present for today",
+      hint: `Marked present ${dayLabel}`,
       icon: CalendarCheck2,
       iconClass: "bg-teal-100 text-teal-700",
       barClass: "from-teal-400 to-teal-600",
     },
     {
       id: "absentToday",
-      label: "Absent Today",
+      label: isToday ? "Absent Today" : "Absent — Selected Day",
       value: data.absentToday,
-      hint: "Marked absent for today",
+      hint: `Marked absent ${dayLabel}`,
       icon: CalendarX2,
       iconClass: "bg-rose-100 text-rose-700",
       barClass: "from-rose-400 to-rose-600",
     },
     {
       id: "onLeaveToday",
-      label: "Employees on Leave",
+      label: isToday ? "On Leave Today" : "On Leave — Selected Day",
       value: data.onLeaveToday,
-      hint: "On approved leave today",
+      hint: `On approved leave ${dayLabel}`,
       icon: CalendarClock,
       iconClass: "bg-amber-100 text-amber-700",
       barClass: "from-amber-400 to-amber-600",
@@ -89,14 +120,14 @@ function StatCard({ stat, onClick }: { stat: Stat; onClick: () => void }) {
     >
       <Card className="overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/25">
         <CardContent className="relative flex items-start justify-between gap-4 p-5">
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium text-muted-foreground">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="truncate text-sm font-medium text-muted-foreground">
               {stat.label}
             </p>
             <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
               {stat.value.toLocaleString()}
             </p>
-            <p className="text-xs text-muted-foreground">{stat.hint}</p>
+            <p className="truncate text-xs text-muted-foreground">{stat.hint}</p>
           </div>
           <span
             className={cn(
@@ -136,18 +167,26 @@ function StatSkeleton() {
 export default function OfficeDashboardPage() {
   const { token } = useAuth();
   const [activeView, setActiveView] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(todayString);
+
+  const isToday = selectedDate === todayString();
 
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["office-dashboard"],
-    queryFn: () => apiFetch<DashboardMetrics>("/api/office/dashboard", { token }),
+    queryKey: ["office-dashboard", selectedDate],
+    queryFn: () =>
+      apiFetch<DashboardMetrics>(
+        `/api/office/dashboard?date=${selectedDate}`,
+        { token },
+      ),
   });
 
-  const stats = data ? buildStats(data) : [];
+  const stats = data ? buildStats(data, isToday) : [];
 
   if (activeView) {
     return (
       <OfficeDashboardListView
         viewId={activeView}
+        date={selectedDate}
         onBack={() => setActiveView(null)}
       />
     );
@@ -161,7 +200,9 @@ export default function OfficeDashboardPage() {
             Office Dashboard
           </h1>
           <p className="text-sm text-muted-foreground">
-            Live overview of workforce and attendance. Click a card for details.
+            {isToday
+              ? "Live overview of workforce and attendance. Click a card for details."
+              : `Attendance overview for ${formatDateLong(selectedDate)}. Click a card for details.`}
           </p>
         </div>
         {!isPending && !isError && data ? (
@@ -173,6 +214,47 @@ export default function OfficeDashboardPage() {
           >
             <RotateCw className={cn(isFetching && "animate-spin")} />
             Refresh
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="date"
+          value={selectedDate}
+          max={todayString()}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+              setSelectedDate(v);
+            }
+          }}
+          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSelectedDate((d) => shiftDate(d, -1))}
+        >
+          <ChevronLeft className="size-4" />
+          Previous Day
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isToday}
+          onClick={() => setSelectedDate((d) => shiftDate(d, 1))}
+        >
+          Next Day
+          <ChevronRight className="size-4" />
+        </Button>
+        {!isToday ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedDate(todayString())}
+          >
+            Back to Today
           </Button>
         ) : null}
       </div>

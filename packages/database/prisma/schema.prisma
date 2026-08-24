@@ -135,6 +135,9 @@ model Attendance {
   checkOutLongitude Float?
   latitude          Float?
   longitude         Float?
+  correctedByAdmin  Boolean          @default(false)
+  previousStatus    AttendanceStatus?
+  correctedAt       DateTime?
   employee     Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
