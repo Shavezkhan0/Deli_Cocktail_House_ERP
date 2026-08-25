@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronUp, LayoutGrid, LogOut, UserRound } from "lucide-react";
+import { ChevronUp, LogOut, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ function humanizeDesignation(designation: string): string {
 }
 
 export function BottomNav() {
+
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -32,10 +33,6 @@ export function BottomNav() {
     .join("")
     .toUpperCase();
 
-  function handleBackToDashboard() {
-    setMenuOpen(false);
-    router.push("/dashboard");
-  }
 
   function handleLogout() {
     setMenuOpen(false);
@@ -89,14 +86,7 @@ export function BottomNav() {
                     {designation ? humanizeDesignation(designation) : "Employee Portal"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleBackToDashboard}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  <LayoutGrid className="size-4" />
-                  Back to Dashboard
-                </button>
+
                 <button
                   type="button"
                   onClick={handleLogout}

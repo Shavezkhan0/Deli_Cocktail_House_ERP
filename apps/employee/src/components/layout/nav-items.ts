@@ -25,11 +25,12 @@ export type NavItem = {
 
 export const WORK_NAV: NavItem[] = [
   { label: "CRM Dashboard", href: "/modules/crm/dashboard", icon: Briefcase, onlyFor: [] },
-  { label: "My Tasks", href: "/modules/designer/tasks", icon: ListTodo, onlyFor: ["GRAPHIC_DESIGNER"] },
-  { label: "Menu Design", href: "/modules/crm/menu-design", icon: PenTool, onlyFor: ["GRAPHIC_DESIGNER"] },
-  { label: "Glass Tag Designer", href: "/modules/crm/glass-tag", icon: Tag, onlyFor: ["GRAPHIC_DESIGNER"] },
-  { label: "Stirrer Design", href: "/modules/crm/stirrer", icon: SlidersHorizontal, onlyFor: ["GRAPHIC_DESIGNER"] },
-  { label: "Logo Manager", href: "/modules/crm/logo", icon: Palette, onlyFor: ["GRAPHIC_DESIGNER"] },
+  // TODO: Re-enable these Graphic Designer nav items when ready
+  // { label: "My Tasks", href: "/modules/designer/tasks", icon: ListTodo, onlyFor: ["GRAPHIC_DESIGNER"] },
+  // { label: "Menu Design", href: "/modules/crm/menu-design", icon: PenTool, onlyFor: ["GRAPHIC_DESIGNER"] },
+  // { label: "Glass Tag Designer", href: "/modules/crm/glass-tag", icon: Tag, onlyFor: ["GRAPHIC_DESIGNER"] },
+  // { label: "Stirrer Design", href: "/modules/crm/stirrer", icon: SlidersHorizontal, onlyFor: ["GRAPHIC_DESIGNER"] },
+  // { label: "Logo Manager", href: "/modules/crm/logo", icon: Palette, onlyFor: ["GRAPHIC_DESIGNER"] },
 ];
 
 export const PROFILE_NAV: NavItem[] = [
