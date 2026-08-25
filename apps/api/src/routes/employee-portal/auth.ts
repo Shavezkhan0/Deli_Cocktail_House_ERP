@@ -96,6 +96,7 @@ router.post("/verify-otp", async (req, res) => {
     token,
     employee: {
       id: employee.id,
+      employeeId: employee.employeeId,
       name: employee.name,
       designation: employee.designation,
       email: employee.email,
