@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _tokenKey = 'dch-employee-token';
 const _employeeKey = 'dch-employee-data';
+const _dismissedUpdateKey = 'dch-employee-dismissed-update';
 
 class SecureStorage {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -29,5 +30,18 @@ class SecureStorage {
   Future<void> clearSession() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _employeeKey);
+  }
+
+  Future<void> saveDismissedUpdateVersion(int versionCode) async {
+    await _storage.write(
+      key: _dismissedUpdateKey,
+      value: versionCode.toString(),
+    );
+  }
+
+  Future<int?> readDismissedUpdateVersion() async {
+    final raw = await _storage.read(key: _dismissedUpdateKey);
+    if (raw == null) return null;
+    return int.tryParse(raw);
   }
 }

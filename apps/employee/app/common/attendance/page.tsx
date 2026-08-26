@@ -359,6 +359,8 @@ export default function AttendancePage() {
   const now = new Date();
   const isPastCheckInWindow =
     now.getHours() * 60 + now.getMinutes() > 14 * 60 + 30;
+  const isPastCheckOutTime =
+    now.getHours() * 60 + now.getMinutes() >= 17 * 60 + 30;
 
   const monthRecordsByDate = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
@@ -519,7 +521,9 @@ export default function AttendancePage() {
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Remember to check out before 5:30 PM.
+                      {isPastCheckOutTime
+                        ? "You\u2019re past checkout time \u2014 check out now to close today\u2019s attendance."
+                        : "Check out after 5:30 PM for a full Present day \u2014 checking out earlier may mark today as Half Day or Short Leave."}
                     </p>
                   )}
                 </div>
@@ -854,8 +858,9 @@ export default function AttendancePage() {
             <DialogDescription>
               {pendingAction === "check-out" ? (
                 <>
-                  Are you sure you want to Check Out now? If you check out
-                  before 5:30 PM, it will be marked as a short leave.
+                  Are you sure you want to Check Out now? Checking out before
+                  5:30 PM may reduce today&apos;s attendance to Half Day or
+                  Short Leave, depending on your check-in time.
                 </>
               ) : (
                 <>

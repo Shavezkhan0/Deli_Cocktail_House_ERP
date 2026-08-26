@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/update/update_banner.dart';
+import '../../core/update/update_launcher.dart';
+import '../../core/update/update_provider.dart';
+import '../../features/auth/data/auth_provider.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({
     super.key,
     required this.navigationShell,
@@ -26,12 +31,24 @@ class AppShell extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final index = navigationShell.currentIndex;
 
     return Scaffold(
       appBar: AppBar(title: Text(_tabTitles[index])),
-      body: navigationShell,
+      body: Column(
+        children: [
+          UpdateBanner(
+            onUpdate: () {
+              final info = ref.read(updateProvider).versionInfo;
+              if (info != null) {
+                launchUpdate(context, info, ref.read(apiClientProvider).dio);
+              }
+            },
+          ),
+          Expanded(child: navigationShell),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

@@ -6,12 +6,12 @@ String formatCurrency(double value) {
 }
 
 String formatDate(String isoString) {
-  final date = DateTime.parse(isoString);
+  final date = DateTime.parse(isoString).toLocal();
   return DateFormat('d MMM yyyy').format(date);
 }
 
 String formatTime(String isoString) {
-  final date = DateTime.parse(isoString);
+  final date = DateTime.parse(isoString).toLocal();
   return DateFormat('h:mm a').format(date);
 }
 

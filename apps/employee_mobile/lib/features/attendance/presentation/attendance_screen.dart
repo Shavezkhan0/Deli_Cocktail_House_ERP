@@ -1,8 +1,14 @@
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/geo.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/connectivity_widgets.dart';
 import '../data/attendance_providers.dart';
@@ -37,6 +43,14 @@ const _statusOrder = [
 ];
 
 // ---------------------------------------------------------------------------
+// Pagination state (scoped to attendance screen)
+// ---------------------------------------------------------------------------
+
+final _pageSizeProvider = StateProvider<int?>((ref) => null);
+
+final _pageindexProvider = StateProvider<int>((ref) => 0);
+
+// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
@@ -57,6 +71,20 @@ class _AttendanceBody extends ConsumerStatefulWidget {
 }
 
 class _AttendanceBodyState extends ConsumerState<_AttendanceBody> {
+  late final ConfettiController _confettiController;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(milliseconds: 1500));
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final todayAsync = ref.watch(todayAttendanceProvider);
@@ -65,6 +93,20 @@ class _AttendanceBodyState extends ConsumerState<_AttendanceBody> {
     final officeAsync = ref.watch(officeLocationProvider);
     final markState = ref.watch(markAttendanceProvider);
 
+    ref.listen<MarkAttendanceState>(markAttendanceProvider, (prev, next) {
+      if (prev?.result == null && next.result != null) {
+        _confettiController.play();
+      }
+    });
+
+    // Only treat this as a first load (full skeleton) when there's no
+    // cached value yet — otherwise a background refresh (e.g. after
+    // check-in/out, or pull-to-refresh) would tear down and re-render the
+    // whole page every time instead of just quietly updating in place.
+    final isFirstLoad = (todayAsync.isLoading && !todayAsync.hasValue) ||
+        (historyAsync.isLoading && !historyAsync.hasValue) ||
+        (holidaysAsync.isLoading && !holidaysAsync.hasValue);
+
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(todayAttendanceProvider);
@@ -72,41 +114,224 @@ class _AttendanceBodyState extends ConsumerState<_AttendanceBody> {
         ref.invalidate(holidaysProvider);
         ref.invalidate(officeLocationProvider);
       },
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+      child: Stack(
         children: [
-          // Today's card
-          todayAsync.when(
-            loading: () => const LoadingState(itemHeight: 220),
-            error: (e, _) => isConnectionError(e)
-                ? ServerUnavailableOverlay(
-                    onRetry: () => ref.invalidate(todayAttendanceProvider),
-                  )
-                : ErrorState(
-                    message: 'Could not load today\'s attendance.',
-                    onRetry: () => ref.invalidate(todayAttendanceProvider),
+          ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Show combined skeleton only on a genuine first load
+              if (isFirstLoad)
+                const _AttendanceSkeleton()
+              else ...[
+                // Today's card
+                todayAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, _) => isConnectionError(e)
+                      ? ServerUnavailableOverlay(
+                          onRetry: () => ref.invalidate(todayAttendanceProvider),
+                        )
+                      : ErrorState(
+                          message: 'Could not load today\'s attendance.',
+                          onRetry: () => ref.invalidate(todayAttendanceProvider),
+                        ),
+                  data: (today) => _TodayCard(
+                    record: today.attendance,
+                    office: officeAsync.valueOrNull,
+                    markState: markState,
+                    onMark: () =>
+                        ref.read(markAttendanceProvider.notifier).markAttendance(),
                   ),
-            data: (today) => _TodayCard(
-              record: today.attendance,
-              office: officeAsync.valueOrNull,
-              markState: markState,
-              onMark: () =>
-                  ref.read(markAttendanceProvider.notifier).markAttendance(),
+                ),
+                const SizedBox(height: 16),
+
+                // Calendar card
+                _CalendarSection(
+                  historyAsync: historyAsync,
+                  holidaysAsync: holidaysAsync,
+                ),
+                const SizedBox(height: 16),
+
+                // History list card
+                _HistorySection(
+                  historyAsync: historyAsync,
+                  holidaysAsync: holidaysAsync,
+                ),
+              ],
+            ],
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [
+                Color(0xFF10B981),
+                Color(0xFF3B82F6),
+                Color(0xFFF59E0B),
+                Color(0xFFEC4899),
+                Color(0xFF8B5CF6),
+              ],
+              emissionFrequency: 0.05,
+              numberOfParticles: 20,
+              gravity: 0.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attendance page skeleton (replaces three separate LoadingStates)
+// ---------------------------------------------------------------------------
+
+class _AttendanceSkeleton extends StatelessWidget {
+  const _AttendanceSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppTheme.surface,
+      highlightColor: Colors.white,
+      period: const Duration(milliseconds: 1400),
+      child: Column(
+        children: [
+          // --- Today card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              children: [
+                // Two info-row placeholders
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SkeletonBox(width: 90, height: 14, borderRadius: 4),
+                    const SizedBox(width: 8),
+                    SkeletonBox(width: 120, height: 14, borderRadius: 4),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SkeletonBox(width: 60, height: 14, borderRadius: 4),
+                    const SizedBox(width: 8),
+                    SkeletonBox(width: 160, height: 14, borderRadius: 4),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Circular check-in button placeholder
+                const SkeletonBox(
+                  width: 160,
+                  height: 160,
+                  borderRadius: 999,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Calendar card
-          _CalendarSection(
-            historyAsync: historyAsync,
-            holidaysAsync: holidaysAsync,
+          // --- Calendar skeleton ---
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header line
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(width: 160, height: 14, borderRadius: 4),
+                          SizedBox(height: 6),
+                          SkeletonBox(width: 200, height: 10, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                    SkeletonBox(width: 100, height: 28, borderRadius: 6),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Day-of-week headers
+                Row(
+                  children: List.generate(
+                    7,
+                    (_) => const Expanded(
+                      child: Center(
+                        child: SkeletonBox(width: 18, height: 12, borderRadius: 4),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // 5 rows × 7 columns of day cells
+                ...List.generate(5, (_) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: List.generate(
+                        7,
+                        (_) => const Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: SkeletonBox(height: 36, borderRadius: 6),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
-          // History list card
-          _HistorySection(
-            historyAsync: historyAsync,
-            holidaysAsync: holidaysAsync,
+          // --- History table skeleton ---
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              children: [
+                // Table header bar
+                SkeletonBox(height: 18, borderRadius: 4),
+                const SizedBox(height: 12),
+                // 5 data rows
+                ...List.generate(5, (_) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        const SkeletonBox(width: 96, height: 14, borderRadius: 4),
+                        const SizedBox(width: 12),
+                        const SkeletonBox(width: 64, height: 14, borderRadius: 4),
+                        const SizedBox(width: 12),
+                        const SkeletonBox(width: 64, height: 14, borderRadius: 4),
+                        const SizedBox(width: 12),
+                        SkeletonBox(width: 100, height: 22, borderRadius: 11),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
         ],
       ),
@@ -151,7 +376,13 @@ class _TodayCard extends StatelessWidget {
             if (hasCheckedOut)
               _infoRow('Checked out', formatTime(record!.checkOutTime!))
             else
-              _infoRow('Status', 'Remember to check out before 5:30 PM.'),
+              _infoRow(
+                'Status',
+                DateTime.now().hour > 17 ||
+                        (DateTime.now().hour == 17 && DateTime.now().minute >= 30)
+                    ? 'You\u2019re past checkout time \u2014 check out now to close today\u2019s attendance.'
+                    : 'Check out after 5:30 PM for a full Present day \u2014 checking out earlier may mark today as Half Day or Short Leave.',
+              ),
             const SizedBox(height: 8),
             if (record != null) _StatusBadge(status: record!.status),
           ] else ...[
@@ -183,7 +414,7 @@ class _TodayCard extends StatelessWidget {
                   ? null
                   : hasCheckedOut
                       ? null
-                      : onMark,
+                      : () => _handleMarkTap(context),
               style: ElevatedButton.styleFrom(
                 shape: const CircleBorder(),
                 padding: EdgeInsets.zero,
@@ -272,9 +503,49 @@ class _TodayCard extends StatelessWidget {
               ),
             ),
           ],
+
+          // Map preview + distance
+          if (_markedPosition != null) ...[
+            const SizedBox(height: 16),
+            _MapPreviewCard(position: _markedPosition!),
+            if (office != null) ...[
+              const SizedBox(height: 10),
+              _DistanceFromOffice(
+                office: office!,
+                position: _markedPosition!,
+              ),
+            ],
+          ],
         ],
       ),
     );
+  }
+
+  ({double latitude, double longitude})? get _markedPosition {
+    if (record?.latitude != null && record?.longitude != null) {
+      return (latitude: record!.latitude!, longitude: record!.longitude!);
+    }
+    final pos = markState.position;
+    if (pos != null) {
+      return (latitude: pos.latitude, longitude: pos.longitude);
+    }
+    return null;
+  }
+
+  void _handleMarkTap(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: hasCheckedIn ? 'Check out now?' : 'Check in now?',
+      message: hasCheckedIn
+          ? 'Are you sure you want to Check Out now? Checking out before 5:30 PM may reduce today\'s attendance to Half Day or Short Leave, depending on your check-in time.'
+          : 'Are you sure you want to Check In now? Your current location will be recorded for attendance.',
+      confirmLabel: hasCheckedIn ? 'Check Out' : 'Check In',
+      confirmIcon: hasCheckedIn ? Icons.logout : Icons.login,
+      destructive: false,
+    );
+    if (confirmed) {
+      onMark();
+    }
   }
 
   Widget _infoRow(String label, String value) {
@@ -286,6 +557,102 @@ class _TodayCard extends StatelessWidget {
           child: Text(
             value,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.foreground),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Map preview card (webview_flutter)
+// ---------------------------------------------------------------------------
+
+class _MapPreviewCard extends StatefulWidget {
+  const _MapPreviewCard({required this.position});
+
+  final ({double latitude, double longitude}) position;
+
+  @override
+  State<_MapPreviewCard> createState() => _MapPreviewCardState();
+}
+
+class _MapPreviewCardState extends State<_MapPreviewCard> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final lat = widget.position.latitude;
+    final lon = widget.position.longitude;
+    final delta = 0.002;
+    final bbox =
+        '${lon - delta}%2C${lat - delta / 2}%2C${lon + delta}%2C${lat + delta / 2}';
+    final src =
+        'https://www.openstreetmap.org/export/embed.html?bbox=$bbox&layer=mapnik&marker=$lat%2C$lon';
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(src));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 220,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: WebViewWidget(controller: _controller),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Distance from office chip
+// ---------------------------------------------------------------------------
+
+class _DistanceFromOffice extends StatelessWidget {
+  const _DistanceFromOffice({
+    required this.office,
+    required this.position,
+  });
+
+  final OfficeLocation office;
+  final ({double latitude, double longitude}) position;
+
+  @override
+  Widget build(BuildContext context) {
+    final meters = calculateDistance(
+      position.latitude,
+      position.longitude,
+      office.latitude,
+      office.longitude,
+    );
+    final label = meters >= 1000
+        ? '${(meters / 1000).toStringAsFixed(1)} km'
+        : '${meters.round()} m';
+
+    return Row(
+      children: [
+        const Icon(Icons.place_outlined, size: 14, color: AppTheme.mutedForeground),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Distance from ${office.locationName}',
+            style: const TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.foreground,
           ),
         ),
       ],
@@ -307,19 +674,23 @@ class _StatusBadge extends StatelessWidget {
     final info = _statusConfig[status];
     if (info == null) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: info.color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: info.color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(info.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: info.color)),
-        ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: info.color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: info.color, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Text(info.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: info.color)),
+          ],
+        ),
       ),
     );
   }
@@ -413,10 +784,10 @@ class _CalendarSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: historyAsync.when(
-              loading: () => const SizedBox(height: 260),
-              error: (e, _) => const SizedBox(height: 80),
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => const SizedBox.shrink(),
               data: (history) => holidaysAsync.when(
-                loading: () => const SizedBox(height: 260),
+                loading: () => const SizedBox.shrink(),
                 error: (e, _) => _buildGrid(year, month, leadingBlanks, daysInMonth, todayKey, {}, {}),
                 data: (holidays) {
                   final recordsByDate = <String, AttendanceRecord>{};
@@ -631,6 +1002,9 @@ class _CalendarSection extends ConsumerWidget {
     }
     ref.read(historyMonthProvider.notifier).state =
         MonthFilter(month: newMonth, year: newYear);
+
+    // Reset pagination when month changes
+    ref.read(_pageindexProvider.notifier).state = 0;
   }
 }
 
@@ -658,7 +1032,7 @@ class _MonthArrow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// History section (list/table)
+// History section (list/table with pagination)
 // ---------------------------------------------------------------------------
 
 class _HistorySection extends ConsumerWidget {
@@ -670,13 +1044,55 @@ class _HistorySection extends ConsumerWidget {
   final AsyncValue<HistoryAttendanceResponse> historyAsync;
   final AsyncValue<List<Holiday>> holidaysAsync;
 
+  // Fixed column widths that prevent _StatusBadge overflow — used only as a
+  // fallback (with horizontal scroll) when the screen is too narrow to
+  // stretch the columns to fill the card without squashing them.
+  static const _colDate = 96.0;
+  static const _colIn = 64.0;
+  static const _colOut = 64.0;
+  static const _colStatus = 92.0;
+  static const _rowPadding = 32.0; // 16px horizontal padding on each side
+  static const _minTableWidth =
+      _colDate + _colIn + _colOut + _colStatus + _rowPadding;
+
+  Widget _tableRow({
+    required bool stretch,
+    required Widget date,
+    required Widget checkIn,
+    required Widget checkOut,
+    required Widget status,
+    BoxDecoration? decoration,
+  }) {
+    Widget cell(Widget child, double width, int flex) {
+      return stretch
+          ? Expanded(
+              flex: flex,
+              child: Align(alignment: Alignment.centerLeft, child: child),
+            )
+          : SizedBox(width: width, child: child);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: decoration,
+      child: Row(
+        children: [
+          cell(date, _colDate, 3),
+          cell(checkIn, _colIn, 2),
+          cell(checkOut, _colOut, 2),
+          cell(status, _colStatus, 3),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         // History list
         historyAsync.when(
-          loading: () => const LoadingState(itemHeight: 180),
+          loading: () => const SizedBox.shrink(),
           error: (e, _) => isConnectionError(e)
               ? ServerUnavailableOverlay(
                   onRetry: () => ref.invalidate(historyProvider),
@@ -694,6 +1110,25 @@ class _HistorySection extends ConsumerWidget {
               );
             }
 
+            // Pagination logic
+            final pageSize = ref.watch(_pageSizeProvider);
+            final pageIndex = ref.watch(_pageindexProvider);
+            final allRecords = history.records;
+
+            final int totalPages;
+            final List<AttendanceRecord> visibleRecords;
+
+            if (pageSize == null) {
+              // Full month — show all
+              totalPages = 1;
+              visibleRecords = allRecords;
+            } else {
+              totalPages = (allRecords.length / pageSize).ceil().clamp(1, 9999);
+              final start = (pageIndex * pageSize).clamp(0, allRecords.length);
+              final end = (start + pageSize).clamp(0, allRecords.length);
+              visibleRecords = allRecords.sublist(start, end);
+            }
+
             return Container(
               decoration: BoxDecoration(
                 color: AppTheme.card,
@@ -702,51 +1137,88 @@ class _HistorySection extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: AppTheme.border)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Expanded(flex: 3, child: Text('Date', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mutedForeground))),
-                        Expanded(flex: 2, child: Text('In', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mutedForeground))),
-                        Expanded(flex: 2, child: Text('Out', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mutedForeground))),
-                        Expanded(flex: 2, child: Text('Status', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mutedForeground))),
-                      ],
+                  // Page size selector
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _PageSizeSelector(
+                      pageSize: pageSize,
+                      onSelected: (newSize) {
+                        ref.read(_pageSizeProvider.notifier).state = newSize;
+                        ref.read(_pageindexProvider.notifier).state = 0;
+                      },
                     ),
                   ),
-                  ...history.records.map(
-                    (record) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: AppTheme.border)),
-                      ),
-                      child: Row(
+
+                  // Table header + data — stretches to fill the card on
+                  // normal-width screens; falls back to fixed-width columns
+                  // with horizontal scroll only if it genuinely can't fit.
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final stretch = constraints.maxWidth >= _minTableWidth;
+
+                      const headerStyle = TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.mutedForeground,
+                      );
+                      const cellStyle = TextStyle(fontSize: 12, color: AppTheme.foreground);
+                      const mutedCellStyle = TextStyle(fontSize: 12, color: AppTheme.mutedForeground);
+
+                      final table = Column(
                         children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text(formatDate(record.date), style: const TextStyle(fontSize: 12, color: AppTheme.foreground)),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              record.checkInTime != null ? formatTime(record.checkInTime!) : '—',
-                              style: const TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+                          _tableRow(
+                            stretch: stretch,
+                            date: const Text('Date', style: headerStyle),
+                            checkIn: const Text('In', style: headerStyle),
+                            checkOut: const Text('Out', style: headerStyle),
+                            status: const Text('Status', style: headerStyle),
+                            decoration: const BoxDecoration(
+                              border: Border(bottom: BorderSide(color: AppTheme.border)),
                             ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              record.checkOutTime != null ? formatTime(record.checkOutTime!) : '—',
-                              style: const TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+                          ...visibleRecords.map(
+                            (record) => _tableRow(
+                              stretch: stretch,
+                              date: Text(formatDate(record.date), style: cellStyle),
+                              checkIn: Text(
+                                record.checkInTime != null ? formatTime(record.checkInTime!) : '—',
+                                style: mutedCellStyle,
+                              ),
+                              checkOut: Text(
+                                record.checkOutTime != null ? formatTime(record.checkOutTime!) : '—',
+                                style: mutedCellStyle,
+                              ),
+                              status: _StatusBadge(status: record.status),
+                              decoration: const BoxDecoration(
+                                border: Border(bottom: BorderSide(color: AppTheme.border)),
+                              ),
                             ),
                           ),
-                          Expanded(flex: 2, child: _StatusBadge(status: record.status)),
                         ],
-                      ),
-                    ),
+                      );
+
+                      if (stretch) return table;
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: table,
+                      );
+                    },
                   ),
+
+                  // Pagination controls
+                  if (pageSize != null && totalPages > 1)
+                    _PaginationControls(
+                      pageIndex: pageIndex,
+                      totalPages: totalPages,
+                      onPrevious: () {
+                        ref.read(_pageindexProvider.notifier).state =
+                            (pageIndex - 1).clamp(0, totalPages - 1);
+                      },
+                      onNext: () {
+                        ref.read(_pageindexProvider.notifier).state =
+                            (pageIndex + 1).clamp(0, totalPages - 1);
+                      },
+                    ),
                 ],
               ),
             );
@@ -795,6 +1267,173 @@ class _HistorySection extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page size selector (pill/chip toggle)
+// ---------------------------------------------------------------------------
+
+class _PageSizeSelector extends StatelessWidget {
+  const _PageSizeSelector({
+    required this.pageSize,
+    required this.onSelected,
+  });
+
+  final int? pageSize;
+  final ValueChanged<int?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text(
+          'Show:',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.mutedForeground),
+        ),
+        const SizedBox(width: 8),
+        _PillChip(
+          label: '10',
+          selected: pageSize == 10,
+          onTap: () => onSelected(10),
+        ),
+        const SizedBox(width: 6),
+        _PillChip(
+          label: '20',
+          selected: pageSize == 20,
+          onTap: () => onSelected(20),
+        ),
+        const SizedBox(width: 6),
+        _PillChip(
+          label: 'Full month',
+          selected: pageSize == null,
+          onTap: () => onSelected(null),
+        ),
+      ],
+    );
+  }
+}
+
+class _PillChip extends StatelessWidget {
+  const _PillChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : AppTheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppTheme.primaryForeground : AppTheme.mutedForeground,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pagination controls (Previous / Page X of Y / Next)
+// ---------------------------------------------------------------------------
+
+class _PaginationControls extends StatelessWidget {
+  const _PaginationControls({
+    required this.pageIndex,
+    required this.totalPages,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final int pageIndex;
+  final int totalPages;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppTheme.border)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _NavButton(
+            label: 'Previous',
+            enabled: pageIndex > 0,
+            onTap: onPrevious,
+          ),
+          const SizedBox(width: 16),
+          Text(
+            'Page ${pageIndex + 1} of $totalPages',
+            style: const TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+          ),
+          const SizedBox(width: 16),
+          _NavButton(
+            label: 'Next',
+            enabled: pageIndex < totalPages - 1,
+            onTap: onNext,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: enabled ? AppTheme.surface : AppTheme.surface.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: enabled ? AppTheme.border : AppTheme.border.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: enabled ? AppTheme.foreground : AppTheme.mutedForeground.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
     );
   }
 }
