@@ -792,13 +792,13 @@ class _CalendarSection extends ConsumerWidget {
                 data: (holidays) {
                   final recordsByDate = <String, AttendanceRecord>{};
                   for (final r in history.records) {
-                    final dt = DateTime.parse(r.date);
+                    final dt = DateTime.parse(r.date).toLocal();
                     final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
                     recordsByDate[key] = r;
                   }
                   final holidaysByDate = <String, Holiday>{};
                   for (final h in holidays) {
-                    final dt = DateTime.parse(h.date);
+                    final dt = DateTime.parse(h.date).toLocal();
                     final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
                     holidaysByDate[key] = h;
                   }

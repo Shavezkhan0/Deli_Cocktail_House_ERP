@@ -64,7 +64,7 @@ async function getEffectiveLocation(designation: string) {
 
 const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
 
-const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 30 }; // at or before → PRESENT (Full)
+const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 15 }; // at or before → PRESENT (Full)
 const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
 const CHECK_IN_HALF_CUTOFF = { hour: 14, minute: 30 }; // at or before → HALF_DAY, after → blocked
 
