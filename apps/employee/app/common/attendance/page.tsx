@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -190,9 +190,15 @@ export default function AttendancePage() {
   const [locationBlocked, setLocationBlocked] = useState(false);
   const [historyMonth, setHistoryMonth] = useState(() => new Date().getMonth());
   const [historyYear, setHistoryYear] = useState(() => new Date().getFullYear());
+  const [pageSize, setPageSize] = useState<number | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
   const [pendingAction, setPendingAction] = useState<
     "check-in" | "check-out" | null
   >(null);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [pageSize, historyMonth, historyYear]);
 
   const todayQuery = useQuery({
     queryKey: ["attendance", "today"],
@@ -409,6 +415,14 @@ export default function AttendancePage() {
       officeQuery.data.longitude,
     );
   }, [markedPosition, officeQuery.data]);
+
+  const allRecords = historyQuery.data?.records ?? [];
+  const totalPages = pageSize === null ? 1 : Math.max(1, Math.ceil(allRecords.length / pageSize));
+  const visibleRecords = useMemo(() => {
+    if (pageSize === null) return allRecords;
+    const start = pageIndex * pageSize;
+    return allRecords.slice(start, start + pageSize);
+  }, [allRecords, pageSize, pageIndex]);
 
   let content: React.ReactNode;
 
@@ -760,6 +774,23 @@ export default function AttendancePage() {
                 Detailed records for {historyMonthLabel}.
               </p>
             </div>
+            <div className="flex items-center gap-1.5">
+              {([10, 20, null] as const).map((size) => (
+                <button
+                  key={size === null ? "all" : size}
+                  type="button"
+                  onClick={() => setPageSize(size)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    pageSize === size
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80",
+                  )}
+                >
+                  {size === null ? "Full month" : String(size)}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-6">
@@ -774,49 +805,77 @@ export default function AttendancePage() {
             ))}
           </div>
 
-          {historyQuery.data && historyQuery.data.records.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-6 py-3.5 font-semibold">Date</th>
-                    <th className="px-6 py-3.5 font-semibold">Check In</th>
-                    <th className="px-6 py-3.5 font-semibold">Check Out</th>
-                    <th className="px-6 py-3.5 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {historyQuery.data.records.map((record) => (
-                    <tr
-                      key={record.id}
-                      className="transition-colors hover:bg-muted/40"
-                    >
-                      <td className="px-6 py-4 font-medium text-foreground">
-                        {formatDate(record.date)}
-                      </td>
-                      <td className="px-6 py-4 tabular-nums text-muted-foreground">
-                        {record.checkInTime ? formatTime(record.checkInTime) : "—"}
-                      </td>
-                      <td className="px-6 py-4 tabular-nums text-muted-foreground">
-                        {record.checkOutTime ? formatTime(record.checkOutTime) : "—"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={record.status} />
-                        {record.correctedByAdmin ? (
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            Admin corrected:{" "}
-                            {record.previousStatus
-                              ? STATUS_CONFIG[record.previousStatus].label
-                              : "no record"}{" "}
-                            → {STATUS_CONFIG[record.status].label}
-                          </p>
-                        ) : null}
-                      </td>
+          {historyQuery.data && allRecords.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <th className="px-6 py-3.5 font-semibold">Date</th>
+                      <th className="px-6 py-3.5 font-semibold">Check In</th>
+                      <th className="px-6 py-3.5 font-semibold">Check Out</th>
+                      <th className="px-6 py-3.5 font-semibold">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {visibleRecords.map((record) => (
+                      <tr
+                        key={record.id}
+                        className="transition-colors hover:bg-muted/40"
+                      >
+                        <td className="px-6 py-4 font-medium text-foreground">
+                          {formatDate(record.date)}
+                        </td>
+                        <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                          {record.checkInTime ? formatTime(record.checkInTime) : "—"}
+                        </td>
+                        <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                          {record.checkOutTime ? formatTime(record.checkOutTime) : "—"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={record.status} />
+                          {record.correctedByAdmin ? (
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Admin corrected:{" "}
+                              {record.previousStatus
+                                ? STATUS_CONFIG[record.previousStatus].label
+                                : "no record"}{" "}
+                              → {STATUS_CONFIG[record.status].label}
+                            </p>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {pageSize !== null && totalPages > 1 ? (
+                <div className="flex items-center justify-center gap-4 border-t border-border px-4 py-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    disabled={pageIndex === 0}
+                  >
+                    <ChevronLeft className="size-4" />
+                    Previous
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Page {pageIndex + 1} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPageIndex((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={pageIndex >= totalPages - 1}
+                  >
+                    Next
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
               <p className="text-sm font-medium text-foreground">

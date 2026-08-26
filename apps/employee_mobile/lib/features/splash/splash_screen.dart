@@ -16,8 +16,10 @@ class SplashScreen extends StatelessWidget {
           children: [
             Image.asset(
               'assets/icon/app_icon.png',
-              width: 120,
-              height: 120,
+              width: 220,
+              height: 220,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
             )
                 .animate()
                 .fadeIn(duration: 500.ms, curve: Curves.easeOut)
