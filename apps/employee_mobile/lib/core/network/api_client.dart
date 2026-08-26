@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../storage/secure_storage.dart';
@@ -9,10 +10,7 @@ class ApiClient {
   ApiClient({String? baseUrl})
       : _dio = Dio(BaseOptions(
           baseUrl: baseUrl ??
-              const String.fromEnvironment(
-                'API_BASE_URL',
-                defaultValue: _defaultBaseUrl,
-              ),
+              dotenv.env['API_BASE_URL'] ?? _defaultBaseUrl,
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
           headers: {'Content-Type': 'application/json'},

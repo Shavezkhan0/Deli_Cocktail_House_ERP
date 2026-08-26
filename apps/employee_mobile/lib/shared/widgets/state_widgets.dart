@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -10,16 +11,21 @@ class LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: itemCount,
-      itemBuilder: (context, index) => Container(
-        height: itemHeight,
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(10),
+    return Shimmer.fromColors(
+      baseColor: AppTheme.surface,
+      highlightColor: Colors.white,
+      period: const Duration(milliseconds: 1400),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: itemCount,
+        itemBuilder: (context, index) => Container(
+          height: itemHeight,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       ),
     );

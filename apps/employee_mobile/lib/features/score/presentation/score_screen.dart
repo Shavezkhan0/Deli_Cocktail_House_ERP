@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../auth/data/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/score_repository.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/connectivity_widgets.dart';
 
@@ -73,7 +75,7 @@ class ScoreScreen extends ConsumerWidget {
           await ref.read(scoreProvider.future);
         },
         child: scoreAsync.when(
-          loading: () => const LoadingState(),
+          loading: () => const _ScoreSkeleton(),
           error: (e, _) => isConnectionError(e)
               ? ServerUnavailableOverlay(
                   onRetry: () => ref.invalidate(scoreProvider))
@@ -110,6 +112,184 @@ class _ScoreBody extends StatelessWidget {
           const SizedBox(height: 32),
         ],
       );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Score page skeleton
+// ---------------------------------------------------------------------------
+
+class _ScoreSkeleton extends StatelessWidget {
+  const _ScoreSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppTheme.surface,
+      highlightColor: Colors.white,
+      period: const Duration(milliseconds: 1400),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          // --- Current week card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: icon + title
+                Row(
+                  children: [
+                    const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonBox(width: 100, height: 14, borderRadius: 4),
+                          SizedBox(height: 6),
+                          SkeletonBox(width: 160, height: 11, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Large score ring placeholder (168×168 circle)
+                const Center(
+                  child: SkeletonBox(
+                    width: 168,
+                    height: 168,
+                    borderRadius: 999,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- History chart card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: icon + title
+                Row(
+                  children: [
+                    const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonBox(width: 120, height: 14, borderRadius: 4),
+                          SizedBox(height: 6),
+                          SkeletonBox(width: 100, height: 11, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Bar chart placeholder: 5 bars
+                SizedBox(
+                  height: 160,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(5, (i) {
+                      const heights = [80.0, 100.0, 60.0, 120.0, 90.0];
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              const SkeletonBox(width: 24, height: 11, borderRadius: 4),
+                              const SizedBox(height: 6),
+                              SkeletonBox(
+                                height: heights[i],
+                                borderRadius: 6,
+                              ),
+                              const SizedBox(height: 8),
+                              const SkeletonBox(width: 30, height: 10, borderRadius: 4),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Manager notes card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: icon + title
+                Row(
+                  children: [
+                    const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonBox(width: 120, height: 14, borderRadius: 4),
+                          SizedBox(height: 6),
+                          SkeletonBox(width: 130, height: 11, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Notes text block
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SkeletonBox(width: double.infinity, height: 12, borderRadius: 4),
+                      SizedBox(height: 8),
+                      SkeletonBox(width: double.infinity, height: 12, borderRadius: 4),
+                      SizedBox(height: 8),
+                      SkeletonBox(width: 180, height: 12, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

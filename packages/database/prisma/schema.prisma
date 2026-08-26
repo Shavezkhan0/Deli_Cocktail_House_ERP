@@ -73,6 +73,11 @@ enum EventStatus {
   CANCELLED
 }
 
+enum AppPlatform {
+  ANDROID
+  IOS
+}
+
 model Admin {
   id    String @id @default(cuid())
   email String @unique
@@ -559,4 +564,15 @@ model AttendanceOverride {
   createdAt  DateTime     @default(now())
 
   @@unique([employeeId, date])
+}
+
+model AppVersion {
+  id                      String      @id @default(cuid())
+  platform                AppPlatform @unique
+  latestVersionCode       Int
+  latestVersionName       String
+  minSupportedVersionCode Int
+  apkUrl                  String?
+  releaseNotes            String?
+  updatedAt               DateTime    @updatedAt
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../auth/data/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/connectivity_widgets.dart';
 import '../data/salary_repository.dart';
@@ -63,7 +65,7 @@ class SalaryScreen extends ConsumerWidget {
         await ref.read(salaryProvider.future);
       },
       child: salaryAsync.when(
-        loading: () => const LoadingState(),
+        loading: () => const _SalarySkeleton(),
         error: (e, _) => isConnectionError(e)
             ? ServerUnavailableOverlay(
                 onRetry: () => ref.invalidate(salaryProvider),
@@ -108,6 +110,181 @@ class _SalaryBody extends StatelessWidget {
         // History section
         _HistorySection(records: allHistory),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Salary page skeleton
+// ---------------------------------------------------------------------------
+
+class _SalarySkeleton extends StatelessWidget {
+  const _SalarySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppTheme.surface,
+      highlightColor: Colors.white,
+      period: const Duration(milliseconds: 1400),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          // --- Current salary card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: icon + title
+                Row(
+                  children: [
+                    const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          SkeletonBox(width: 140, height: 14, borderRadius: 4),
+                          SizedBox(height: 6),
+                          SkeletonBox(width: 100, height: 10, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Large amount
+                const SkeletonBox(width: 180, height: 32, borderRadius: 6),
+                const SizedBox(height: 12),
+                // Status badge + paid date
+                Row(
+                  children: const [
+                    SkeletonBox(width: 72, height: 22, borderRadius: 11),
+                    SizedBox(width: 10),
+                    SkeletonBox(width: 120, height: 12, borderRadius: 4),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Leave balance card skeleton ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header: icon + title
+                Row(
+                  children: const [
+                    SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                    SizedBox(width: 12),
+                    SkeletonBox(width: 200, height: 14, borderRadius: 4),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 4 stat boxes
+                Row(
+                  children: List.generate(
+                    4,
+                    (_) => Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: const [
+                            SkeletonBox(width: 30, height: 18, borderRadius: 4),
+                            SizedBox(height: 6),
+                            SkeletonBox(width: 40, height: 10, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- History section skeleton ---
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(width: 120, height: 14, borderRadius: 4),
+                      SizedBox(height: 6),
+                      SkeletonBox(width: 180, height: 10, borderRadius: 4),
+                    ],
+                  ),
+                ),
+                // 4 history rows
+                ...List.generate(4, (_) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: AppTheme.border)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Expanded(
+                          flex: 3,
+                          child: SkeletonBox(height: 14, borderRadius: 4),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: SkeletonBox(height: 14, borderRadius: 4),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: SkeletonBox(width: 64, height: 22, borderRadius: 11),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: SkeletonBox(height: 12, borderRadius: 4),
+                        ),
+                        SizedBox(width: 8),
+                        SkeletonBox(width: 16, height: 16, borderRadius: 4),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

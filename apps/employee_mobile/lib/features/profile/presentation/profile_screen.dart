@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../core/constants/designations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
+import '../../../shared/widgets/skeleton.dart';
 import '../../auth/data/auth_provider.dart';
 import '../data/profile_repository.dart';
 
@@ -32,12 +35,7 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
 
     return profileAsync.when(
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      loading: () => const _ProfileSkeleton(),
       error: (e, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -236,34 +234,20 @@ class _ProfileBody extends ConsumerWidget {
           width: double.infinity,
           height: 44,
           child: OutlinedButton(
-            onPressed: () {
-              showDialog<void>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  title: const Text('Logout'),
-                  content: const Text('Are you sure you want to log out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        ref.read(sessionProvider.notifier).clear();
-                        context.go('/login');
-                      },
-                      child: const Text(
-                        'Logout',
-                        style: TextStyle(color: AppTheme.destructive),
-                      ),
-                    ),
-                  ],
-                ),
+            onPressed: () async {
+              final confirmed = await showConfirmDialog(
+                context,
+                title: 'Log out?',
+                message: 'Are you sure you want to log out of DCH Employee?',
+                confirmLabel: 'Log out',
+                confirmIcon: Icons.logout,
+                destructive: true,
               );
+              if (!context.mounted) return;
+              if (confirmed) {
+                ref.read(sessionProvider.notifier).clear();
+                context.go('/login');
+              }
             },
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppTheme.destructive),
@@ -281,6 +265,151 @@ class _ProfileBody extends ConsumerWidget {
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Profile page skeleton
+// ---------------------------------------------------------------------------
+
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: AppTheme.surface,
+      highlightColor: Colors.white,
+      period: const Duration(milliseconds: 1400),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          // --- Header card: avatar + name + designation ---
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Row(
+              children: [
+                // Circular avatar (radius 32 → 64px diameter)
+                const SkeletonBox(
+                  width: 64,
+                  height: 64,
+                  borderRadius: 999,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      // Name line
+                      SkeletonBox(width: 160, height: 18, borderRadius: 4),
+                      SizedBox(height: 10),
+                      // Designation pill
+                      SkeletonBox(width: 110, height: 22, borderRadius: 11),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Detail rows card: Email / Contact / Joining Date ---
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              children: List.generate(3, (i) {
+                final isLast = i == 2;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: isLast
+                      ? null
+                      : const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: AppTheme.border)),
+                        ),
+                  child: Row(
+                    children: [
+                      // Icon box
+                      const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            // Label
+                            SkeletonBox(width: 80, height: 10, borderRadius: 4),
+                            SizedBox(height: 6),
+                            // Value
+                            SkeletonBox(width: 180, height: 13, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- Nav tiles card: Weekly Score / Extra Days ---
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Column(
+              children: List.generate(2, (i) {
+                final isLast = i == 1;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: isLast
+                      ? null
+                      : const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: AppTheme.border)),
+                        ),
+                  child: Row(
+                    children: [
+                      // Icon box
+                      const SkeletonBox(width: 36, height: 36, borderRadius: 10),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            // Label
+                            SkeletonBox(width: 120, height: 13, borderRadius: 4),
+                            SizedBox(height: 6),
+                            // Subtitle
+                            SkeletonBox(width: 180, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      // Chevron
+                      const SkeletonBox(width: 20, height: 20, borderRadius: 4),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // --- Logout button placeholder ---
+          const SkeletonBox(height: 44, borderRadius: 10),
+        ],
+      ),
     );
   }
 }
