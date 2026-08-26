@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../data/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -33,9 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleVerifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 6-digit OTP')),
-      );
+      showTopToast(context, 'Please enter the 6-digit OTP', isError: true);
       return;
     }
 
@@ -53,6 +52,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authFlowProvider);
+
+    ref.listen<AuthFlowState>(authFlowProvider, (previous, next) {
+      final justSentOtp = next.status == AuthFlowStatus.otpSent &&
+          previous?.status != AuthFlowStatus.otpSent;
+      final justFailed = next.status == AuthFlowStatus.error &&
+          next.errorMessage != null &&
+          next.errorMessage != previous?.errorMessage;
+
+      if (justSentOtp) {
+        showTopToast(context, 'OTP sent to ${next.email}');
+      } else if (justFailed) {
+        showTopToast(context, next.errorMessage!, isError: true);
+      }
+    });
 
     return Scaffold(
       body: Center(
