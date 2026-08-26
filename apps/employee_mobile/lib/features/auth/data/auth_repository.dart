@@ -14,12 +14,11 @@ class AuthRepository {
   /// Response 200: { "message": "...", "email": "..." }
   Future<void> requestOtp(String email) async {
     try {
-      _dio.post<Map<String, dynamic>>(
+      await _dio.post<Map<String, dynamic>>(
         '/api/employee/request-otp',
         data: {'email': email},
       );
       // 200 OK — OTP sent
-      return;
     } on DioException catch (e) {
       throw _handleError(e);
     }
