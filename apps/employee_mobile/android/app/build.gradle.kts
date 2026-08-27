@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.delicocktailhouse.employee_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
