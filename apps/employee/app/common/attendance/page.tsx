@@ -5,8 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarCheck,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Info,
   Loader2,
   LogIn,
@@ -259,9 +261,23 @@ export default function AttendancePage() {
     },
   });
 
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   function handleMarkClick() {
     if (submittingRef.current) {
       return;
+    }
+    if (hasCheckedIn && !hasCheckedOut) {
+      if (isCheckOutLocked) {
+        toast.info(
+          `You just checked in at ${todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : "recently"}. Check-out is locked for 15 minutes to prevent accidental checkouts. Unlocks in ${checkoutUnlockMinutes} min.`,
+        );
+        return;
+      }
     }
     setPendingAction(hasCheckedIn ? "check-out" : "check-in");
   }
@@ -362,7 +378,14 @@ export default function AttendancePage() {
   const todayRecord = todayQuery.data?.attendance ?? null;
   const hasCheckedIn = !!todayRecord?.checkInTime;
   const hasCheckedOut = !!todayRecord?.checkOutTime;
-  const now = new Date();
+
+  const checkInDate = todayRecord?.checkInTime ? new Date(todayRecord.checkInTime) : null;
+  const minutesSinceCheckIn = checkInDate
+    ? Math.floor((now.getTime() - checkInDate.getTime()) / (1000 * 60))
+    : 999;
+  const isCheckOutLocked = hasCheckedIn && !hasCheckedOut && minutesSinceCheckIn < 15;
+  const checkoutUnlockMinutes = Math.max(1, 15 - minutesSinceCheckIn);
+
   const isPastCheckInWindow =
     now.getHours() * 60 + now.getMinutes() > 14 * 60 + 30;
   const isPastCheckOutTime =
@@ -466,16 +489,19 @@ export default function AttendancePage() {
                 disabled={
                   isAcquiring ||
                   hasCheckedOut ||
+                  isCheckOutLocked ||
                   (!hasCheckedIn && isPastCheckInWindow)
                 }
                 className={cn(
                   "group relative flex size-44 flex-col items-center justify-center gap-3 rounded-full text-white shadow-xl transition-all duration-200",
                   hasCheckedOut
                     ? "cursor-not-allowed bg-emerald-600 shadow-emerald-600/30"
-                    : hasCheckedIn
-                      ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-500/30"
-                      : "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-indigo-500/30",
-                  !hasCheckedOut && !isAcquiring
+                    : isCheckOutLocked
+                      ? "cursor-not-allowed bg-gradient-to-br from-emerald-600 to-teal-700 opacity-90 shadow-emerald-600/20"
+                      : hasCheckedIn
+                        ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-500/30"
+                        : "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-indigo-500/30",
+                  !hasCheckedOut && !isCheckOutLocked && !isAcquiring
                     ? "hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-95"
                     : isAcquiring
                       ? "cursor-wait"
@@ -491,6 +517,8 @@ export default function AttendancePage() {
                 <span className="relative flex flex-col items-center gap-2">
                   {isAcquiring ? (
                     <Loader2 className="size-9 animate-spin" />
+                  ) : isCheckOutLocked ? (
+                    <CheckCircle2 className="size-9" />
                   ) : hasCheckedIn ? (
                     <LogOut className="size-9" />
                   ) : (
@@ -501,10 +529,17 @@ export default function AttendancePage() {
                       ? "Acquiring GPS…"
                       : hasCheckedOut
                         ? "Checked Out"
-                        : hasCheckedIn
-                          ? "Check Out"
-                          : "Check In"}
+                        : isCheckOutLocked
+                          ? "Checked In"
+                          : hasCheckedIn
+                            ? "Check Out"
+                            : "Check In"}
                   </span>
+                  {isCheckOutLocked ? (
+                    <span className="text-[11px] font-normal opacity-90">
+                      Unlocks in {checkoutUnlockMinutes}m
+                    </span>
+                  ) : null}
                 </span>
               </button>
 
@@ -532,6 +567,11 @@ export default function AttendancePage() {
                           ? formatTime(todayRecord.checkOutTime)
                           : "—"}
                       </span>
+                    </p>
+                  ) : isCheckOutLocked ? (
+                    <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      <Clock className="size-3.5" />
+                      Check-out is locked for 15 minutes after check-in (unlocks in {checkoutUnlockMinutes} min).
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
@@ -916,11 +956,20 @@ export default function AttendancePage() {
             </DialogTitle>
             <DialogDescription>
               {pendingAction === "check-out" ? (
-                <>
-                  Are you sure you want to Check Out now? Checking out before
-                  5:30 PM may reduce today&apos;s attendance to Half Day or
-                  Short Leave, depending on your check-in time.
-                </>
+                <div className="flex flex-col gap-2">
+                  <span>
+                    Are you sure you want to <strong>Check Out</strong> now?
+                  </span>
+                  {!isPastCheckOutTime ? (
+                    <span className="rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
+                      ⚠️ <strong>Early Check-Out Warning:</strong> Checking out before 5:30 PM may reduce today&apos;s attendance to <strong>Half Day</strong> or <strong>Short Leave</strong>.
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      This will record your checkout time and close today&apos;s attendance.
+                    </span>
+                  )}
+                </div>
               ) : (
                 <>
                   Are you sure you want to Check In now? Your current location

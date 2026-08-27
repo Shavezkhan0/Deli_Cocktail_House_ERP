@@ -308,6 +308,21 @@ router.post("/attendance/mark", async (req, res) => {
       return res.status(409).json({ message: "Already checked out for today" });
     }
 
+    // Guard: Prevent accidental immediate checkout (must wait at least 15 minutes after check-in)
+    const MIN_CHECKOUT_INTERVAL_MINUTES = 15;
+    if (existing.checkInTime) {
+      const diffMs = now.getTime() - new Date(existing.checkInTime).getTime();
+      const diffMinutes = diffMs / (1000 * 60);
+      if (diffMinutes < MIN_CHECKOUT_INTERVAL_MINUTES) {
+        const remainingMinutes = Math.max(1, Math.ceil(MIN_CHECKOUT_INTERVAL_MINUTES - diffMinutes));
+        return res.status(400).json({
+          error: "CHECKOUT_TOO_SOON",
+          message: `You just checked in recently. Check-out is locked for ${MIN_CHECKOUT_INTERVAL_MINUTES} minutes after check-in to prevent accidental checkouts. Please wait ${remainingMinutes} more minute${remainingMinutes > 1 ? "s" : ""}.`,
+          remainingMinutes,
+        });
+      }
+    }
+
     let status: AttendanceStatus;
     const existingDayIsSunday = istDayOfWeek(existing.date) === 0;
     const existingDayIsHoliday = !!(await prisma.holiday.findFirst({
