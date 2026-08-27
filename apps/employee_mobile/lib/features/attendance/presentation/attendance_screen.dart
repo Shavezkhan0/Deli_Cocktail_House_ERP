@@ -359,6 +359,16 @@ class _TodayCard extends StatelessWidget {
   bool get hasCheckedIn => record?.checkInTime != null;
   bool get hasCheckedOut => record?.checkOutTime != null;
 
+  int get minutesSinceCheckIn {
+    if (record?.checkInTime == null) return 999;
+    final checkIn = DateTime.tryParse(record!.checkInTime!);
+    if (checkIn == null) return 999;
+    return DateTime.now().toUtc().difference(checkIn.toUtc()).inMinutes;
+  }
+
+  bool get isCheckOutLocked => hasCheckedIn && !hasCheckedOut && minutesSinceCheckIn < 15;
+  int get checkoutUnlockRemainingMinutes => (15 - minutesSinceCheckIn).clamp(1, 15);
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -375,6 +385,11 @@ class _TodayCard extends StatelessWidget {
             const SizedBox(height: 4),
             if (hasCheckedOut)
               _infoRow('Checked out', formatTime(record!.checkOutTime!))
+            else if (isCheckOutLocked)
+              _infoRow(
+                'Check-Out Lock',
+                'Locked for 15m after check-in (unlocks in ${checkoutUnlockRemainingMinutes}m) to prevent accidental checkouts.',
+              )
             else
               _infoRow(
                 'Status',
@@ -412,7 +427,7 @@ class _TodayCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: (markState.isAcquiring || markState.isSubmitting)
                   ? null
-                  : hasCheckedOut
+                  : (hasCheckedOut || isCheckOutLocked)
                       ? null
                       : () => _handleMarkTap(context),
               style: ElevatedButton.styleFrom(
@@ -420,14 +435,18 @@ class _TodayCard extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 backgroundColor: hasCheckedOut
                     ? const Color(0xFF059669)
-                    : hasCheckedIn
-                        ? const Color(0xFF059669)
-                        : AppTheme.primary,
+                    : isCheckOutLocked
+                        ? const Color(0xFF059669).withValues(alpha: 0.6)
+                        : hasCheckedIn
+                            ? const Color(0xFF059669)
+                            : AppTheme.primary,
                 disabledBackgroundColor: hasCheckedOut
                     ? const Color(0xFF059669).withValues(alpha: 0.7)
-                    : hasCheckedIn
-                        ? const Color(0xFF059669).withValues(alpha: 0.85)
-                        : null,
+                    : isCheckOutLocked
+                        ? const Color(0xFF059669).withValues(alpha: 0.6)
+                        : hasCheckedIn
+                            ? const Color(0xFF059669).withValues(alpha: 0.85)
+                            : null,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -440,6 +459,8 @@ class _TodayCard extends StatelessWidget {
                     )
                   else if (hasCheckedOut)
                     const Icon(Icons.check_circle, size: 36, color: Colors.white)
+                  else if (isCheckOutLocked)
+                    const Icon(Icons.check_circle_outline, size: 36, color: Colors.white)
                   else if (hasCheckedIn)
                     const Icon(Icons.logout, size: 36, color: Colors.white)
                   else
@@ -452,9 +473,12 @@ class _TodayCard extends StatelessWidget {
                             ? 'Submitting…'
                             : hasCheckedOut
                                 ? 'Checked Out'
-                                : hasCheckedIn
-                                    ? 'Check Out'
-                                    : 'Check In',
+                                : isCheckOutLocked
+                                    ? 'Checked In\n(Lock ${checkoutUnlockRemainingMinutes}m)'
+                                    : hasCheckedIn
+                                        ? 'Check Out'
+                                        : 'Check In',
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -533,15 +557,27 @@ class _TodayCard extends StatelessWidget {
   }
 
   void _handleMarkTap(BuildContext context) async {
+    if (isCheckOutLocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You just checked in at ${formatTime(record!.checkInTime!)}. Check-out is locked for 15 minutes to prevent accidental checkouts (unlocks in $checkoutUnlockRemainingMinutes min).',
+          ),
+          backgroundColor: const Color(0xFFD97706),
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showConfirmDialog(
       context,
       title: hasCheckedIn ? 'Check out now?' : 'Check in now?',
       message: hasCheckedIn
-          ? 'Are you sure you want to Check Out now? Checking out before 5:30 PM may reduce today\'s attendance to Half Day or Short Leave, depending on your check-in time.'
+          ? 'Are you sure you want to Check Out now?\n\nChecking out before 5:30 PM may reduce today\'s attendance to Half Day or Short Leave, depending on your check-in time.'
           : 'Are you sure you want to Check In now? Your current location will be recorded for attendance.',
       confirmLabel: hasCheckedIn ? 'Check Out' : 'Check In',
       confirmIcon: hasCheckedIn ? Icons.logout : Icons.login,
-      destructive: false,
+      destructive: hasCheckedIn,
     );
     if (confirmed) {
       onMark();
