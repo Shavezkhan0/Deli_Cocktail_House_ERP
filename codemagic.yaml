@@ -9,6 +9,14 @@ workflows:
       cocoapods: default
 
     scripts:
+      - name: Create .env
+        script: |
+          cd apps/employee_mobile
+          # .env is gitignored; recreate it here. Override API_BASE_URL by
+          # adding it as a Codemagic environment variable if the URL changes.
+          echo "API_BASE_URL=${API_BASE_URL:-https://api.delicocktailhouse.in}" > .env
+          cat .env
+
       - name: Get Flutter dependencies
         script: |
           cd apps/employee_mobile
