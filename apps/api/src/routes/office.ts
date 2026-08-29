@@ -10,7 +10,18 @@ import {
 } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
 import { calculateEmployeeSalary } from "../services/salary-calculator";
+import {
+  buildPayrollSummaryPdf,
+  buildSalarySlipPdf,
+  CompanyDetails,
+} from "../services/salary-pdf";
+import {
+  buildPayrollSummaryCsv,
+  buildSalarySlipCsv,
+} from "../services/salary-csv";
+import { loadCompanyLogo, loadCompanyStamp } from "../lib/company-assets";
 import { markAbsentEmployeesForToday } from "../services/mark-absent-job";
+import { istDateKey, istStartOfDay } from "../lib/attendance-time";
 
 const router: Router = Router();
 
@@ -476,6 +487,157 @@ router.get("/employees/:id/salary-breakdown", requireAuth, async (req, res) => {
   }
 });
 
+// GET /employees/:id/salary-slip?month=&year= — PDF salary slip as a download
+router.get("/employees/:id/salary-slip", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
+
+    const breakdown = await calculateEmployeeSalary(id, month, year);
+    const [employee, company] = await Promise.all([
+      prisma.employee.findUnique({ where: { id } }),
+      prisma.pdfCompanySettings.findFirst({ orderBy: { createdAt: "asc" } }),
+    ]);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const companyDetails: CompanyDetails = {
+      companyName: company?.companyName ?? "Deli Cocktail House",
+      address: company?.address ?? "",
+      phone1: company?.phone1 ?? "",
+      phone2: company?.phone2 ?? "",
+      email: company?.email ?? "",
+      footerText: company?.footerText ?? "",
+    };
+
+    const format = req.query.format === "csv" ? "csv" : "pdf";
+    const baseName = `salary-slip-${breakdown.employeeNumber}-${year}-${month}`;
+
+    if (format === "csv") {
+      const csv = buildSalarySlipCsv({ ...breakdown, employee }, companyDetails);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${baseName}.csv"`,
+      );
+      return res.send(csv);
+    }
+
+    // Stamp is opt-in (?stamp=1) — the header already carries the company logo.
+    const withStamp = req.query.stamp === "1" || req.query.stamp === "true";
+    const [logo, stamp] = [
+      await loadCompanyLogo(company?.logoUrl ?? company?.headerLogoUrl),
+      withStamp ? loadCompanyStamp() : undefined,
+    ];
+
+    const pdf = await buildSalarySlipPdf(
+      { ...breakdown, employee },
+      companyDetails,
+      { logo, stamp, withStamp },
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${baseName}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (error) {
+    if (error instanceof Error && error.message === "Employee not found") {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+    console.error("[Office] Failed to generate salary slip:", error);
+    return res.status(500).json({ message: "Failed to generate salary slip" });
+  }
+});
+
+// GET /payroll/summary-pdf?month=&year= — payroll summary PDF for all active employees
+router.get("/payroll/summary-pdf", requireAuth, async (req, res) => {
+  try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
+
+    const employees = await prisma.employee.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { employeeId: "asc" },
+    });
+
+    const rows = [];
+    for (const emp of employees) {
+      const b = await calculateEmployeeSalary(emp.id, month, year);
+      rows.push({
+        employeeId: emp.employeeId,
+        name: emp.name,
+        designation: emp.designation,
+        baseSalary: emp.baseSalary,
+        thisMonthSalary: b.finalAmount,
+      });
+    }
+
+    const company = await prisma.pdfCompanySettings.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+    const companyDetails: CompanyDetails = {
+      companyName: company?.companyName ?? "Deli Cocktail House",
+      address: company?.address ?? "",
+      phone1: company?.phone1 ?? "",
+      phone2: company?.phone2 ?? "",
+      email: company?.email ?? "",
+      footerText: company?.footerText ?? "",
+    };
+
+    const format = req.query.format === "csv" ? "csv" : "pdf";
+    const baseName = `payroll-summary-${year}-${month}`;
+
+    if (format === "csv") {
+      const csv = buildPayrollSummaryCsv(companyDetails, month, year, rows);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${baseName}.csv"`,
+      );
+      return res.send(csv);
+    }
+
+    const logo = await loadCompanyLogo(
+      company?.logoUrl ?? company?.headerLogoUrl,
+    );
+    const pdf = await buildPayrollSummaryPdf(companyDetails, month, year, rows, {
+      logo,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${baseName}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (error) {
+    console.error("[Office] Failed to generate payroll summary:", error);
+    return res.status(500).json({ message: "Failed to generate payroll summary" });
+  }
+});
+
 // GET /employees/:id/attendance — list attendance records (with check in/out times) for an employee
 // Optional query: ?month=8&year=2026 to scope to a specific month
 router.get("/employees/:id/attendance", requireAuth, async (req, res) => {
@@ -546,35 +708,67 @@ router.post("/employees/:id/attendance-status", requireAuth, async (req, res) =>
       return res.status(400).json({ message: "A valid status is required" });
     }
 
-    const dayEnd = new Date(dayStart);
+    const canonicalDay = istStartOfDay(dayStart);
+    const dayEnd = new Date(canonicalDay);
     dayEnd.setDate(dayEnd.getDate() + 1);
 
-    const existing = await prisma.attendance.findFirst({
-      where: { employeeId: id, date: { gte: dayStart, lt: dayEnd } },
+    const rows = await prisma.attendance.findMany({
+      where: { employeeId: id, date: { gte: canonicalDay, lt: dayEnd } },
+      orderBy: { createdAt: "asc" },
     });
 
-    const attendance =
-      existing && existing.status !== status
+    let keeper = rows[0] ?? null;
+    if (rows.length > 1) {
+      const rank: Record<AttendanceStatus, number> = {
+        [AttendanceStatus.PRESENT]: 4,
+        [AttendanceStatus.SHORT_LEAVE]: 3,
+        [AttendanceStatus.HALF_DAY]: 2,
+        [AttendanceStatus.ON_LEAVE]: 1,
+        [AttendanceStatus.ABSENT]: 0,
+      };
+      keeper = [...rows].sort((a, b) => {
+        const aCheckin = a.checkInTime ? 1 : 0;
+        const bCheckin = b.checkInTime ? 1 : 0;
+        if (aCheckin !== bCheckin) return bCheckin - aCheckin;
+        const aAdmin = a.correctedByAdmin ? 1 : 0;
+        const bAdmin = b.correctedByAdmin ? 1 : 0;
+        if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+        const aRank = rank[a.status] ?? -1;
+        const bRank = rank[b.status] ?? -1;
+        if (aRank !== bRank) return bRank - aRank;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      })[0]!;
+      const toDelete = rows.filter((r) => r.id !== keeper!.id);
+      await prisma.$transaction(
+        toDelete.map((r) => prisma.attendance.delete({ where: { id: r.id } })),
+      );
+    }
+
+    const attendance = keeper
+      ? keeper.status !== status
         ? await prisma.attendance.update({
-            where: { id: existing.id },
+            where: { id: keeper.id },
             data: {
               status,
-              previousStatus: existing.status,
+              previousStatus: keeper.status,
               correctedByAdmin: true,
               correctedAt: new Date(),
+              date: canonicalDay,
             },
           })
-        : existing
-          ? existing
-          : await prisma.attendance.create({
-              data: {
-                employeeId: id,
-                date: dayStart,
-                status,
-                correctedByAdmin: true,
-                correctedAt: new Date(),
-              },
-            });
+        : await prisma.attendance.update({
+            where: { id: keeper.id },
+            data: { date: canonicalDay },
+          })
+      : await prisma.attendance.create({
+          data: {
+            employeeId: id,
+            date: canonicalDay,
+            status,
+            correctedByAdmin: true,
+            correctedAt: new Date(),
+          },
+        });
 
     return res.json(attendance);
   } catch (error) {
@@ -669,6 +863,89 @@ router.delete(
     } catch (error) {
       console.error("[Office] Failed to delete working override:", error);
       return res.status(500).json({ message: "Failed to delete working override" });
+    }
+  },
+);
+
+// GET /employees/:id/wfh-days — list work-from-home days for an employee
+router.get("/employees/:id/wfh-days", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const wfhDays = await prisma.workFromHomeDay.findMany({
+      where: { employeeId: id },
+      orderBy: { date: "desc" },
+    });
+
+    return res.json(wfhDays);
+  } catch (error) {
+    console.error("[Office] Failed to fetch work-from-home days:", error);
+    return res.status(500).json({ message: "Failed to fetch work-from-home days" });
+  }
+});
+
+// POST /employees/:id/wfh-days — assign a work-from-home day { date, reason? }
+router.post("/employees/:id/wfh-days", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: "Employee id is required" });
+    }
+
+    const { date, reason } = req.body ?? {};
+    if (typeof date !== "string" || isNaN(Date.parse(date))) {
+      return res.status(400).json({ message: "A valid date is required" });
+    }
+
+    const wfhDay = await prisma.workFromHomeDay.upsert({
+      where: {
+        employeeId_date: { employeeId: id, date: new Date(date) },
+      },
+      update: {
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+      create: {
+        employeeId: id,
+        date: new Date(date),
+        reason:
+          typeof reason === "string" && reason.trim() !== "" ? reason.trim() : null,
+      },
+    });
+
+    return res.status(201).json(wfhDay);
+  } catch (error) {
+    console.error("[Office] Failed to create work-from-home day:", error);
+    return res.status(500).json({ message: "Failed to create work-from-home day" });
+  }
+});
+
+// DELETE /employees/:id/wfh-days/:dayId — remove a work-from-home day
+router.delete(
+  "/employees/:id/wfh-days/:dayId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { id, dayId } = req.params;
+      if (!dayId) {
+        return res.status(400).json({ message: "Work-from-home day id is required" });
+      }
+
+      const wfhDay = await prisma.workFromHomeDay.findFirst({
+        where: { id: dayId, employeeId: id },
+      });
+      if (!wfhDay) {
+        return res.status(404).json({ message: "Work-from-home day not found" });
+      }
+
+      await prisma.workFromHomeDay.delete({ where: { id: dayId } });
+      return res.status(204).send();
+    } catch (error) {
+      console.error("[Office] Failed to delete work-from-home day:", error);
+      return res.status(500).json({ message: "Failed to delete work-from-home day" });
     }
   },
 );
@@ -846,52 +1123,50 @@ router.get("/employees/:id/details", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/attendance/summary", requireAuth, async (_req, res) => {
+router.get("/attendance/summary", requireAuth, async (req, res) => {
   try {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const month = Number(req.query.month) || now.getMonth() + 1;
+    const year = Number(req.query.year) || now.getFullYear();
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
 
     const employees = await prisma.employee.findMany({
-      include: {
-        attendances: {
-          where: {
-            date: { gte: startOfMonth, lte: endOfMonth },
-          },
-        },
-      },
+      orderBy: { createdAt: "desc" },
     });
 
-    const summary = employees.map((emp) => {
-      const dailyWage = emp.baseSalary / 30;
-
-      let totalFullDays = 0;
-      let totalHalfDays = 0;
-      let totalShortLeaves = 0;
-
-      emp.attendances.forEach((att) => {
-        if (att.status === AttendanceStatus.PRESENT) totalFullDays++;
-        else if (att.status === AttendanceStatus.HALF_DAY) totalHalfDays++;
-        else if (att.status === AttendanceStatus.SHORT_LEAVE) totalShortLeaves++;
-      });
-
-      const netSalary =
-        totalFullDays * dailyWage +
-        totalHalfDays * (dailyWage * 0.5) +
-        totalShortLeaves * (dailyWage * 0.75);
-
-      return {
+    const summary = [];
+    for (const emp of employees) {
+      const b = await calculateEmployeeSalary(emp.id, month, year);
+      summary.push({
         id: emp.id,
         employeeId: emp.employeeId,
         name: emp.name,
+        designation: emp.designation,
         baseSalary: emp.baseSalary,
-        totalWorkingDays: emp.attendances.length,
-        totalFullDays,
-        totalHalfDays,
-        totalShortLeaves,
-        netSalary: Math.round(netSalary * 100) / 100,
-      };
-    });
+        daysInMonth: b.daysInMonth,
+        dailyWage: b.dailyWage,
+        fullDays: b.attendance.PRESENT,
+        halfDays: b.attendance.HALF_DAY,
+        shortLeaves: b.attendance.SHORT_LEAVE,
+        onLeave: b.attendance.ON_LEAVE,
+        absent: b.attendance.ABSENT,
+        paidLeave: b.paidLeave,
+        shortLeave: b.shortLeave,
+        holidayWork: b.holidayWork,
+        eligibleForLeaves: b.eligibleForLeaves,
+        eligibleFrom: b.eligibleFrom,
+        deductionAmount: b.deductionAmount,
+        extraEarnings: b.extraEarnings,
+        extraExpenses: b.extraExpenses,
+        estimatedNetSalary: b.finalAmount,
+      });
+    }
 
     return res.json(summary);
   } catch (error) {
@@ -907,6 +1182,128 @@ router.post("/attendance/mark-absent-now", requireAuth, async (_req, res) => {
   } catch (error) {
     console.error("[Office] Failed to mark absent employees:", error);
     return res.status(500).json({ message: "Failed to mark absent employees" });
+  }
+});
+
+// POST /attendance/repair-days — de-duplicates attendance rows that were stored
+// with inconsistent `date` values (check-in timestamp vs IST midnight vs local
+// midnight) so each employee ends up with exactly one row per IST day. For each
+// group of rows on the same IST day the best row is kept, its `date` is
+// normalised to istStartOfDay, missing check-in/out times are merged from the
+// other rows, and the remaining rows are deleted.
+router.post("/attendance/repair-days", requireAuth, async (_req, res) => {
+  try {
+    const employees = await prisma.employee.findMany({ select: { id: true } });
+
+    const rank: Record<AttendanceStatus, number> = {
+      [AttendanceStatus.PRESENT]: 4,
+      [AttendanceStatus.SHORT_LEAVE]: 3,
+      [AttendanceStatus.HALF_DAY]: 2,
+      [AttendanceStatus.ON_LEAVE]: 1,
+      [AttendanceStatus.ABSENT]: 0,
+    };
+
+    type AttendanceRow = Awaited<
+      ReturnType<typeof prisma.attendance.findMany>
+    >[number];
+
+    let duplicateGroups = 0;
+    let rowsDeleted = 0;
+    let rowsRenormalised = 0;
+
+    const deleteOps: Prisma.PrismaPromise<unknown>[] = [];
+    const updateOps: Prisma.PrismaPromise<unknown>[] = [];
+
+    for (const emp of employees) {
+      const all = await prisma.attendance.findMany({
+        where: { employeeId: emp.id },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const groups = new Map<string, AttendanceRow[]>();
+      for (const row of all) {
+        const key = istDateKey(row.date);
+        const arr = groups.get(key);
+        if (arr) arr.push(row);
+        else groups.set(key, [row]);
+      }
+
+      for (const group of groups.values()) {
+        if (group.length === 0) continue;
+
+        if (group.length > 1) {
+          duplicateGroups++;
+        }
+
+        let keeper = group[0]!;
+        if (group.length > 1) {
+          keeper = [...group].sort((a, b) => {
+            const aCheckin = a.checkInTime ? 1 : 0;
+            const bCheckin = b.checkInTime ? 1 : 0;
+            if (aCheckin !== bCheckin) return bCheckin - aCheckin;
+            const aAdmin = a.correctedByAdmin ? 1 : 0;
+            const bAdmin = b.correctedByAdmin ? 1 : 0;
+            if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+            const aRank = rank[a.status] ?? -1;
+            const bRank = rank[b.status] ?? -1;
+            if (aRank !== bRank) return bRank - aRank;
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          })[0]!;
+        }
+
+        const other = group.filter((r) => r.id !== keeper.id);
+        for (const r of other) {
+          deleteOps.push(prisma.attendance.delete({ where: { id: r.id } }));
+          rowsDeleted++;
+        }
+
+        const canonical = istStartOfDay(keeper.date);
+        let checkIn = keeper.checkInTime;
+        let checkOut = keeper.checkOutTime;
+        for (const r of other) {
+          if (!checkIn && r.checkInTime) checkIn = r.checkInTime;
+          if (!checkOut && r.checkOutTime) checkOut = r.checkOutTime;
+        }
+
+        const needsDateFix = keeper.date.getTime() !== canonical.getTime();
+        const needsCheckIn =
+          !keeper.checkInTime && checkIn !== null && checkIn !== undefined;
+        const needsCheckOut =
+          !keeper.checkOutTime && checkOut !== null && checkOut !== undefined;
+
+        if (needsDateFix || needsCheckIn || needsCheckOut) {
+          updateOps.push(
+            prisma.attendance.update({
+              where: { id: keeper.id },
+              data: {
+                date: canonical,
+                ...(needsCheckIn ? { checkInTime: checkIn } : {}),
+                ...(needsCheckOut ? { checkOutTime: checkOut } : {}),
+              },
+            }),
+          );
+          if (needsDateFix) {
+            rowsRenormalised++;
+          }
+        }
+      }
+    }
+
+    const txOps = [...deleteOps, ...updateOps];
+    for (let i = 0; i < txOps.length; i += 100) {
+      const batch = txOps.slice(i, i + 100);
+      await prisma.$transaction(batch);
+    }
+
+    return res.json({
+      employeesScanned: employees.length,
+      duplicateGroups,
+      rowsDeleted,
+      rowsRenormalised,
+    });
+  } catch (error) {
+    console.error("[Office] Failed to repair attendance days:", error);
+    return res.status(500).json({ message: "Failed to repair attendance days" });
   }
 });
 

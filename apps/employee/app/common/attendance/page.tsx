@@ -29,8 +29,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { apiFetch, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { monthLabel } from "@/lib/format";
 import { calculateDistance } from "@/lib/geo";
 import { formatDate, formatTime } from "@/lib/format";
 
@@ -77,6 +79,16 @@ type AttendanceSummary = {
 type AttendanceHistoryResponse = {
   records: AttendanceRecord[];
   summary: AttendanceSummary;
+};
+
+type LeaveBalanceData = {
+  month: number;
+  year: number;
+  shortLeave?: {
+    allowance: number;
+    usedThisMonth: number;
+    remaining: number;
+  };
 };
 
 type Holiday = {
@@ -227,6 +239,14 @@ export default function AttendancePage() {
   const officeQuery = useQuery({
     queryKey: ["attendance", "office"],
     queryFn: () => apiFetch<OfficeLocation | null>("/api/employee/attendance/office"),
+  });
+
+  const leaveBalanceQuery = useQuery({
+    queryKey: ["attendance", "leave-balance", historyYear, historyMonth],
+    queryFn: () =>
+      apiFetch<LeaveBalanceData>(
+        `/api/employee/salary/leave-balance?month=${historyMonth + 1}&year=${historyYear}`,
+      ),
   });
 
   const markMutation = useMutation({
@@ -393,8 +413,24 @@ export default function AttendancePage() {
 
   const monthRecordsByDate = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
+    const prefers = (a: AttendanceRecord, b: AttendanceRecord): boolean => {
+      const aCheckin = a.checkInTime ? 1 : 0;
+      const bCheckin = b.checkInTime ? 1 : 0;
+      if (aCheckin !== bCheckin) return aCheckin > bCheckin;
+      const aAdmin = a.correctedByAdmin ? 1 : 0;
+      const bAdmin = b.correctedByAdmin ? 1 : 0;
+      if (aAdmin !== bAdmin) return aAdmin > bAdmin;
+      const aNotAbsent = a.status !== "ABSENT" ? 1 : 0;
+      const bNotAbsent = b.status !== "ABSENT" ? 1 : 0;
+      if (aNotAbsent !== bNotAbsent) return aNotAbsent > bNotAbsent;
+      return false;
+    };
     for (const record of historyQuery.data?.records ?? []) {
-      map.set(dateKey(new Date(record.date)), record);
+      const key = dateKey(new Date(record.date));
+      const existing = map.get(key);
+      if (!existing || prefers(record, existing)) {
+        map.set(key, record);
+      }
     }
     return map;
   }, [historyQuery.data]);
@@ -843,6 +879,19 @@ export default function AttendancePage() {
                 {chip.label}: {chip.value}
               </span>
             ))}
+            {leaveBalanceQuery.isSuccess &&
+            leaveBalanceQuery.data?.shortLeave &&
+            leaveBalanceQuery.data.shortLeave.allowance > 0 ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                <span className="size-2 rounded-full bg-yellow-500" />
+                Short leave remaining:{" "}
+                {leaveBalanceQuery.data.shortLeave.remaining} /{" "}
+                {leaveBalanceQuery.data.shortLeave.allowance} ({monthLabel(
+                  historyMonth + 1,
+                  historyYear,
+                )})
+              </span>
+            ) : null}
           </div>
 
           {historyQuery.data && allRecords.length > 0 ? (
@@ -939,67 +988,45 @@ export default function AttendancePage() {
     >
       {content}
 
-      <Dialog
+      <ConfirmDialog
         open={pendingAction !== null}
         onOpenChange={(open) => {
           if (!open) {
             setPendingAction(null);
           }
         }}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {pendingAction === "check-out"
-                ? "Check out now?"
-                : "Check in now?"}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingAction === "check-out" ? (
-                <div className="flex flex-col gap-2">
-                  <span>
-                    Are you sure you want to <strong>Check Out</strong> now?
-                  </span>
-                  {!isPastCheckOutTime ? (
-                    <span className="rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
-                      ⚠️ <strong>Early Check-Out Warning:</strong> Checking out before 5:30 PM may reduce today&apos;s attendance to <strong>Half Day</strong> or <strong>Short Leave</strong>.
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      This will record your checkout time and close today&apos;s attendance.
-                    </span>
-                  )}
-                </div>
+        title={pendingAction === "check-out" ? "Check out now?" : "Check in now?"}
+        description={
+          pendingAction === "check-out" ? (
+            <div className="flex flex-col gap-2">
+              <span>
+                Are you sure you want to <strong>Check Out</strong> now?
+              </span>
+              {!isPastCheckOutTime ? (
+                <span className="rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
+                  ⚠️ <strong>Early Check-Out Warning:</strong> Checking out before 5:30 PM may reduce today&apos;s attendance to <strong>Half Day</strong> or <strong>Short Leave</strong>.
+                </span>
               ) : (
-                <>
-                  Are you sure you want to Check In now? Your current location
-                  will be recorded for attendance.
-                </>
+                <span className="text-xs text-muted-foreground">
+                  This will record your checkout time and close today&apos;s attendance.
+                </span>
               )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" type="button">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button onClick={confirmMarkAction} disabled={isAcquiring}>
-              {pendingAction === "check-out" ? (
-                <>
-                  <LogOut className="size-4" />
-                  Check Out
-                </>
-              ) : (
-                <>
-                  <LogIn className="size-4" />
-                  Check In
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+          ) : (
+            "Are you sure you want to Check In now? Your current location will be recorded for attendance."
+          )
+        }
+        confirmLabel={pendingAction === "check-out" ? "Check Out" : "Check In"}
+        confirmIcon={
+          pendingAction === "check-out" ? (
+            <LogOut className="size-4" />
+          ) : (
+            <LogIn className="size-4" />
+          )
+        }
+        confirmDisabled={isAcquiring}
+        onConfirm={confirmMarkAction}
+      />
 
       <Dialog
         open={locationBlocked}

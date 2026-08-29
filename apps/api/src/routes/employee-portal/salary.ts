@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { prisma } from "@repo/database";
 import { calculateEmployeeSalary } from "../../services/salary-calculator";
+import {
+  buildSalarySlipPdf,
+  CompanyDetails,
+} from "../../services/salary-pdf";
 
 const router: Router = Router();
 
@@ -67,6 +71,9 @@ router.get("/salary/leave-balance", async (req, res) => {
     return res.json({
       month,
       year,
+      paidLeave: breakdown.paidLeave,
+      shortLeave: breakdown.shortLeave,
+      holidayWork: breakdown.holidayWork,
       earnedLeaves: breakdown.earnedLeaves,
       compensatoryLeaves: breakdown.compensatoryLeaves,
       usedLeaves: breakdown.usedLeaves,
@@ -77,6 +84,103 @@ router.get("/salary/leave-balance", async (req, res) => {
     return res
       .status(500)
       .json({ message: "Failed to fetch leave balance" });
+  }
+});
+
+// GET /salary/slip?month=&year= — the employee's own PDF salary slip as a download
+router.get("/salary/slip", async (req, res) => {
+  try {
+    const employeeId = req.employee?.id;
+    if (!employeeId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const now = new Date();
+    const month =
+      Number(req.query.month) || (now.getMonth() + 1);
+    const year = Number(req.query.year) || now.getFullYear();
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
+
+    const [breakdown, employee, company] = await Promise.all([
+      calculateEmployeeSalary(employeeId, month, year),
+      prisma.employee.findUnique({ where: { id: employeeId } }),
+      prisma.pdfCompanySettings.findFirst({ orderBy: { createdAt: "asc" } }),
+    ]);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const companyDetails: CompanyDetails = {
+      companyName: company?.companyName ?? "Deli Cocktail House",
+      address: company?.address ?? "",
+      phone1: company?.phone1 ?? "",
+      phone2: company?.phone2 ?? "",
+      email: company?.email ?? "",
+      footerText: company?.footerText ?? "",
+    };
+
+    const pdf = await buildSalarySlipPdf({ ...breakdown, employee }, companyDetails);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="salary-slip-${year}-${month}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (error) {
+    console.error("[Employee] Failed to generate salary slip:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to generate salary slip" });
+  }
+});
+
+router.get("/salary/breakdown", async (req, res) => {
+  try {
+    const employeeId = req.employee?.id;
+    if (!employeeId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { month: currentMonth, year: currentYear } = currentMonthYear();
+    const month = Number(req.query.month) || currentMonth;
+    const year = Number(req.query.year) || currentYear;
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return res
+        .status(400)
+        .json({ message: "Month must be an integer between 1 and 12" });
+    }
+    if (!Number.isInteger(year) || year < 2000) {
+      return res.status(400).json({ message: "Year must be a valid year" });
+    }
+
+    const b = await calculateEmployeeSalary(employeeId, month, year);
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { designation: true, joiningDate: true },
+    });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    return res.json({
+      ...b,
+      designation: employee.designation,
+      joiningDate: employee.joiningDate,
+    });
+  } catch (error) {
+    console.error("[Employee] Failed to fetch salary breakdown:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to fetch salary breakdown" });
   }
 });
 
@@ -94,6 +198,7 @@ router.get("/salary/extra-days", async (req, res) => {
     return res.json({
       month,
       year,
+      holidayWork: breakdown.holidayWork,
       compensatoryLeaves: breakdown.compensatoryLeaves,
       availableLeaveBalance: breakdown.availableLeaveBalance,
       entries: breakdown.compensatoryEntries,

@@ -120,6 +120,9 @@ importers:
       nodemailer:
         specifier: ^9.0.4
         version: 9.0.4
+      pdfkit:
+        specifier: ^0.19.1
+        version: 0.19.1
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -148,6 +151,9 @@ importers:
       '@types/nodemailer':
         specifier: ^8.0.1
         version: 8.0.1
+      '@types/pdfkit':
+        specifier: ^0.17.6
+        version: 0.17.6
       eslint:
         specifier: ^9
         version: 9.39.1(jiti@2.7.0)

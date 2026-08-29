@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../auth/data/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../../shared/widgets/connectivity_widgets.dart';
@@ -16,6 +18,17 @@ import '../data/salary_repository.dart';
 
 final salaryRepositoryProvider = Provider<SalaryRepository>((ref) {
   return SalaryRepository(ref.watch(apiClientProvider).dio);
+});
+
+final selectedMonthProvider = StateProvider<int>((ref) => DateTime.now().month);
+final selectedYearProvider = StateProvider<int>((ref) => DateTime.now().year);
+
+final salaryBreakdownProvider = FutureProvider<SalaryBreakdown>((ref) {
+  final month = ref.watch(selectedMonthProvider);
+  final year = ref.watch(selectedYearProvider);
+  return ref
+      .watch(salaryRepositoryProvider)
+      .getBreakdown(month: month, year: year);
 });
 
 class SalaryData {
@@ -80,13 +93,46 @@ class SalaryScreen extends ConsumerWidget {
   }
 }
 
-class _SalaryBody extends StatelessWidget {
+class _SalaryBody extends ConsumerStatefulWidget {
   const _SalaryBody({required this.data});
 
   final SalaryData data;
 
   @override
+  ConsumerState<_SalaryBody> createState() => _SalaryBodyState();
+}
+
+class _SalaryBodyState extends ConsumerState<_SalaryBody> {
+  bool _downloading = false;
+
+  Future<void> _downloadSlip(int month, int year) async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+    try {
+      final repo = ref.read(salaryRepositoryProvider);
+      final path = await repo.downloadSlip(month: month, year: year);
+      final result = await OpenFilex.open(path);
+      if (result.type != ResultType.done && mounted) {
+        showTopToast(
+          context,
+          'Could not open the salary slip: ${result.message}',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopToast(context, 'Could not download salary slip. ($e)', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _downloading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final data = widget.data;
     // Merge previous into history if not already present (matches web app)
     final allHistory = [...data.history];
     if (data.previous != null &&
@@ -94,11 +140,156 @@ class _SalaryBody extends StatelessWidget {
       allHistory.insert(0, data.previous!);
     }
 
+    final selectedMonth = ref.watch(selectedMonthProvider);
+    final selectedYear = ref.watch(selectedYearProvider);
+    final breakdownAsync = ref.watch(salaryBreakdownProvider);
+    final now = DateTime.now();
+
+    // Last ~12 months ending at the current month.
+    final monthOptions = List.generate(12, (index) {
+      final offset = 11 - index;
+      final date = DateTime(now.year, now.month - offset, 1);
+      return (month: date.month, year: date.year);
+    });
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Month / year selector + download button
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Download Salary Slip',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.foreground,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedMonth,
+                      items: monthOptions
+                          .map(
+                            (option) => DropdownMenuItem(
+                              value: option.month,
+                              child: Text(
+                                monthLabel(option.month, option.year),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          final option = monthOptions.firstWhere(
+                            (o) => o.month == value,
+                          );
+                          ref
+                              .read(selectedMonthProvider.notifier)
+                              .state = option.month;
+                          ref
+                              .read(selectedYearProvider.notifier)
+                              .state = option.year;
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(),
+                      ),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.foreground,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 44,
+                    child: FilledButton.icon(
+                      onPressed: _downloading
+                          ? null
+                          : () => _downloadSlip(selectedMonth, selectedYear),
+                      icon: _downloading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primaryForeground,
+                              ),
+                            )
+                          : const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('Download'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: AppTheme.primaryForeground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
         // Current month card
         _CurrentMonthCard(record: data.current),
+        const SizedBox(height: 16),
+
+        // Salary calculation for the selected month/year
+        breakdownAsync.when(
+          loading: () => Shimmer.fromColors(
+            baseColor: AppTheme.surface,
+            highlightColor: Colors.white,
+            period: const Duration(milliseconds: 1400),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBox(width: 140, height: 14, borderRadius: 4),
+                  SizedBox(height: 6),
+                  SkeletonBox(width: 200, height: 10, borderRadius: 4),
+                  SizedBox(height: 16),
+                  SkeletonBox(height: 14, borderRadius: 4),
+                  SizedBox(height: 10),
+                  SkeletonBox(height: 14, borderRadius: 4),
+                  SizedBox(height: 10),
+                  SkeletonBox(height: 14, borderRadius: 4),
+                  SizedBox(height: 10),
+                  SkeletonBox(width: 180, height: 14, borderRadius: 4),
+                ],
+              ),
+            ),
+          ),
+          error: (e, _) => ErrorState(
+            message: 'Could not load salary calculation.',
+            onRetry: () => ref.invalidate(salaryBreakdownProvider),
+          ),
+          data: (breakdown) => _SalaryCalculationCard(breakdown: breakdown),
+        ),
         const SizedBox(height: 16),
 
         // Leave balance card
@@ -468,26 +659,27 @@ class _LeaveBalanceCard extends StatelessWidget {
           Row(
             children: [
               _LeaveStat(
-                label: 'Available',
-                value: balance.availableLeaveBalance,
+                label: 'Paid Available',
+                value: balance.paidLeaveAvailable,
                 color: const Color(0xFF10B981),
               ),
               const SizedBox(width: 12),
               _LeaveStat(
-                label: 'Earned',
-                value: balance.earnedLeaves,
-                color: const Color(0xFF6366F1),
-              ),
-              const SizedBox(width: 12),
-              _LeaveStat(
-                label: 'Used',
-                value: balance.usedLeaves,
+                label: 'Used (mo)',
+                value: balance.paidLeaveUsedThisMonth,
                 color: const Color(0xFFF59E0B),
               ),
               const SizedBox(width: 12),
               _LeaveStat(
-                label: 'Comp',
-                value: balance.compensatoryLeaves,
+                label: 'Carried Fwd',
+                value: balance.paidLeaveClosing,
+                color: const Color(0xFF6366F1),
+              ),
+              const SizedBox(width: 12),
+              _LeaveStat(
+                label: 'Short Left',
+                valueString:
+                    '${_formatStat(balance.shortLeaveRemaining)}/${_formatStat(balance.shortLeaveAllowance)}',
                 color: const Color(0xFF8B5CF6),
               ),
             ],
@@ -501,16 +693,20 @@ class _LeaveBalanceCard extends StatelessWidget {
 class _LeaveStat extends StatelessWidget {
   const _LeaveStat({
     required this.label,
-    required this.value,
+    this.value,
+    this.valueString,
     required this.color,
   });
 
   final String label;
-  final double value;
+  final double? value;
+  final String? valueString;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final display =
+        valueString ?? (value == null ? '0' : _formatStat(value!));
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -521,11 +717,9 @@ class _LeaveStat extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              value == value.roundToDouble()
-                  ? value.toInt().toString()
-                  : value.toStringAsFixed(1),
+              display,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: valueString != null ? 14 : 18,
                 fontWeight: FontWeight.w700,
                 color: color,
               ),
@@ -544,6 +738,243 @@ class _LeaveStat extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatStat(double value) {
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(1);
+}
+
+// ---------------------------------------------------------------------------
+// Salary calculation card
+// ---------------------------------------------------------------------------
+
+const _earningsColor = Color(0xFF10B981);
+const _deductionColor = Color(0xFFDC2626);
+const _mutedStyle = TextStyle(fontSize: 11, color: AppTheme.mutedForeground);
+
+class _SalaryCalculationCard extends StatelessWidget {
+  const _SalaryCalculationCard({required this.breakdown});
+
+  final SalaryBreakdown breakdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = breakdown;
+    final showEarnings = b.holidayWorkExtraDays > 0 || b.extraExpenses > 0;
+    final showDeductions =
+        b.paidLeave.overageDays > 0 || b.shortLeave.overageDays > 0;
+
+    final attendanceLine = 'Attendance: ${b.attendance.present} present · '
+        '${b.attendance.halfDay} half · ${b.attendance.shortLeave} short · '
+        '${b.attendance.onLeave} on leave · ${b.attendance.absent} absent';
+    final paidLeaveLine = 'Paid leave: ${_jsNum(b.paidLeave.available)} available '
+        '(${_jsNum(b.paidLeave.opening)} carried + '
+        '${_jsNum(b.paidLeave.grantedThisMonth)} earned) · '
+        '${_jsNum(b.paidLeave.usedThisMonth)} used · '
+        '${_jsNum(b.paidLeave.closing)} carried forward'
+        '${b.eligibleForLeaves ? '' : ' · accrual starts ${b.eligibleFrom}'}';
+    final shortLeaveLine = 'Short leave: allowance '
+        '${_jsNum(b.shortLeave.allowance)} · used '
+        '${_jsNum(b.shortLeave.usedThisMonth)} · remaining '
+        '${_jsNum(b.shortLeave.remaining)}'
+        '${b.shortLeave.allowance == 0 ? ' · starts ${b.eligibleFrom}' : ''}';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Salary Calculation',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.foreground,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'How ${formatCurrency(b.baseSalary)} becomes '
+            '${formatCurrency(b.finalAmount)}',
+            style: const TextStyle(fontSize: 11, color: AppTheme.mutedForeground),
+          ),
+          const SizedBox(height: 16),
+
+          _calcRow(
+            label: 'Base salary (${b.daysInMonth.toInt()}-day month)',
+            amount: formatCurrency(b.baseSalary),
+          ),
+          _calcRow(
+            label: 'Daily wage = base ÷ ${b.daysInMonth.toInt()}',
+            amount: formatCurrency(b.dailyWage),
+          ),
+
+          if (showEarnings) ...[
+            const SizedBox(height: 10),
+            const _SectionHeader('— Earnings —'),
+            if (b.holidayWorkExtraDays > 0) ...[
+              _calcRow(
+                label:
+                    'Holiday / Sunday work (${_dayCount(b.holidayWorkExtraDays)} d)',
+                amount:
+                    '+ ${formatCurrency(b.holidayWorkExtraDays * b.dailyWage)}',
+                amountColor: _earningsColor,
+              ),
+              for (final entry in b.holidayWorkEntries)
+                _mutedText(
+                  '${formatDate(entry.date)} — ${entry.label} — '
+                  '+${_dayCount(entry.credit)} day',
+                ),
+            ],
+            if (b.extraExpenses > 0)
+              _calcRow(
+                label: 'Approved expenses',
+                amount: '+ ${formatCurrency(b.extraExpenses)}',
+                amountColor: _earningsColor,
+              ),
+          ],
+
+          if (showDeductions) ...[
+            const SizedBox(height: 10),
+            const _SectionHeader('— Deductions —'),
+            if (b.paidLeave.overageDays > 0) ...[
+              _calcRow(
+                label: 'Unpaid leave (${_dayCount(b.paidLeave.overageDays)} d)',
+                amount:
+                    '− ${formatCurrency(b.paidLeave.overageDays * b.dailyWage)}',
+                amountColor: _deductionColor,
+              ),
+              _mutedText(
+                '${_jsNum(b.paidLeave.usedThisMonth)} used − '
+                '${_jsNum(b.paidLeave.available)} available',
+              ),
+              _mutedText(
+                '${b.attendance.onLeave} on leave + ${b.attendance.absent} '
+                'absent + ${b.attendance.halfDay} half × ½',
+              ),
+            ],
+            if (b.shortLeave.overageDays > 0) ...[
+              _calcRow(
+                label:
+                    'Short-leave overage (${_dayCount(b.shortLeave.overageDays)} d)',
+                amount:
+                    '− ${formatCurrency(b.shortLeave.overageDays * b.dailyWage)}',
+                amountColor: _deductionColor,
+              ),
+              _mutedText(
+                '${_jsNum(b.shortLeave.usedThisMonth)} short − '
+                '${_jsNum(b.shortLeave.allowance)} free, ¼ day each',
+              ),
+            ],
+          ],
+
+          const SizedBox(height: 12),
+          const Divider(color: AppTheme.border),
+          const SizedBox(height: 6),
+          _calcRow(
+            label: 'Net payable',
+            amount: formatCurrency(b.finalAmount),
+            bold: true,
+            large: true,
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(color: AppTheme.border),
+          const SizedBox(height: 10),
+          _mutedText(attendanceLine),
+          const SizedBox(height: 4),
+          _mutedText(paidLeaveLine),
+          const SizedBox(height: 4),
+          _mutedText(shortLeaveLine),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.1,
+          color: AppTheme.mutedForeground,
+        ),
+      ),
+    );
+  }
+}
+
+Widget _mutedText(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
+    child: Text(text, style: _mutedStyle),
+  );
+}
+
+Widget _calcRow({
+  required String label,
+  required String amount,
+  Color? amountColor,
+  bool bold = false,
+  bool large = false,
+}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: large ? 14 : 13,
+              fontWeight: bold || large ? FontWeight.w600 : FontWeight.w400,
+              color: AppTheme.foreground,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: large ? 18 : 13,
+            fontWeight: bold || large ? FontWeight.w700 : FontWeight.w600,
+            color: amountColor ?? AppTheme.foreground,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _jsNum(double value) {
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+}
+
+String _dayCount(double value) {
+  return value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toStringAsFixed(2);
 }
 
 // ---------------------------------------------------------------------------

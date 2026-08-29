@@ -47,9 +47,16 @@ class ExtraDaysRecord {
     required this.compensatoryLeaves,
     required this.availableLeaveBalance,
     required this.entries,
+    this.holidayWorkExtraDays = 0,
   });
 
   factory ExtraDaysRecord.fromJson(Map<String, dynamic> json) {
+    final holidayWork = json['holidayWork'] as Map<String, dynamic>?;
+    double numFrom(Object? value) {
+      if (value is num) return value.toDouble();
+      return 0;
+    }
+
     return ExtraDaysRecord(
       month: json['month'] as int,
       year: json['year'] as int,
@@ -59,6 +66,8 @@ class ExtraDaysRecord {
       entries: (json['entries'] as List<dynamic>)
           .map((e) => ExtraDaysEntry.fromJson(e as Map<String, dynamic>))
           .toList(),
+      holidayWorkExtraDays:
+          holidayWork != null ? numFrom(holidayWork['extraDays']) : 0,
     );
   }
 
@@ -67,6 +76,7 @@ class ExtraDaysRecord {
   final double compensatoryLeaves;
   final double availableLeaveBalance;
   final List<ExtraDaysEntry> entries;
+  final double holidayWorkExtraDays;
 }
 
 class ExtraDaysEntry {

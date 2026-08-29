@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { GreetingBanner } from "@/components/common/greeting-banner";
 import { QuickStatsRow } from "@/components/common/quick-stats-row";
 import { ErrorState, LoadingCards } from "@/components/common/states";
+import { LogoutButton } from "@/components/common/logout-button";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { apiFetch } from "@/lib/api";
 
@@ -131,6 +132,11 @@ export default function ProfilePage() {
         <GreetingBanner />
         <QuickStatsRow />
         {content}
+
+        <LogoutButton
+          label="Log out"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-card px-4 py-3.5 text-sm font-semibold text-destructive shadow-sm ring-1 ring-foreground/5 transition-colors hover:bg-destructive/10 active:scale-[0.99]"
+        />
       </div>
     </AppShell>
   );

@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  GlassWater,
-  LogOut,
-} from "lucide-react";
-import { toast } from "sonner";
+import { usePathname } from "next/navigation";
+import { GlassWater } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/common/logout-button";
 import {
   DESIGNATION_NAV,
   PROFILE_NAV,
@@ -53,8 +50,7 @@ function humanizeDesignation(designation: string): string {
 }
 
 export function RoleSidebar() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const designation = user?.designation ?? "";
   const designationNav = DESIGNATION_NAV[designation] ?? [];
@@ -65,12 +61,6 @@ export function RoleSidebar() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-
-  function handleLogout() {
-    logout();
-    toast.success("Logged out successfully");
-    router.push("/login");
-  }
 
   return (
     <aside className="no-print sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col rounded-2xl border border-border bg-card p-3 shadow-sm lg:ml-6 lg:flex">
@@ -125,14 +115,7 @@ export function RoleSidebar() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-        >
-          <LogOut className="size-4" />
-          Logout
-        </button>
+        <LogoutButton className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10" />
       </div>
     </aside>
   );
