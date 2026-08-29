@@ -14,17 +14,37 @@ workflows:
           cd apps/employee_mobile
           flutter pub get
 
-      - name: Build unsigned .app
+      - name: Prepare iOS project
         script: |
           cd apps/employee_mobile
-          # flutter build runs `pod install` itself with the correct platform
-          # and Flutter podspec set up. On newer Xcode it still errors at the
-          # final validation step even with --no-codesign, so ignore that exit
-          # code; the Runner.app is already produced by then.
-          flutter build ios --release --no-codesign || true
+          # Generates Podfile / Generated.xcconfig, bumps deployment target,
+          # runs pod install and SPM integration. Fails at the final signing
+          # check on newer Xcode, which is fine - we only need the setup.
+          flutter build ios --release --no-codesign --config-only
+          cd ios
+          pod install
 
-          APP_DIR="build/ios/iphoneos"
-          test -d "$APP_DIR/Runner.app" || { echo "Build failed: no Runner.app produced"; exit 1; }
+      - name: Build unsigned .app with xcodebuild
+        script: |
+          cd apps/employee_mobile/ios
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+          APP="build/Build/Products/Release-iphoneos/Runner.app"
+          test -d "$APP" || { echo "Build failed: no Runner.app produced"; exit 1; }
+          mkdir -p ../build/ios/iphoneos
+          cp -R "$APP" ../build/ios/iphoneos/
 
       - name: Package into IPA
         script: |
