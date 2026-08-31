@@ -62,7 +62,7 @@ async function getEffectiveLocation(designation: string) {
   return getGlobalOfficeSettings();
 }
 
-const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
+const SHIFT_END = { hour: 18, minute: 0 }; // 6:00 PM
 
 const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 15 }; // at or before → PRESENT (Full)
 const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
