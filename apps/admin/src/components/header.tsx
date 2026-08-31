@@ -5,7 +5,6 @@ import {
   ChevronDown,
   LayoutGrid,
   LogOut,
-  type LucideIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,8 +35,7 @@ const BRANDING: {
   path: string;
   title: string;
   subtitle: string;
-  icon?: LucideIcon;
-  logo?: string;
+  logo: string;
 }[] = [
   {
     path: "/warehouse",
@@ -70,7 +68,6 @@ export function Header() {
       subtitle: "Catering ERP",
       logo: "/Logo.png",
     };
-  const BrandIcon = branding.icon;
 
   function handleBackToModules() {
     router.push("/dashboard");
@@ -87,16 +84,12 @@ export function Header() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-3">
         <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm">
-          {branding.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logo}
-              alt={branding.title}
-              className="size-9 object-cover"
-            />
-          ) : (
-            <BrandIcon className="size-5" />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={branding.logo}
+            alt={branding.title}
+            className="size-9 object-cover"
+          />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight text-foreground">
