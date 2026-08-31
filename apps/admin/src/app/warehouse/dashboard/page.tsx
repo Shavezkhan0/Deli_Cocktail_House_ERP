@@ -52,8 +52,13 @@ type Stat = {
 
 const TOTAL_ITEM_CATEGORIES = 10; // SETUP, UNIFORM, GLASSWARE, DISPOSALS, CONSUMABLE, SYRUP, BEVERAGE, ENTERTAINMENT, CARTS, OTHER — keep this in sync with the CATEGORIES list in apps/admin/src/components/category-breakdown-view.tsx if categories are ever added/removed there.
 
-function buildStats(data: DashboardMetrics): Stat[] {
-  return [
+type StatCategory = {
+  title: string;
+  stats: Stat[];
+};
+
+function buildStats(data: DashboardMetrics): StatCategory[] {
+  const allStats: Stat[] = [
     {
       id: "totalItems",
       label: "Total Items",
@@ -72,7 +77,6 @@ function buildStats(data: DashboardMetrics): Stat[] {
       iconClass: "bg-teal-100 text-teal-700",
       barClass: "from-teal-400 to-teal-600",
     },
-
     {
       id: "expiringItems",
       label: "Items to be Expired",
@@ -136,6 +140,27 @@ function buildStats(data: DashboardMetrics): Stat[] {
       iconClass: "bg-yellow-100 text-yellow-700",
       barClass: "from-yellow-400 to-yellow-600",
     },
+  ];
+
+  const inventoryIds = new Set([
+    "totalItems",
+    "itemsByCategory",
+    "expiringItems",
+    "lowStockItems",
+    "actionsNeeded",
+    "lostItems",
+  ]);
+  const eventIds = new Set(["totalEvents", "openEvents"]);
+  const complainIds = new Set(["complains"]);
+
+  const inventory = allStats.filter((s) => inventoryIds.has(s.id));
+  const events = allStats.filter((s) => eventIds.has(s.id));
+  const complaints = allStats.filter((s) => complainIds.has(s.id));
+
+  return [
+    { title: "Warehouse Inventory Dashboard", stats: inventory },
+    { title: "Warehouse Events Dashboard", stats: events },
+    { title: "Complaints", stats: complaints },
   ];
 }
 
@@ -253,17 +278,12 @@ export default function WarehouseDashboardPage() {
   const stats = data ? buildStats(data) : [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       {!activeView ? (
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Warehouse Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Live overview of inventory health and event activity.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Live overview of Inventory and Events
+          </p>
           {!isPending && !isError && data ? (
             <Button
               variant="outline"
@@ -313,15 +333,22 @@ export default function WarehouseDashboardPage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <StatCard
-                key={stat.id}
-                stat={stat}
-                onClick={() => setActiveView(stat.id)}
-              />
-            ))}
-          </div>
+          {stats.map((category) => (
+            <section key={category.title} className="space-y-4">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                {category.title}
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {category.stats.map((stat) => (
+                  <StatCard
+                    key={stat.id}
+                    stat={stat}
+                    onClick={() => setActiveView(stat.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {placeholders.map((placeholder) => (
