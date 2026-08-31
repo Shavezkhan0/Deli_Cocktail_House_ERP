@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import path from "node:path";
 import cron from "node-cron";
 import authRouter from "./routes/auth";
 import complainsRouter from "./routes/complains";
@@ -26,6 +27,7 @@ import vendorRouter from "./routes/employee-portal/vendor";
 import travelRouter from "./routes/employee-portal/travel";
 import salesRouter from "./routes/employee-portal/sales";
 import employeeWarehouseRouter from "./routes/employee-portal/warehouse";
+import appVersionRouter from "./routes/app-version";
 import { employeeAuth } from "./middleware/employeeAuth";
 import { requireDesignation } from "./middleware/requireDesignation";
 import { markAbsentEmployeesForToday } from "./services/mark-absent-job";
@@ -66,6 +68,9 @@ app.use(
 
 app.use(express.json());
 
+// Serve APK files for mobile app updates
+app.use("/apk", express.static(path.join(__dirname, "../uploads/apk")));
+
 app.use("/api/auth", authRouter);
 app.use("/api/complains", complainsRouter);
 app.use("/api/events", eventsRouter);
@@ -77,6 +82,7 @@ app.use("/api/warehouse", warehouseRouter);
 app.use("/api/office", officeRouter);
 app.use("/api/office/holidays", holidaysRouter);
 app.use("/api/uploads", uploadsRouter);
+app.use("/api/app-version", appVersionRouter);
 app.use("/api/employee", employeeAuthRouter);
 app.use("/api/employee", [
   employeeAuth,
