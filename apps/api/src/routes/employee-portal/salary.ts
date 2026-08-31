@@ -5,6 +5,7 @@ import {
   buildSalarySlipPdf,
   CompanyDetails,
 } from "../../services/salary-pdf";
+import { loadCompanyLogo } from "../../lib/company-assets";
 
 const router: Router = Router();
 
@@ -125,7 +126,15 @@ router.get("/salary/slip", async (req, res) => {
       footerText: company?.footerText ?? "",
     };
 
-    const pdf = await buildSalarySlipPdf({ ...breakdown, employee }, companyDetails);
+    const logo = await loadCompanyLogo(
+      company?.logoUrl ?? company?.headerLogoUrl,
+    );
+
+    const pdf = await buildSalarySlipPdf(
+      { ...breakdown, employee },
+      companyDetails,
+      { logo },
+    );
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(

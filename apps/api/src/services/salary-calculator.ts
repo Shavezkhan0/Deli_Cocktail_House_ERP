@@ -1,7 +1,7 @@
 import { prisma, AttendanceStatus, OverrideType } from "@repo/database";
-import { istDateKey } from "../lib/attendance-time";
+import { istDateKey, istDayOfWeek, istStartOfDay } from "../lib/attendance-time";
 
-const DEFAULT_LEAVE_SYSTEM_START = new Date(2026, 7, 1);
+const DEFAULT_LEAVE_SYSTEM_START = new Date(Date.UTC(2026, 7, 1, -5, -30, 0, 0));
 const PAID_LEAVE_PER_MONTH = 1;
 const SHORT_LEAVE_ALLOWANCE = 3;
 const ELIGIBILITY_DELAY_MONTHS = 3;
@@ -74,38 +74,32 @@ export type SalaryBreakdown = {
   unpaidLeaves: number;
 };
 
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function dateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
 function monthStart(year: number, month: number): Date {
-  return new Date(year, month - 1, 1);
+  return new Date(Date.UTC(year, month - 1, 1, -5, -30, 0, 0));
 }
 
 function firstOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+  const key = istDateKey(date);
+  const [y, m] = key.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, 1, -5, -30, 0, 0));
 }
 
 function addMonths(date: Date, months: number): Date {
-  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const key = istDateKey(date);
+  const [y, m] = key.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1 + months, 1, -5, -30, 0, 0));
 }
 
 function wholeMonthsBetween(from: Date, to: Date): number {
-  return (
-    (to.getFullYear() - from.getFullYear()) * 12 +
-    (to.getMonth() - from.getMonth())
-  );
+  const fromKey = istDateKey(from);
+  const toKey = istDateKey(to);
+  const [fy, fm] = fromKey.split("-").map(Number);
+  const [ty, tm] = toKey.split("-").map(Number);
+  return (ty! - fy!) * 12 + (tm! - fm!);
 }
 
 type CollapsibleAttendance = {
@@ -168,7 +162,7 @@ async function getLeaveSystemStart(): Promise<Date> {
   });
   if (setting && !isNaN(Date.parse(setting.value))) {
     const parsed = new Date(setting.value);
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return istStartOfDay(parsed);
   }
   return DEFAULT_LEAVE_SYSTEM_START;
 }
@@ -233,16 +227,15 @@ export async function calculateEmployeeSalary(
   const collapsedMonth = collapseAttendance(monthAttendance);
 
   const holidaySet = new Set(
-    holidaysSinceStart.map((holiday) => dateKey(startOfDay(new Date(holiday.date)))),
+    holidaysSinceStart.map((holiday) => istDateKey(new Date(holiday.date))),
   );
   const forceWorkSet = new Set(
-    forceWorkSinceStart.map((override) => dateKey(startOfDay(new Date(override.date)))),
+    forceWorkSinceStart.map((override) => istDateKey(new Date(override.date))),
   );
 
   function paidLeaveWeight(status: AttendanceStatus, date: Date): number {
-    const day = startOfDay(date);
-    const key = dateKey(day);
-    const isSunday = day.getDay() === 0;
+    const key = istDateKey(date);
+    const isSunday = istDayOfWeek(date) === 0;
     const isHoliday = holidaySet.has(key);
     const isForceWork = forceWorkSet.has(key);
     switch (status) {
@@ -293,29 +286,28 @@ export async function calculateEmployeeSalary(
 
   // --- Holiday / Sunday / FORCE_WORK extra pay ---
   const monthHolidaySet = new Set(
-    monthHolidays.map((holiday) => dateKey(startOfDay(new Date(holiday.date)))),
+    monthHolidays.map((holiday) => istDateKey(new Date(holiday.date))),
   );
   const monthHolidayName = new Map<string, string>(
     monthHolidays.map((holiday) => [
-      dateKey(startOfDay(new Date(holiday.date))),
+      istDateKey(new Date(holiday.date)),
       holiday.name,
     ]),
   );
   const monthOverrideSet = new Set(
-    monthOverrides.map((override) => dateKey(startOfDay(new Date(override.date)))),
+    monthOverrides.map((override) => istDateKey(new Date(override.date))),
   );
   const monthForceWorkSet = new Set(
     monthOverrides
       .filter((override) => override.type === OverrideType.FORCE_WORK)
-      .map((override) => dateKey(startOfDay(new Date(override.date)))),
+      .map((override) => istDateKey(new Date(override.date))),
   );
 
   const entries: HolidayWorkEntry[] = [];
   let holidayWorkExtraDays = 0;
   for (const record of collapsedMonth) {
-    const day = startOfDay(new Date(record.date));
-    const key = dateKey(day);
-    const isSunday = day.getDay() === 0;
+    const key = istDateKey(record.date);
+    const isSunday = istDayOfWeek(record.date) === 0;
     const isHoliday = monthHolidaySet.has(key);
     const isForceWork = monthForceWorkSet.has(key);
     if (!(isSunday || isHoliday || isForceWork)) continue;
@@ -360,9 +352,8 @@ export async function calculateEmployeeSalary(
   for (const record of collapsedMonth) {
     attendance[record.status] += 1;
     if (record.status === AttendanceStatus.ABSENT) {
-      const day = startOfDay(new Date(record.date));
-      const key = dateKey(day);
-      const isSunday = day.getDay() === 0;
+      const key = istDateKey(record.date);
+      const isSunday = istDayOfWeek(record.date) === 0;
       const isHoliday = monthHolidaySet.has(key);
       const isOverride = monthOverrideSet.has(key);
       if (isHoliday && !isOverride) {
@@ -405,7 +396,7 @@ export async function calculateEmployeeSalary(
     joiningDate: employee.joiningDate,
     monthsSinceJoining,
     eligibleForLeaves,
-    eligibleFrom: dateKey(eligibleFrom),
+    eligibleFrom: istDateKey(eligibleFrom),
     paidLeave: {
       opening: round(openingBalance),
       grantedThisMonth: grantThisMonth,
