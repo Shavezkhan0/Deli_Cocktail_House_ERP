@@ -96,10 +96,26 @@ class _ExtraDaysBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Summary badges
-        _SummaryBadges(
-          totalCredits: data.compensatoryLeaves,
-          availableLeaves: data.availableLeaveBalance,
+        // Summary badge
+        _SummaryBadges(extraPayDays: data.holidayWorkExtraDays),
+        const SizedBox(height: 16),
+
+        // Extra pay note
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: const Text(
+            'Working on a Sunday, holiday or assigned workday earns you extra pay on top of your base salary.',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.5,
+              color: AppTheme.mutedForeground,
+            ),
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -131,7 +147,7 @@ class _ExtraDaysSkeleton extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          // --- Summary badges skeleton ---
+          // --- Summary badge skeleton ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -139,46 +155,21 @@ class _ExtraDaysSkeleton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppTheme.border),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: const [
-                        SkeletonBox(width: 7, height: 7, borderRadius: 999),
-                        SizedBox(width: 8),
-                        SkeletonBox(width: 90, height: 11, borderRadius: 4),
-                        Spacer(),
-                        SkeletonBox(width: 24, height: 14, borderRadius: 4),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: const [
-                        SkeletonBox(width: 7, height: 7, borderRadius: 999),
-                        SizedBox(width: 8),
-                        SkeletonBox(width: 110, height: 11, borderRadius: 4),
-                        Spacer(),
-                        SkeletonBox(width: 24, height: 14, borderRadius: 4),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  SkeletonBox(width: 7, height: 7, borderRadius: 999),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 110, height: 11, borderRadius: 4),
+                  Spacer(),
+                  SkeletonBox(width: 24, height: 14, borderRadius: 4),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -260,12 +251,10 @@ class _ExtraDaysSkeleton extends StatelessWidget {
 
 class _SummaryBadges extends StatelessWidget {
   const _SummaryBadges({
-    required this.totalCredits,
-    required this.availableLeaves,
+    required this.extraPayDays,
   });
 
-  final double totalCredits;
-  final double availableLeaves;
+  final double extraPayDays;
 
   @override
   Widget build(BuildContext context) {
@@ -276,28 +265,12 @@ class _SummaryBadges extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.border),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _Badge(
-              label: 'Total Credits',
-              value: totalCredits == totalCredits.roundToDouble()
-                  ? totalCredits.toInt().toString()
-                  : totalCredits.toStringAsFixed(1),
-              dotColor: const Color(0xFF8B5CF6),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _Badge(
-              label: 'Available Leaves',
-              value: availableLeaves == availableLeaves.roundToDouble()
-                  ? availableLeaves.toInt().toString()
-                  : availableLeaves.toStringAsFixed(1),
-              dotColor: const Color(0xFF10B981),
-            ),
-          ),
-        ],
+      child: _Badge(
+        label: 'Extra Pay Days',
+        value: extraPayDays == extraPayDays.roundToDouble()
+            ? extraPayDays.toInt().toString()
+            : extraPayDays.toStringAsFixed(1),
+        dotColor: const Color(0xFF8B5CF6),
       ),
     );
   }
@@ -388,7 +361,7 @@ class _EntriesSection extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Days you worked on Sundays, holidays, or assigned workdays.',
+                  'Days you earned extra pay for working on Sundays, holidays, or assigned workdays.',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.mutedForeground,
@@ -584,7 +557,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Extra days are earned when you work on\nSundays, holidays, or assigned workdays.',
+              'Extra pay is earned when you work on\nSundays, holidays, or assigned workdays.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,

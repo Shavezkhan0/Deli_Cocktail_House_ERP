@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma, AttendanceStatus, OverrideType, Prisma } from "@repo/database";
-import { ATTENDANCE_TIMEZONE, istDayOfWeek, istHourMinute, startOfToday, timeToMinutes } from "../../lib/attendance-time";
+import { ATTENDANCE_TIMEZONE, istDayOfWeek, istHourMinute, istStartOfDay, startOfToday, timeToMinutes } from "../../lib/attendance-time";
 
 const router: Router = Router();
 
@@ -201,9 +201,18 @@ router.post("/attendance/mark", async (req, res) => {
       return res.status(400).json({ message: "Latitude and longitude are required" });
     }
 
+    const today = startOfToday();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const wfhToday = await prisma.workFromHomeDay.findFirst({
+      where: { employeeId, date: { gte: today, lt: tomorrow } },
+    });
+
     // Get the effective check-in location for this employee's designation
     const location = await getEffectiveLocation(designation);
     if (
+      !wfhToday &&
       location.latitude &&
       Number.isFinite(location.latitude) &&
       location.longitude &&
@@ -226,10 +235,6 @@ router.post("/attendance/mark", async (req, res) => {
         });
       }
     }
-
-    const today = startOfToday();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const existing = await prisma.attendance.findFirst({
       where: {
@@ -282,7 +287,7 @@ router.post("/attendance/mark", async (req, res) => {
         ? await prisma.attendance.update({
             where: { id: existing.id },
             data: {
-              date: now,
+              date: istStartOfDay(now),
               status,
               checkInTime: now,
               latitude,
@@ -292,7 +297,7 @@ router.post("/attendance/mark", async (req, res) => {
         : await prisma.attendance.create({
             data: {
               employeeId,
-              date: now,
+              date: istStartOfDay(now),
               status,
               checkInTime: now,
               latitude,

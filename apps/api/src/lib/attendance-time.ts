@@ -12,19 +12,22 @@ export function istHourMinute(date: Date): { hour: number; minute: number } {
   return { hour, minute };
 }
 
-export function startOfToday(): Date {
-  const now = new Date();
+export function istStartOfDay(date: Date): Date {
   const dateParts = new Intl.DateTimeFormat("en-CA", {
     timeZone: ATTENDANCE_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(now);
+  }).formatToParts(date);
   const year = Number(dateParts.find((p) => p.type === "year")?.value);
   const month = Number(dateParts.find((p) => p.type === "month")?.value);
   const day = Number(dateParts.find((p) => p.type === "day")?.value);
   // IST is UTC+5:30 with no DST; midnight IST is 18:30 UTC the previous day.
   return new Date(Date.UTC(year, month - 1, day, -5, -30, 0, 0));
+}
+
+export function startOfToday(): Date {
+  return istStartOfDay(new Date());
 }
 
 export function timeToMinutes(hour: number, minute: number): number {

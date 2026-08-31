@@ -20,6 +20,10 @@ type ExtraDaysEntry = {
 type ExtraDaysRecord = {
   month: number;
   year: number;
+  holidayWork?: {
+    extraDays: number;
+    entries: ExtraDaysEntry[];
+  };
   compensatoryLeaves: number;
   availableLeaveBalance: number;
   entries: ExtraDaysEntry[];
@@ -65,12 +69,13 @@ export default function ExtraDaysPage() {
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
               <span className="size-1.5 rounded-full bg-violet-500" />
-              Total: {data.compensatoryLeaves} credit{data.compensatoryLeaves === 1 ? "" : "s"}
+              Extra pay days:{" "}
+              {data.holidayWork?.extraDays ?? data.compensatoryLeaves}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              Available: {data.availableLeaveBalance} leave{data.availableLeaveBalance === 1 ? "" : "s"}
-            </span>
+            <p className="w-full text-xs text-muted-foreground">
+              Working on a Sunday, holiday or assigned workday earns you extra
+              pay on top of your base salary.
+            </p>
           </div>
         </div>
 
@@ -138,7 +143,7 @@ export default function ExtraDaysPage() {
     content = (
       <EmptyState
         message="No extra days yet"
-        sub="Extra days are earned when you work on Sundays, holidays, or assigned workdays."
+        sub="Extra pay is earned when you work on Sundays, holidays, or assigned workdays."
       />
     );
   }
@@ -146,7 +151,7 @@ export default function ExtraDaysPage() {
   return (
     <AppShell
       title="Extra Days"
-      subtitle="Days you worked on Sundays, holidays, or assigned workdays."
+      subtitle="Extra pay for days you worked on Sundays, holidays, or assigned workdays."
       icon={<CalendarClock className="size-5" />}
       actions={
         <button

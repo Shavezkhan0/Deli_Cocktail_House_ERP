@@ -9,8 +9,10 @@ import {
   CalendarDays,
   CalendarPlus,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Circle,
   FileText,
   Loader2,
@@ -65,6 +67,8 @@ import {
   deleteDocument,
   uploadDocument,
 } from "@/components/employee-form";
+import { SalaryCalculation } from "@/components/salary-calculation";
+import { DownloadButtons } from "@/components/download-buttons";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate, formatTime } from "@/lib/format";
@@ -154,12 +158,35 @@ type SalaryBreakdown = {
   month: number;
   year: number;
   baseSalary: number;
+  daysInMonth: number;
   dailyWage: number;
   monthsSinceJoining: number;
-  earnedLeaves: number;
-  compensatoryLeaves: number;
-  usedLeaves: number;
-  availableLeaveBalance: number;
+  joiningDate: string;
+  eligibleForLeaves: boolean;
+  eligibleFrom: string;
+  paidLeave: {
+    opening: number;
+    grantedThisMonth: number;
+    available: number;
+    usedThisMonth: number;
+    overageDays: number;
+    closing: number;
+  };
+  shortLeave: {
+    allowance: number;
+    usedThisMonth: number;
+    remaining: number;
+    overageDays: number;
+  };
+  holidayWork: {
+    extraDays: number;
+    entries: {
+      date: string;
+      label: string;
+      status: "PRESENT" | "HALF_DAY" | "SHORT_LEAVE";
+      credit: number;
+    }[];
+  };
   attendance: {
     PRESENT: number;
     ABSENT: number;
@@ -168,11 +195,9 @@ type SalaryBreakdown = {
     SHORT_LEAVE: number;
     sundayAbsences: number;
     holidayAbsences: number;
-    overriddenAbsences: number;
   };
-  totalLeavesTaken: number;
-  unpaidLeaves: number;
   deductionAmount: number;
+  extraEarnings: number;
   extraExpenses: number;
   extraExpenseEntries: {
     id: string;
@@ -181,6 +206,21 @@ type SalaryBreakdown = {
     date: string | null;
   }[];
   finalAmount: number;
+  earnedLeaves: number;
+  compensatoryLeaves: number;
+  compensatoryEntries: { date: string; status: string; credit: number }[];
+  usedLeaves: number;
+  availableLeaveBalance: number;
+  totalLeavesTaken: number;
+  unpaidLeaves: number;
+};
+
+type WorkFromHomeDay = {
+  id: string;
+  employeeId: string;
+  date: string;
+  reason: string | null;
+  createdAt: string;
 };
 
 type DocKey = "aadharUrl" | "panCardUrl" | "offerLetterUrl" | "bondUrl";
@@ -265,6 +305,12 @@ function formatSalary(value: number): string {
   }).format(value);
 }
 
+function formatLeaveDays(value: number): string {
+  return value === Math.round(value)
+    ? String(value)
+    : value.toFixed(2);
+}
+
 const BUCKET_PREFIX = "/storage/v1/object/public/employee-documents/";
 
 function storagePathFromUrl(url: string): string {
@@ -321,26 +367,87 @@ function InfoRow({
 }
 
 function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
+  const { paidLeave, shortLeave, holidayWork, attendance } = breakdown;
+  const monthYearLabel = `${MONTH_NAMES[breakdown.month - 1]} ${breakdown.year}`;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/5 p-4">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">
-            Paid Leave Balance
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Paid leave ({monthYearLabel})
           </p>
-          <p className="mt-0.5 text-3xl font-bold tabular-nums text-primary">
-            {breakdown.availableLeaveBalance}
-          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Carried from last month</dt>
+              <dd className="tabular-nums text-foreground">
+                {formatLeaveDays(paidLeave.opening)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Earned this month</dt>
+              <dd className="tabular-nums text-foreground">
+                {formatLeaveDays(paidLeave.grantedThisMonth)}
+              </dd>
+            </div>
+            {!breakdown.eligibleForLeaves ? (
+              <p className="text-xs text-muted-foreground">
+                Paid-leave accrual starts {breakdown.eligibleFrom} — 3 months
+                after joining.
+              </p>
+            ) : null}
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Used this month</dt>
+              <dd className="tabular-nums text-foreground">
+                {formatLeaveDays(paidLeave.usedThisMonth)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Carried to next month</dt>
+              <dd className="tabular-nums font-semibold text-foreground">
+                {formatLeaveDays(paidLeave.closing)}
+              </dd>
+            </div>
+          </dl>
         </div>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          Earned {breakdown.earnedLeaves} leaves ({breakdown.compensatoryLeaves}{" "}
-          from working on Sundays/holidays) · Used {breakdown.usedLeaves}. Leaves
-          taken beyond this balance are deducted at the daily wage
-          ({formatSalary(breakdown.dailyWage)}/day).
-        </p>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Short leave ({monthYearLabel})
+          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Free allowance</dt>
+              <dd className="tabular-nums text-foreground">
+                {formatLeaveDays(shortLeave.allowance)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Used this month</dt>
+              <dd className="tabular-nums text-foreground">
+                {formatLeaveDays(shortLeave.usedThisMonth)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Remaining</dt>
+              <dd className="tabular-nums font-semibold text-foreground">
+                {formatLeaveDays(shortLeave.remaining)}
+              </dd>
+            </div>
+            {!breakdown.eligibleForLeaves || shortLeave.allowance === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Short-leave allowance starts {breakdown.eligibleFrom} — 3 months
+                after joining.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Short leave does not carry forward — resets to 3 each month.
+              </p>
+            )}
+          </dl>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-lg border bg-muted/30 p-4">
           <p className="text-xs text-muted-foreground">Base Salary</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
@@ -348,12 +455,31 @@ function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
           </p>
         </div>
         <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Leave Deduction</p>
+          <p className="text-xs text-muted-foreground">Daily Wage</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+            {formatSalary(breakdown.dailyWage)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            × {breakdown.daysInMonth} days
+          </p>
+        </div>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-xs text-muted-foreground">Deductions</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-rose-600">
             − {formatSalary(breakdown.deductionAmount)}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {breakdown.unpaidLeaves} unpaid leaves
+            {paidLeave.overageDays} paid + {shortLeave.overageDays} short leave
+            overage
+          </p>
+        </div>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <p className="text-xs text-muted-foreground">Holiday / Sunday Work</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600">
+            + {formatSalary(breakdown.extraEarnings)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            on {holidayWork.extraDays} extra days
           </p>
         </div>
         <div className="rounded-lg border bg-muted/30 p-4">
@@ -370,16 +496,145 @@ function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
         </div>
       </div>
 
+      <SalaryCalculation data={breakdown} />
+
       <p className="text-xs text-muted-foreground">
-        {breakdown.attendance.PRESENT} present · {breakdown.attendance.ABSENT}{" "}
-        absent ({breakdown.attendance.sundayAbsences} on Sundays,{" "}
-        {breakdown.attendance.holidayAbsences} on holidays,{" "}
-        {breakdown.attendance.overriddenAbsences} overridden) ·{" "}
-        {breakdown.attendance.ON_LEAVE} on leave ·{" "}
-        {breakdown.attendance.HALF_DAY} half days ·{" "}
-        {breakdown.attendance.SHORT_LEAVE} short leaves
+        {attendance.PRESENT} present · {attendance.ABSENT} absent (
+        {attendance.sundayAbsences} on Sundays, {attendance.holidayAbsences} on
+        holidays) · {attendance.ON_LEAVE} on leave · {attendance.HALF_DAY}{" "}
+        half days · {attendance.SHORT_LEAVE} short leaves
       </p>
+      {!breakdown.eligibleForLeaves ? (
+        <p className="text-xs text-muted-foreground">
+          Leave accrual starts {breakdown.eligibleFrom}.
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+function SalaryHistoryRow({
+  salary,
+  employeeId,
+  token,
+  onMarkPaid,
+  savingPaid,
+}: {
+  salary: Salary;
+  employeeId: string;
+  token?: string | null;
+  onMarkPaid: (salary: Salary) => void;
+  savingPaid: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: breakdown, isPending, isError } = useQuery({
+    queryKey: [
+      "office-salary-breakdown",
+      employeeId,
+      salary.month,
+      salary.year,
+    ],
+    queryFn: () =>
+      apiFetch<SalaryBreakdown>(
+        `/api/office/employees/${employeeId}/salary-breakdown?month=${salary.month}&year=${salary.year}`,
+        { token },
+      ),
+    enabled: expanded,
+  });
+
+  const paid = salary.status === "PAID";
+
+  return (
+    <>
+      <TableRow>
+        <TableCell className="text-foreground">
+          {MONTH_NAMES[salary.month - 1]}
+        </TableCell>
+        <TableCell className="tabular-nums text-muted-foreground">
+          {salary.year}
+        </TableCell>
+        <TableCell>
+          <div className="text-right tabular-nums text-foreground">
+            {formatSalary(salary.amount)}
+          </div>
+        </TableCell>
+        <TableCell>
+          {paid ? (
+            <Badge
+              variant="outline"
+              className="border-transparent bg-emerald-100 text-emerald-700"
+            >
+              <CheckCircle2 />
+              PAID
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="border-transparent bg-amber-100 text-amber-700"
+            >
+              <Circle />
+              UNPAID
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {salary.paidDate ? formatDate(salary.paidDate) : "—"}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end gap-2">
+            {!paid ? (
+              <Button
+                size="sm"
+                onClick={() => onMarkPaid(salary)}
+                disabled={savingPaid}
+              >
+                <CheckCircle2 />
+                Mark Paid
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">Completed</span>
+            )}
+            <Button
+              variant={expanded ? "secondary" : "outline"}
+              size="sm"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
+              {expanded ? "Hide" : "Details"}
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      {expanded ? (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={6} className="p-4">
+            {isPending ? (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading calculation…
+              </div>
+            ) : isError || !breakdown ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Unable to load the salary calculation.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Absent: {breakdown.attendance.ABSENT} ·{" "}
+                  {MONTH_NAMES[salary.month - 1]} {salary.year}
+                </p>
+                <SalaryCalculation data={breakdown} />
+              </div>
+            )}
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </>
   );
 }
 
@@ -416,6 +671,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const [overrideDialogReason, setOverrideDialogReason] = useState("");
 
   const [attendanceStatusValue, setAttendanceStatusValue] = useState("");
+
+  const [wfhDialogReason, setWfhDialogReason] = useState("");
 
   const [breakdownMonth, setBreakdownMonth] = useState(currentMonth);
   const [breakdownYear, setBreakdownYear] = useState(currentYear);
@@ -553,6 +810,15 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       ),
   });
 
+  const wfhDaysQuery = useQuery({
+    queryKey: ["office-wfh-days", employeeId],
+    queryFn: () =>
+      apiFetch<WorkFromHomeDay[]>(
+        `/api/office/employees/${employeeId}/wfh-days`,
+        { token },
+      ),
+  });
+
   const holidaysQuery = useQuery({
     queryKey: ["office-holidays"],
     queryFn: () => apiFetch<Holiday[]>("/api/office/holidays", { token }),
@@ -677,6 +943,46 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     },
   });
 
+  const saveWfh = useMutation({
+    mutationFn: (payload: { date: string; reason?: string }) =>
+      apiFetch<WorkFromHomeDay>(
+        `/api/office/employees/${employeeId}/wfh-days`,
+        { method: "POST", body: payload, token },
+      ),
+    onSuccess: () => {
+      toast.success("Work-from-home day saved");
+      setOverrideDialogDate(null);
+      setOverrideDialogReason("");
+      setWfhDialogReason("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-wfh-days", employeeId],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteWfh = useMutation({
+    mutationFn: (dayId: string) =>
+      apiFetch<void>(
+        `/api/office/employees/${employeeId}/wfh-days/${dayId}`,
+        { method: "DELETE", token },
+      ),
+    onSuccess: () => {
+      toast.success("Work-from-home day removed");
+      setOverrideDialogDate(null);
+      setOverrideDialogReason("");
+      setWfhDialogReason("");
+      queryClient.invalidateQueries({
+        queryKey: ["office-wfh-days", employeeId],
+      });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const updateAttendanceStatus = useMutation({
     mutationFn: (payload: { date: string; status: string }) =>
       apiFetch<AttendanceRecord>(
@@ -760,9 +1066,13 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     const existing = (workingOverridesQuery.data ?? []).find(
       (override) => dateKeyFromTimestamp(override.date) === date,
     );
+    const existingWfh = (wfhDaysQuery.data ?? []).find(
+      (wfh) => dateKeyFromTimestamp(wfh.date) === date,
+    );
     setOverrideType(existing?.type ?? "FORCE_WORK");
     setOverrideDialogReason(existing?.reason ?? "");
     setAttendanceStatusValue(attendanceRecordsByDate.get(date)?.status ?? "");
+    setWfhDialogReason(existingWfh?.reason ?? "");
     setOverrideDialogDate(date);
   }
 
@@ -785,6 +1095,26 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       type: overrideType,
       reason: overrideDialogReason.trim() || undefined,
     });
+  }
+
+  function handleWfhSave() {
+    if (!overrideDialogDate) {
+      return;
+    }
+    saveWfh.mutate({
+      date: overrideDialogDate,
+      reason: wfhDialogReason.trim() || undefined,
+    });
+  }
+
+  function handleWfhRemove() {
+    const wfh = (wfhDaysQuery.data ?? []).find(
+      (item) => dateKeyFromTimestamp(item.date) === overrideDialogDate,
+    );
+    if (!wfh) {
+      return;
+    }
+    deleteWfh.mutate(wfh.id);
   }
 
   function handleExpenseSubmit(event: React.FormEvent) {
@@ -823,9 +1153,23 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
   const attendanceRecordsByDate = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
+    const prefers = (a: AttendanceRecord, b: AttendanceRecord): boolean => {
+      const aCheckin = a.checkInTime ? 1 : 0;
+      const bCheckin = b.checkInTime ? 1 : 0;
+      if (aCheckin !== bCheckin) return aCheckin > bCheckin;
+      const aAdmin = a.correctedByAdmin ? 1 : 0;
+      const bAdmin = b.correctedByAdmin ? 1 : 0;
+      if (aAdmin !== bAdmin) return aAdmin > bAdmin;
+      const aNotAbsent = a.status !== "ABSENT" ? 1 : 0;
+      const bNotAbsent = b.status !== "ABSENT" ? 1 : 0;
+      if (aNotAbsent !== bNotAbsent) return aNotAbsent > bNotAbsent;
+      return false;
+    };
     for (const record of attendanceHistoryQuery.data ?? []) {
       const key = dateKeyFromTimestamp(record.date);
-      if (key) {
+      if (!key) continue;
+      const existing = map.get(key);
+      if (!existing || prefers(record, existing)) {
         map.set(key, record);
       }
     }
@@ -842,6 +1186,17 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     }
     return map;
   }, [workingOverridesQuery.data]);
+
+  const wfhDaysByDate = useMemo(() => {
+    const map = new Map<string, WorkFromHomeDay>();
+    for (const wfh of wfhDaysQuery.data ?? []) {
+      const key = dateKeyFromTimestamp(wfh.date);
+      if (key) {
+        map.set(key, wfh);
+      }
+    }
+    return map;
+  }, [wfhDaysQuery.data]);
 
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, Holiday>();
@@ -864,7 +1219,6 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const statShortLeaves = historyRecords.filter(
     (record) => record.status === "SHORT_LEAVE",
   ).length;
-  const remainingPaidLeaves = leaveBalanceQuery.data?.availableLeaveBalance;
 
   const monthStatusCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -896,6 +1250,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   const selectedOverride =
     overrideDialogDate != null
       ? overridesByDate.get(overrideDialogDate)
+      : undefined;
+
+  const selectedWfhDay =
+    overrideDialogDate != null
+      ? wfhDaysByDate.get(overrideDialogDate)
       : undefined;
 
   const [bankForm, setBankForm] = useState<BankForm>({
@@ -1324,13 +1683,51 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             <Card>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
+                  Total Absent Days
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {attendanceHistoryQuery.isPending
+                    ? "…"
+                    : monthStatusCounts.ABSENT}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Total On Leave
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {attendanceHistoryQuery.isPending
+                    ? "…"
+                    : monthStatusCounts.ON_LEAVE}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
                   Remaining Paid Leave Balance
                 </p>
                 {leaveBalanceQuery.isPending ? (
                   <div className="mt-2 h-7 w-16 animate-pulse rounded bg-muted" />
                 ) : (
                   <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
-                    {remainingPaidLeaves ?? "—"}
+                    {leaveBalanceQuery.data?.paidLeave?.closing ?? "—"}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Short Leave Remaining
+                </p>
+                {leaveBalanceQuery.isPending ? (
+                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-muted" />
+                ) : (
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                    {leaveBalanceQuery.data?.shortLeave?.remaining ?? "—"}
                   </p>
                 )}
               </CardContent>
@@ -1438,35 +1835,40 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     );
                     const record = attendanceRecordsByDate.get(key);
                     const override = overridesByDate.get(key);
+                    const wfh = wfhDaysByDate.get(key);
                     const holiday = holidaysByDate.get(key);
                     const isSunday =
                       new Date(attendanceYear, attendanceMonth - 1, day).getDay() === 0;
                     const isHolidayCell = !record && (!!holiday || isSunday);
                     const isToday = key === calendarTodayKey;
-                    const tooltip = override
-                      ? `${formatDate(override.date)} — ${
-                          override.type === "FORCE_WORK"
-                            ? "Force work"
-                            : "Force leave"
-                        }${override.reason ? ` (${override.reason})` : ""}`
-                      : record
-                        ? `${formatDate(record.date)} — ${record.status.replace(
-                            "_",
-                            " ",
-                          )}${
-                            record.correctedByAdmin
-                              ? ` (corrected by admin, was ${
-                                  record.previousStatus
-                                    ? record.previousStatus.replace("_", " ")
-                                    : "no record"
-                                })`
-                              : ""
-                          }`
-                        : isHolidayCell
-                          ? holiday
-                            ? `Holiday — ${holiday.name}`
-                            : "Sunday"
-                          : "No override — click to assign";
+                    const tooltip = wfh
+                      ? `${formatDate(wfh.date)} — Work from home${
+                          wfh.reason ? ` (${wfh.reason})` : ""
+                        }${override ? ` · ${override.type === "FORCE_WORK" ? "force work" : "force leave"}` : ""}`
+                      : override
+                        ? `${formatDate(override.date)} — ${
+                            override.type === "FORCE_WORK"
+                              ? "Force work"
+                              : "Force leave"
+                          }${override.reason ? ` (${override.reason})` : ""}`
+                        : record
+                          ? `${formatDate(record.date)} — ${record.status.replace(
+                              "_",
+                              " ",
+                            )}${
+                              record.correctedByAdmin
+                                ? ` (corrected by admin, was ${
+                                    record.previousStatus
+                                      ? record.previousStatus.replace("_", " ")
+                                      : "no record"
+                                  })`
+                                : ""
+                            }`
+                          : isHolidayCell
+                            ? holiday
+                              ? `Holiday — ${holiday.name}`
+                              : "Sunday"
+                            : "No override — click to assign";
                     return (
                       <button
                         key={key}
@@ -1503,6 +1905,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             )}
                           />
                         ) : null}
+                        {wfh ? (
+                          <span className="absolute top-1 right-1 size-1.5 rounded-full bg-teal-500 ring-1 ring-white/70" />
+                        ) : null}
                         {record?.correctedByAdmin ? (
                           <span className="absolute top-1 left-1 size-1.5 rounded-full bg-amber-400 ring-1 ring-white/70" />
                         ) : null}
@@ -1531,6 +1936,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="size-2.5 rounded-full bg-sky-500" />
                   Force Leave
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="size-2.5 rounded-full bg-teal-500" />
+                  Work From Home
                 </span>
                 <span className="ml-2 text-xs font-medium text-muted-foreground">
                   Attendance:
@@ -1707,7 +2116,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
-              {workingOverridesQuery.isPending ? (
+              {workingOverridesQuery.isPending || wfhDaysQuery.isPending ? (
                 <div className="space-y-2">
                   {Array.from({ length: 3 }).map((_, index) => (
                     <div
@@ -1720,7 +2129,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   Unable to load overrides.
                 </p>
-              ) : (workingOverridesQuery.data ?? []).length === 0 ? (
+              ) : (workingOverridesQuery.data ?? []).length === 0 &&
+                (wfhDaysQuery.data ?? []).length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   No overrides assigned yet. Click a day on the calendar to add
                   one.
@@ -1776,6 +2186,38 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {(wfhDaysQuery.data ?? []).map((wfh) => (
+                      <TableRow key={wfh.id}>
+                        <TableCell className="font-medium tabular-nums text-foreground">
+                          {formatDate(wfh.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="border-transparent bg-teal-100 text-teal-700"
+                          >
+                            Work From Home
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {wfh.reason ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-destructive hover:bg-destructive/10"
+                              disabled={deleteWfh.isPending}
+                              onClick={() => deleteWfh.mutate(wfh.id)}
+                              aria-label="Remove work-from-home day"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               )}
@@ -1791,10 +2233,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             setOverrideDialogDate(null);
             setOverrideDialogReason("");
             setAttendanceStatusValue("");
+            setWfhDialogReason("");
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Attendance Day</DialogTitle>
             <DialogDescription>
@@ -1922,6 +2365,55 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 </Button>
               </div>
             </div>
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <label className="text-sm font-medium text-foreground">
+                Work From Home
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {selectedWfhDay
+                  ? "This day is assigned as a work-from-home day for this employee."
+                  : "Mark this day as a work-from-home day for this employee."}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Reason{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </label>
+                <Textarea
+                  value={wfhDialogReason}
+                  onChange={(event) => setWfhDialogReason(event.target.value)}
+                  placeholder="e.g. Working remotely from home"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                {selectedWfhDay ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleteWfh.isPending}
+                    onClick={handleWfhRemove}
+                  >
+                    <Trash2 />
+                    Remove
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saveWfh.isPending}
+                  onClick={handleWfhSave}
+                >
+                  {saveWfh.isPending
+                    ? "Saving…"
+                    : selectedWfhDay
+                      ? "Update WFH"
+                      : "Save WFH"}
+                </Button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" type="button" />}>
@@ -2001,8 +2493,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             <CardHeader className="border-b">
               <CardTitle>Salary Breakdown</CardTitle>
               <CardDescription>
-                Automatic calculation using the 30-day rule and the paid leave
-                balance.
+                Automatic calculation using the actual number of days in the
+                month and the paid leave balance.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
@@ -2043,6 +2535,13 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     onChange={(event) =>
                       setBreakdownYear(Number(event.target.value) || currentYear)
                     }
+                  />
+                </div>
+                <div className="flex items-end">
+                  <DownloadButtons
+                    baseUrl={`/api/office/employees/${employeeId}/salary-slip?month=${breakdownMonth}&year=${breakdownYear}`}
+                    fileBase={`slip-${employee?.employeeId ?? employeeId}-${breakdownYear}-${breakdownMonth}`}
+                    label="Slip"
                   />
                 </div>
               </div>
@@ -2185,7 +2684,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               <CardDescription>
                 {currentMonthSalary
                   ? `Published salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear}.`
-                  : `Estimated salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear} using the 30-day rule, paid leave balance and approved expenses.`}
+                  : `Estimated salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear} using the actual number of days in the month, paid leave balance and approved expenses.`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -2211,16 +2710,30 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                       Calculating from attendance…
                     </p>
                   ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {currentSalaryBreakdownQuery.data?.attendance.ABSENT ?? 0}{" "}
-                      absent ·{" "}
-                      {currentSalaryBreakdownQuery.data?.unpaidLeaves ?? 0} unpaid
-                      leaves ·{" "}
-                      {formatSalary(
-                        currentSalaryBreakdownQuery.data?.extraExpenses ?? 0,
-                      )}{" "}
-                      expenses
-                    </p>
+                    <div className="mt-3 space-y-2">
+                      {(() => {
+                        const b = currentSalaryBreakdownQuery.data;
+                        if (!b) return null;
+                        return (
+                          <p className="text-xs text-muted-foreground">
+                            {b.attendance.PRESENT} present · {b.attendance.HALF_DAY}{" "}
+                            half · {b.attendance.SHORT_LEAVE} short ·{" "}
+                            {b.attendance.ON_LEAVE} on leave ·{" "}
+                            {b.attendance.ABSENT} absent · {b.daysInMonth}-day
+                            month
+                          </p>
+                        );
+                      })()}
+                      {(() => {
+                        const b = currentSalaryBreakdownQuery.data;
+                        if (!b || b.eligibleForLeaves) return null;
+                        return (
+                          <p className="text-xs text-muted-foreground">
+                            Leave accrual starts {b.eligibleFrom}
+                          </p>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
                 {currentMonthSalary?.status === "PAID" ? (
@@ -2284,66 +2797,16 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salaries.map((salary) => {
-                      const paid = salary.status === "PAID";
-                      return (
-                        <TableRow key={salary.id}>
-                          <TableCell className="text-foreground">
-                            {MONTH_NAMES[salary.month - 1]}
-                          </TableCell>
-                          <TableCell className="tabular-nums text-muted-foreground">
-                            {salary.year}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-right tabular-nums text-foreground">
-                              {formatSalary(salary.amount)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {paid ? (
-                              <Badge
-                                variant="outline"
-                                className="border-transparent bg-emerald-100 text-emerald-700"
-                              >
-                                <CheckCircle2 />
-                                PAID
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="border-transparent bg-amber-100 text-amber-700"
-                              >
-                                <Circle />
-                                UNPAID
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {salary.paidDate
-                              ? formatDate(salary.paidDate)
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end">
-                              {!paid ? (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleMarkPaid(salary)}
-                                  disabled={saveSalary.isPending}
-                                >
-                                  <CheckCircle2 />
-                                  Mark Paid
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  Completed
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {salaries.map((salary) => (
+                      <SalaryHistoryRow
+                        key={salary.id}
+                        salary={salary}
+                        employeeId={employeeId}
+                        token={token}
+                        onMarkPaid={handleMarkPaid}
+                        savingPaid={saveSalary.isPending}
+                      />
+                    ))}
                   </TableBody>
                 </Table>
               )}

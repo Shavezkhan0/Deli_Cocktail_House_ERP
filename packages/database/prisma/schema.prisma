@@ -127,6 +127,7 @@ model Employee {
   siteManagerEvents    Event[]         @relation("EventSiteManager")
   siteSupervisorEvents Event[]         @relation("EventSiteSupervisor")
   attendanceOverrides  AttendanceOverride[]
+  workFromHomeDays     WorkFromHomeDay[]
 }
 
 model Attendance {
@@ -562,6 +563,17 @@ model AttendanceOverride {
   reason     String?
   employee   Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt  DateTime     @default(now())
+
+  @@unique([employeeId, date])
+}
+
+model WorkFromHomeDay {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       DateTime
+  reason     String?
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@unique([employeeId, date])
 }

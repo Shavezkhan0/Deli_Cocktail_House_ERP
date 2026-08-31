@@ -2,12 +2,9 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Building2,
   ChevronDown,
-  GlassWater,
   LayoutGrid,
   LogOut,
-  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -39,25 +36,26 @@ const BRANDING: {
   path: string;
   title: string;
   subtitle: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  logo?: string;
 }[] = [
   {
     path: "/warehouse",
     title: "Warehouse/Site",
     subtitle: "Inventory & Site Operations",
-    icon: Warehouse,
+    logo: "/Logo.png",
   },
   {
     path: "/dashboard/office",
     title: "Office Module",
     subtitle: "HR & Administration",
-    icon: Building2,
+    logo: "/Logo.png",
   },
   {
     path: "/office",
     title: "Office Module",
     subtitle: "HR & Administration",
-    icon: Building2,
+    logo: "/Logo.png",
   },
 ];
 
@@ -70,7 +68,7 @@ export function Header() {
     BRANDING.find((item) => pathname.startsWith(item.path)) ?? {
       title: "Deli Cocktail House",
       subtitle: "Catering ERP",
-      icon: GlassWater,
+      logo: "/Logo.png",
     };
   const BrandIcon = branding.icon;
 
@@ -88,8 +86,17 @@ export function Header() {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <BrandIcon className="size-5" />
+        <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm">
+          {branding.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logo}
+              alt={branding.title}
+              className="size-9 object-cover"
+            />
+          ) : (
+            <BrandIcon className="size-5" />
+          )}
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight text-foreground">

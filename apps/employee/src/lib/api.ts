@@ -118,3 +118,37 @@ export async function apiFetch<T>(
 
   return res.json() as Promise<T>;
 }
+
+export async function downloadFile(
+  path: string,
+  filename: string,
+  token?: string | null,
+): Promise<void> {
+  const activeToken = token ?? getStoredAuth()?.token;
+
+  let res = await doFetch(path, "GET", activeToken, undefined);
+
+  if (res.status === 401 && activeToken) {
+    const refreshResult = await refreshAccessToken();
+    if (refreshResult === "refreshed") {
+      res = await doFetch(path, "GET", getStoredAuth()?.token, undefined);
+    } else if (refreshResult === "expired") {
+      clearStoredAuth();
+      throw new Error("Session expired. Please sign in again.");
+    }
+  }
+
+  if (!res.ok) {
+    throw new ApiError(`Request failed with status ${res.status}`, res.status);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}

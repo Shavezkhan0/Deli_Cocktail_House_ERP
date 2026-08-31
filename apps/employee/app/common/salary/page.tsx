@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Banknote, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Banknote, Download, Loader2, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { ErrorState, EmptyState, LoadingCards } from "@/components/common/states";
+import {
+  SalaryCalculation,
+  type SalaryCalcData,
+} from "@/components/common/salary-calculation";
 import { formatCurrency, formatDate, monthLabel } from "@/lib/format";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type SalaryRecord = {
@@ -23,6 +30,33 @@ type SalaryData = {
   current: SalaryRecord | null;
   previous: SalaryRecord | null;
   history: SalaryRecord[];
+};
+
+type SalaryBreakdownData = SalaryCalcData & {
+  employeeId: string;
+  employeeNumber: string;
+  employeeName: string;
+  monthsSinceJoining: number;
+  joiningDate: string;
+  designation: string;
+  extraEarnings: number;
+  extraExpenseEntries: {
+    id: string;
+    amount: number;
+    description: string;
+    date: string | null;
+  }[];
+  compensatoryLeaves: number;
+  compensatoryEntries: {
+    date: string;
+    label: string;
+    status: "PRESENT" | "HALF_DAY" | "SHORT_LEAVE";
+    credit: number;
+  }[];
+  usedLeaves: number;
+  availableLeaveBalance: number;
+  totalLeavesTaken: number;
+  unpaidLeaves: number;
 };
 
 function SalaryStatusBadge({ status }: { status: SalaryRecord["status"] }) {
@@ -103,7 +137,154 @@ function CurrentMonthCard({ record }: { record: SalaryRecord | null }) {
   );
 }
 
+function formatLeaveDays(value: number): string {
+  return value === Math.round(value) ? String(value) : value.toFixed(2);
+}
+
+function LeaveRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: number;
+  bold?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "tabular-nums text-foreground",
+          bold && "font-semibold",
+        )}
+      >
+        {formatLeaveDays(value)}
+      </dd>
+    </div>
+  );
+}
+
+function LeaveBalanceCard({
+  month,
+  year,
+  data,
+  isPending,
+  isError,
+  onRetry,
+}: {
+  month: number;
+  year: number;
+  data?: SalaryBreakdownData | null;
+  isPending: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  const label = monthLabel(month, year);
+
+  if (isPending) {
+    return (
+      <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+        <div className="mt-4 h-8 w-2/3 animate-pulse rounded bg-muted" />
+      </section>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight text-foreground">
+              Leave balance — {label}
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Leave balance is not available for this month yet.
+            </p>
+          </div>
+          {isError ? (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  const { paidLeave, shortLeave, eligibleForLeaves, eligibleFrom } = data;
+
+  return (
+    <section className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-6">
+      <h3 className="text-base font-semibold tracking-tight text-foreground">
+        Leave balance — {label}
+      </h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Your paid and short leave for this month.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Paid leave ({label})
+          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <LeaveRow
+              label="Carried from last month"
+              value={paidLeave.opening}
+            />
+            <LeaveRow
+              label="Earned this month"
+              value={paidLeave.grantedThisMonth}
+            />
+            {!eligibleForLeaves ? (
+              <p className="text-xs text-muted-foreground">
+                Paid-leave accrual starts {eligibleFrom} — 3 months after
+                joining.
+              </p>
+            ) : null}
+            <LeaveRow label="Used this month" value={paidLeave.usedThisMonth} />
+            <LeaveRow
+              label="Carried to next month"
+              value={paidLeave.closing}
+              bold
+            />
+          </dl>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground">
+            Short leave ({label})
+          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <LeaveRow label="Free allowance" value={shortLeave.allowance} />
+            <LeaveRow
+              label="Used this month"
+              value={shortLeave.usedThisMonth}
+            />
+            <LeaveRow label="Remaining" value={shortLeave.remaining} bold />
+            {!eligibleForLeaves || shortLeave.allowance === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Short-leave allowance starts {eligibleFrom} — 3 months after
+                joining.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Short leave does not carry forward — resets to 3 each month.
+              </p>
+            )}
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SalaryPage() {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const [month, setMonth] = useState(currentMonth);
+  const [year, setYear] = useState(currentYear);
+
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["salary"],
     queryFn: async (): Promise<SalaryData> => {
@@ -113,6 +294,28 @@ export default function SalaryPage() {
         apiFetch<SalaryRecord[]>("/api/employee/salary/history"),
       ]);
       return { current, previous, history };
+    },
+  });
+
+  const breakdownQuery = useQuery({
+    queryKey: ["salary", "breakdown", month, year],
+    queryFn: () =>
+      apiFetch<SalaryBreakdownData>(
+        `/api/employee/salary/breakdown?month=${month}&year=${year}`,
+      ),
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: () =>
+      downloadFile(
+        `/api/employee/salary/slip?month=${month}&year=${year}`,
+        `salary-slip-${year}-${month}.pdf`,
+      ),
+    onSuccess: () => toast.success("Salary slip downloaded"),
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Could not download salary slip";
+      toast.error(message);
     },
   });
 
@@ -139,7 +342,103 @@ export default function SalaryPage() {
   } else if (data) {
     content = (
       <>
+        <div className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:flex-row sm:items-end sm:justify-between sm:p-5">
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight text-foreground">
+              Select month to view / download
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Choose a month to preview the salary slip and leave balance.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex gap-2">
+              <div className="flex-1 sm:w-40">
+                <Select
+                  aria-label="Month"
+                  value={month}
+                  onChange={(event) => setMonth(Number(event.target.value))}
+                >
+                  {Array.from({ length: 12 }, (_, index) => {
+                    const m = index + 1;
+                    return (
+                      <option key={m} value={m}>
+                        {monthLabel(m, year)}
+                      </option>
+                    );
+                  })}
+                </Select>
+              </div>
+              <div className="w-24 shrink-0">
+                <Select
+                  aria-label="Year"
+                  value={year}
+                  onChange={(event) => setYear(Number(event.target.value))}
+                >
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const y = currentYear - 2 + index;
+                    return (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    );
+                  })}
+                </Select>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => downloadMutation.mutate()}
+              disabled={downloadMutation.isPending}
+            >
+              {downloadMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Slip (PDF)
+            </Button>
+          </div>
+        </div>
+
+        <LeaveBalanceCard
+          month={month}
+          year={year}
+          data={breakdownQuery.data}
+          isPending={breakdownQuery.isPending}
+          isError={breakdownQuery.isError}
+          onRetry={() => breakdownQuery.refetch()}
+        />
+
         <CurrentMonthCard record={data.current} />
+
+        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-base font-semibold tracking-tight text-foreground">
+              Salary Calculation — {monthLabel(month, year)}
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {breakdownQuery.isPending
+                ? "Loading your salary breakdown…"
+                : breakdownQuery.data
+                  ? `How ${formatCurrency(breakdownQuery.data.baseSalary)} becomes ${formatCurrency(breakdownQuery.data.finalAmount)}`
+                  : "Your salary breakdown for the selected month."}
+            </p>
+          </div>
+          <div className="p-4 sm:p-6">
+            {breakdownQuery.isPending ? (
+              <LoadingCards count={2} />
+            ) : breakdownQuery.isError ? (
+              <ErrorState
+                message="Could not load salary calculation"
+                onRetry={() => breakdownQuery.refetch()}
+              />
+            ) : breakdownQuery.data ? (
+              <SalaryCalculation data={breakdownQuery.data} />
+            ) : null}
+          </div>
+        </section>
 
         <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <div className="border-b border-border px-6 py-4">

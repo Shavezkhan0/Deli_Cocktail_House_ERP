@@ -1,14 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  GlassWater,
-  LogOut,
-} from "lucide-react";
-import { toast } from "sonner";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/common/logout-button";
 import {
   DESIGNATION_NAV,
   PROFILE_NAV,
@@ -53,8 +49,7 @@ function humanizeDesignation(designation: string): string {
 }
 
 export function RoleSidebar() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const designation = user?.designation ?? "";
   const designationNav = DESIGNATION_NAV[designation] ?? [];
@@ -66,17 +61,16 @@ export function RoleSidebar() {
     .join("")
     .toUpperCase();
 
-  function handleLogout() {
-    logout();
-    toast.success("Logged out successfully");
-    router.push("/login");
-  }
-
   return (
     <aside className="no-print sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col rounded-2xl border border-border bg-card p-3 shadow-sm lg:ml-6 lg:flex">
       <div className="-mx-3 -mt-3 flex items-center gap-3 border-b border-border px-6 py-5">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <GlassWater className="size-5" />
+        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/Logo.png"
+            alt="Deli Cocktail House"
+            className="size-9 object-cover"
+          />
         </span>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight text-foreground">
@@ -125,14 +119,7 @@ export function RoleSidebar() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-        >
-          <LogOut className="size-4" />
-          Logout
-        </button>
+        <LogoutButton className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10" />
       </div>
     </aside>
   );
