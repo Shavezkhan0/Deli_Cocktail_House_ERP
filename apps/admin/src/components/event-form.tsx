@@ -183,6 +183,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [itemTab, setItemTab] = useState<"list">("list");
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
   const [rowKey, setRowKey] = useState(0);
 
@@ -198,10 +199,19 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
 
   const selectedItem = items?.find((item) => item.id === selectedItemId);
 
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set((items ?? []).map((item) => item.category)),
+      ).sort(),
+    [items],
+  );
+
   const addableItems = items?.filter(
     (item) =>
       !allocations.some((row) => row.itemId === item.id) &&
-      !inventoryByItemId.has(item.id),
+      !inventoryByItemId.has(item.id) &&
+      (!categoryFilter || item.category === categoryFilter),
   );
 
   function handleAddAllocation() {
@@ -439,6 +449,24 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                           <SelectItem key={item.id} value={item.id}>
                             {item.sku} · {item.itemName} (
                             {item.currentStock.toLocaleString()} in stock)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={categoryFilter}
+                      onValueChange={(value) =>
+                        setCategoryFilter(typeof value === "string" ? value : "")
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Categories</SelectItem>
+                        {categoryOptions.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
                           </SelectItem>
                         ))}
                       </SelectContent>

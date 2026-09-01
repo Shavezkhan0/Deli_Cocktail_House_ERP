@@ -1,10 +1,141 @@
 import { Router } from "express";
-import { prisma, ItemCategory, EventStatus } from "@repo/database";
+import { prisma, Prisma, ItemCategory, EventStatus } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
 
 const router: Router = Router();
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const EVENT_MOVEMENT_TYPES = ["EVENT_OUT", "EVENT_IN", "EVENT_DAMAGE", "EVENT_LOST"] as const;
+
+router.get("/movements/events", requireAuth, async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    const validStatuses = ["UPCOMING", "ONGOING", "COMPLETED", "CANCELLED"];
+    if (
+      status !== undefined &&
+      (typeof status !== "string" || !validStatuses.includes(status))
+    ) {
+      return res.status(400).json({ message: "Invalid status filter" });
+    }
+
+    const movements = await prisma.stockMovement.findMany({
+      where: { type: { in: [...EVENT_MOVEMENT_TYPES] } },
+      select: {
+        eventId: true,
+      },
+      distinct: ["eventId"],
+    });
+
+    const eventIds = movements
+      .map((m) => m.eventId)
+      .filter((id): id is string => Boolean(id));
+
+    if (eventIds.length === 0) {
+      return res.json([]);
+    }
+
+    const where: Prisma.EventWhereInput = { id: { in: eventIds } };
+    if (typeof status === "string") {
+      where.status = status as any;
+    }
+
+    const eventRows = await prisma.event.findMany({
+      where,
+      select: {
+        id: true,
+        eventName: true,
+        eventCode: true,
+        eventDate: true,
+        venue: true,
+        status: true,
+      },
+      orderBy: { eventDate: "desc" },
+    });
+
+    return res.json(eventRows);
+  } catch (error) {
+    console.error("[Warehouse] Failed to fetch event movements:", error);
+    return res.status(500).json({ message: "Failed to fetch event movements" });
+  }
+});
+
+router.get("/movements/events/:eventId", requireAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, eventName: true, eventCode: true, eventDate: true, venue: true },
+    });
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    const movements = await prisma.stockMovement.findMany({
+      where: { eventId, type: { in: [...EVENT_MOVEMENT_TYPES] } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        item: { select: { sku: true, itemName: true, category: true, unit: true } },
+      },
+    });
+
+    const adminIds = Array.from(
+      new Set(
+        movements
+          .map((m) => m.createdByAdminId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const employeeIds = Array.from(
+      new Set(
+        movements
+          .map((m) => m.createdByEmployeeId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    const [admins, employees] = await Promise.all([
+      adminIds.length > 0
+        ? prisma.admin.findMany({
+            where: { id: { in: adminIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+      employeeIds.length > 0
+        ? prisma.employee.findMany({
+            where: { id: { in: employeeIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const adminMap = new Map(admins.map((a) => [a.id, a.name]));
+    const employeeMap = new Map(employees.map((e) => [e.id, e.name]));
+
+    const result = movements.map((m) => ({
+      id: m.id,
+      itemId: m.itemId,
+      type: m.type,
+      quantity: m.quantity,
+      remark: m.remark,
+      createdAt: m.createdAt,
+      item: m.item,
+      user:
+        m.createdByEmployeeId && employeeMap.has(m.createdByEmployeeId)
+          ? { id: m.createdByEmployeeId, name: employeeMap.get(m.createdByEmployeeId) }
+          : m.createdByAdminId && adminMap.has(m.createdByAdminId)
+            ? { id: m.createdByAdminId, name: adminMap.get(m.createdByAdminId) }
+            : null,
+    }));
+
+    return res.json({ event, movements: result });
+  } catch (error) {
+    console.error("[Warehouse] Failed to fetch event movement details:", error);
+    return res.status(500).json({ message: "Failed to fetch event movement details" });
+  }
+});
 
 router.get("/lost-items", requireAuth, async (_req, res) => {
   try {

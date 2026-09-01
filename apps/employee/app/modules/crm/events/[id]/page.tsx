@@ -7,17 +7,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowLeft,
-  Building2,
   CalendarDays,
   Check,
   Clock,
   ListTodo,
-  Mail,
   MapPin,
   Package,
-  Phone,
   Plus,
-  UserRound,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -206,38 +202,6 @@ export default function CrmEventDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
             <DetailCard
-              title="Event Details"
-              icon={<Building2 className="size-4" />}
-            >
-              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
-                <DetailRow label="Event Type" value={event.eventType} />
-                <DetailRow label="Company" value={event.company} />
-                <DetailRow
-                  label="Assigned CRM"
-                  value={event.crmEmployee?.name ?? "Unassigned"}
-                />
-                <DetailRow
-                  label="Site Manager"
-                  value={event.siteManager ?? "—"}
-                />
-                <DetailRow
-                  label="Supervisor"
-                  value={event.siteSupervisor ?? "—"}
-                />
-                <DetailRow
-                  label="Butler Vendor"
-                  value={event.butlerVendor ?? "—"}
-                />
-                <DetailRow label="Bartenders" value={String(event.bartenders)} />
-                <DetailRow label="Male Butler" value={String(event.maleButler)} />
-                <DetailRow
-                  label="Female Butler"
-                  value={String(event.femaleButler)}
-                />
-              </dl>
-            </DetailCard>
-
-            <DetailCard
               title="CRM Checklist"
               icon={<ListTodo className="size-4" />}
             >
@@ -420,38 +384,6 @@ export default function CrmEventDetailPage() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <DetailCard
-              title="Client Contact"
-              icon={<UserRound className="size-4" />}
-            >
-              <div className="mt-4 flex flex-col gap-3">
-                <p className="text-base font-semibold text-foreground">
-                  {event.clientName}
-                </p>
-                <a
-                  href={`tel:${event.clientPhone}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-violet-700"
-                >
-                  <Phone className="size-4 shrink-0 text-violet-500" />
-                  {event.clientPhone}
-                </a>
-                {event.clientEmail ? (
-                  <a
-                    href={`mailto:${event.clientEmail}`}
-                    className="flex items-center gap-2 break-all text-sm text-muted-foreground transition-colors hover:text-violet-700"
-                  >
-                    <Mail className="size-4 shrink-0 text-violet-500" />
-                    {event.clientEmail}
-                  </a>
-                ) : (
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="size-4 shrink-0 text-violet-500" />
-                    No email added yet
-                  </p>
-                )}
-              </div>
-            </DetailCard>
-
             <DetailCard title="Cost Summary" icon={<Package className="size-4" />}>
               <dl className="mt-4 flex flex-col gap-3">
                 <div className="flex items-center justify-between text-sm">

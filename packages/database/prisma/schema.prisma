@@ -179,19 +179,13 @@ model Event {
   endTime        String?
   venue          String
   pax            Int
-  eventType      String
-  company        String
   crm            String?
   siteManager    String?
   siteSupervisor String?
   butlerVendor   String?
-  bartenders     Int
-  maleButler     Int
-  femaleButler   Int
-  clientName     String
-  clientPhone    String
-  clientEmail    String?
   status         EventStatus @default(ONGOING)
+  isIssued       Boolean     @default(false)
+  isReturned     Boolean     @default(false)
   inventoryCost  Float
   staffCost      Float
   totalCost      Float
