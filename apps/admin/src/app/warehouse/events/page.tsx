@@ -52,7 +52,6 @@ type WarehouseEvent = {
 
 const features = tableFeatures({});
 const columnHelper = createColumnHelper<typeof features, WarehouseEvent>();
-const EMPTY_EVENTS: WarehouseEvent[] = [];
 
 function EventActions({
   event,
@@ -100,6 +99,7 @@ export default function WarehouseEventsPage() {
   const queryClient = useQueryClient();
 
   const [deleteTarget, setDeleteTarget] = useState<WarehouseEvent | null>(null);
+  const [statusFilter, setStatusFilter] = useState("ONGOING");
 
   const { data: events, isPending, isError, refetch } = useQuery({
     queryKey: ["warehouse-events"],
@@ -184,10 +184,17 @@ export default function WarehouseEventsPage() {
     }),
   ]);
 
+  const filteredEvents = (events ?? [])
+    .filter((event) => !statusFilter || event.status === statusFilter)
+    .sort(
+      (a, b) =>
+        new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime(),
+    );
+
   const table = useTable({
     features,
     columns,
-    data: events ?? EMPTY_EVENTS,
+    data: filteredEvents,
   });
 
   return (
@@ -208,9 +215,39 @@ export default function WarehouseEventsPage() {
         </Button>
       </div>
 
+      <div className="flex gap-2">
+        <Button
+          variant={statusFilter === "" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("")}
+        >
+          All Events
+        </Button>
+        <Button
+          variant={statusFilter === "ONGOING" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("ONGOING")}
+        >
+          Ongoing
+        </Button>
+        <Button
+          variant={statusFilter === "COMPLETED" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setStatusFilter("COMPLETED")}
+        >
+          Completed
+        </Button>
+      </div>
+
       <Card>
         <CardHeader className="border-b">
-          <CardTitle>All Events</CardTitle>
+          <CardTitle>
+            {statusFilter === ""
+              ? "All Events"
+              : statusFilter === "ONGOING"
+                ? "Ongoing Events"
+                : "Completed Events"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -253,13 +290,15 @@ export default function WarehouseEventsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : events.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
                     className="py-10 text-center text-muted-foreground"
                   >
-                    No events scheduled yet.
+                    {statusFilter
+                      ? `No ${statusFilter === "ONGOING" ? "ongoing" : "completed"} events found.`
+                      : "No events scheduled yet."}
                   </TableCell>
                 </TableRow>
               ) : (

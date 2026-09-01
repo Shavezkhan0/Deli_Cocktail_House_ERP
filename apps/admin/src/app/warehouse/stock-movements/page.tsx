@@ -7,6 +7,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
+import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,7 +41,7 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type StockMovement = {
@@ -56,14 +64,41 @@ const TYPE_COLORS: Record<string, string> = {
   EVENT_OUT: "bg-amber-100 text-amber-700",
   EVENT_IN: "bg-sky-100 text-sky-700",
   EVENT_DAMAGE: "bg-red-100 text-red-700",
+  EVENT_LOST: "bg-purple-100 text-purple-700",
 };
 
 const TYPE_LABELS: Record<string, string> = {
   ADMIN_INCREASE: "Admin Increase",
   ADMIN_DECREASE: "Admin Decrease",
-  EVENT_OUT: "Event Out",
-  EVENT_IN: "Event In",
-  EVENT_DAMAGE: "Damage Report",
+  EVENT_OUT: "Issued",
+  EVENT_IN: "Returned",
+  EVENT_DAMAGE: "Damaged",
+  EVENT_LOST: "Lost",
+};
+
+type EventMovementEvent = {
+  id: string;
+  eventName: string;
+  eventCode: string;
+  eventDate: string;
+  venue: string;
+  status: string;
+};
+
+type EventMovement = {
+  id: string;
+  itemId: string;
+  type: string;
+  quantity: number;
+  remark: string | null;
+  createdAt: string;
+  item: { sku: string; itemName: string; category: string; unit: string };
+  user: { id: string; name: string } | null;
+};
+
+type EventMovementDetail = {
+  event: EventMovementEvent;
+  movements: EventMovement[];
 };
 
 const QUICK_FILTERS = [
@@ -88,6 +123,9 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function StockMovementsPage() {
   const { token } = useAuth();
+  const [activeTab, setActiveTab] = useState<"movements" | "events">("movements");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventStatusFilter, setEventStatusFilter] = useState("ONGOING");
   const [typeFilter, setTypeFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -114,6 +152,34 @@ export default function StockMovementsPage() {
         { token },
       );
     },
+  });
+
+  const { data: eventMovements, isPending: eventsPending, isError: eventsError, refetch: eventsRefetch } =
+    useQuery({
+      queryKey: ["warehouse-movement-events", eventStatusFilter],
+      queryFn: () => {
+        const params = new URLSearchParams();
+        if (eventStatusFilter) params.set("status", eventStatusFilter);
+        const qs = params.toString();
+        return apiFetch<EventMovementEvent[]>(
+          `/api/warehouse/movements/events${qs ? `?${qs}` : ""}`,
+          { token },
+        );
+      },
+    });
+
+  const {
+    data: eventDetail,
+    isPending: detailPending,
+    isFetching: detailFetching,
+  } = useQuery({
+    queryKey: ["warehouse-movement-event", selectedEventId],
+    queryFn: () =>
+      apiFetch<EventMovementDetail>(
+        `/api/warehouse/movements/events/${selectedEventId}`,
+        { token },
+      ),
+    enabled: Boolean(selectedEventId),
   });
 
   const typeFiltered =
@@ -222,7 +288,25 @@ export default function StockMovementsPage() {
         </p>
       </div>
 
-      <Card>
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === "movements" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("movements")}
+        >
+          All Movements
+        </Button>
+        <Button
+          variant={activeTab === "events" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("events")}
+        >
+          Event Movements
+        </Button>
+      </div>
+
+      {activeTab === "movements" ? (
+        <Card>
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle>All Movements</CardTitle>
@@ -386,6 +470,168 @@ export default function StockMovementsPage() {
           ) : null}
         </CardContent>
       </Card>
+      ) : (
+        <Card>
+          <CardHeader className="border-b">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Event Movements</CardTitle>
+              <Select
+                value={eventStatusFilter}
+                onValueChange={(value) =>
+                  setEventStatusFilter(value ?? "")
+                }
+              >
+                <SelectTrigger className="w-36" size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="ONGOING">Ongoing</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {eventsPending ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : eventsError ? (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Failed to load event movements.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => eventsRefetch()}>
+                  Retry
+                </Button>
+              </div>
+            ) : (eventMovements ?? []).length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No event movements recorded yet.
+              </div>
+            ) : (
+              <Table className="mt-4">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Venue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(eventMovements ?? []).map((event) => (
+                    <TableRow
+                      key={event.id}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedEventId(event.id)}
+                    >
+                      <TableCell className="font-medium">
+                        {event.eventName}
+                        <span className="ml-2 font-normal text-muted-foreground">
+                          {event.eventCode}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(event.eventDate)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {event.venue || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog
+        open={Boolean(selectedEventId)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEventId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {eventDetail?.event.eventName ?? "Event Movements"}
+            </DialogTitle>
+            <DialogDescription>
+              {eventDetail
+                ? `${formatDate(eventDetail.event.eventDate)}${
+                    eventDetail.event.venue ? ` — ${eventDetail.event.venue}` : ""
+                  }`
+                : "Loading…"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailFetching && !eventDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (eventDetail?.movements ?? []).length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No movements recorded for this event.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(eventDetail?.movements ?? []).map((movement) => (
+                  <TableRow key={movement.id}>
+                    <TableCell>
+                      <div className="font-medium">{movement.item.itemName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {movement.item.sku} · {movement.item.category}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={cn(
+                          "font-medium",
+                          TYPE_COLORS[movement.type] ?? "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {TYPE_LABELS[movement.type] ?? movement.type}
+                        {movement.remark ? ` · ${movement.remark}` : ""}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {movement.type === "EVENT_IN" ||
+                      movement.type === "EVENT_DAMAGE" ||
+                      movement.type === "EVENT_LOST" ? (
+                        <span className="text-rose-600">−{movement.quantity}</span>
+                      ) : (
+                        <span className="text-emerald-600">+{movement.quantity}</span>
+                      )}{" "}
+                      <span className="text-xs text-muted-foreground">
+                        {movement.item.unit}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {movement.user?.name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <div>{formatDate(movement.createdAt)}</div>
+                      <div className="text-xs">{formatTime(movement.createdAt)}</div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

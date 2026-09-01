@@ -26,6 +26,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -893,6 +902,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
     () => new Set(),
   );
   const [pdfBusy, setPdfBusy] = useState<null | "issued" | "returned">(null);
+  const [completeOpen, setCompleteOpen] = useState(false);
 
   function updateReturn(itemId: string, patch: Partial<ReturnRow>) {
     setReturns((prev) => ({
@@ -942,6 +952,28 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
     },
     onError: (error) => {
       toast.error(error.message);
+    },
+  });
+
+  const completeEvent = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/events/${event.id}/complete`, {
+        method: "POST",
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Event completed");
+      setCompleteOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: ["warehouse-event", event.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-movement-events"] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+      setCompleteOpen(false);
     },
   });
 
@@ -1307,6 +1339,12 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 )}
                 Download Checklist
               </Button>
+              {event.isReturned && !isCompleted ? (
+                <Button variant="default" onClick={() => setCompleteOpen(true)}>
+                  <Check />
+                  Complete Event
+                </Button>
+              ) : null}
             </div>
           </>
         ) : (
@@ -1314,6 +1352,37 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
             Allocate inventory to the event to record returns.
           </p>
         )}
+
+        <Dialog
+          open={completeOpen}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setCompleteOpen(false);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Complete Event</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to mark this event as completed? All items
+                have been returned to IMS.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>
+                Cancel
+              </DialogClose>
+              <Button
+                variant="default"
+                disabled={completeEvent.isPending}
+                onClick={() => completeEvent.mutate()}
+              >
+                {completeEvent.isPending ? "Completing…" : "Complete Event"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

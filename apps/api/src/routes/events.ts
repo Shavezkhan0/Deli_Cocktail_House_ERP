@@ -997,4 +997,41 @@ router.post("/:id/checkin", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/:id/complete", requireAuth, async (req, res) => {
+  const id = req.params.id;
+
+  if (typeof id !== "string" || id.trim().length === 0) {
+    return res.status(400).json({ message: "A valid event id is required" });
+  }
+
+  try {
+    const existing = await prisma.event.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    if (existing.status === EventStatus.COMPLETED) {
+      return res.status(400).json({ message: "Event is already completed" });
+    }
+    if (!existing.isReturned) {
+      return res
+        .status(400)
+        .json({ message: "Items must be returned before completing the event" });
+    }
+
+    const event = await prisma.event.update({
+      where: { id },
+      data: { status: EventStatus.COMPLETED },
+      include: eventInclude,
+    });
+
+    return res.json(event);
+  } catch (error) {
+    if (isPrismaError(error, "P2025")) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    console.error("[Events] Failed to complete event:", error);
+    return res.status(500).json({ message: "Failed to complete event" });
+  }
+});
+
 export default router;

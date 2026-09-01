@@ -7,7 +7,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { ArrowDownToLine, ArrowUpFromLine, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -256,23 +255,13 @@ function ItemActions({
   item,
   onEdit,
   onDelete,
-  onAdjust,
 }: {
   item: InventoryItem;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
-  onAdjust: (item: InventoryItem) => void;
 }) {
   return (
     <div className="flex items-center justify-end gap-1">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={() => onAdjust(item)}
-        aria-label={`Adjust stock for ${item.itemName}`}
-      >
-        <ArrowUpFromLine />
-      </Button>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -364,12 +353,6 @@ export default function WarehouseInventoryPage() {
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null);
-  const [adjustTarget, setAdjustTarget] = useState<InventoryItem | null>(null);
-  const [adjustForm, setAdjustForm] = useState({
-    type: "INCREASE",
-    quantity: "",
-    remark: "",
-  });
   const [form, setForm] = useState<ItemFormValues>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -442,30 +425,6 @@ export default function WarehouseInventoryPage() {
       toast.success("Item deleted");
       invalidateQueries();
       setDeleteTarget(null);
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const adjustStock = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: { type: string; quantity: number; remark?: string };
-    }) =>
-      apiFetch<InventoryItem>(`/api/items/${id}/stock-adjustments`, {
-        method: "POST",
-        body: payload,
-        token,
-      }),
-    onSuccess: () => {
-      toast.success("Stock adjusted");
-      invalidateQueries();
-      setAdjustTarget(null);
-      setAdjustForm({ type: "INCREASE", quantity: "", remark: "" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -586,7 +545,6 @@ export default function WarehouseInventoryPage() {
           item={info.row.original}
           onEdit={handleEdit}
           onDelete={setDeleteTarget}
-          onAdjust={setAdjustTarget}
         />
       ),
     }),
@@ -1025,107 +983,6 @@ export default function WarehouseInventoryPage() {
               }}
             >
               {deleteItem.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={adjustTarget !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setAdjustTarget(null);
-            setAdjustForm({ type: "INCREASE", quantity: "", remark: "" });
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Adjust Stock</DialogTitle>
-            <DialogDescription>
-              {adjustTarget
-                ? `Adjust stock for ${adjustTarget.itemName} (${adjustTarget.sku})`
-                : "Adjust stock for this item."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            <Field label="Type">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={adjustForm.type === "INCREASE" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() =>
-                    setAdjustForm((prev) => ({ ...prev, type: "INCREASE" }))
-                  }
-                >
-                  <ArrowUpFromLine className="mr-1 size-4" />
-                  Increase
-                </Button>
-                <Button
-                  type="button"
-                  variant={adjustForm.type === "DECREASE" ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() =>
-                    setAdjustForm((prev) => ({ ...prev, type: "DECREASE" }))
-                  }
-                >
-                  <ArrowDownToLine className="mr-1 size-4" />
-                  Decrease
-                </Button>
-              </div>
-            </Field>
-            <Field label="Quantity">
-              <Input
-                type="number"
-                min={1}
-                value={adjustForm.quantity}
-                onChange={(e) =>
-                  setAdjustForm((prev) => ({ ...prev, quantity: e.target.value }))
-                }
-                placeholder="Enter quantity"
-              />
-            </Field>
-            <Field label="Remark (optional)">
-              <Textarea
-                value={adjustForm.remark}
-                onChange={(e) =>
-                  setAdjustForm((prev) => ({ ...prev, remark: e.target.value }))
-                }
-                placeholder="Reason for adjustment"
-                rows={3}
-              />
-            </Field>
-          </div>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button
-              disabled={
-                adjustStock.isPending ||
-                !adjustForm.quantity ||
-                Number(adjustForm.quantity) < 1
-              }
-              onClick={() => {
-                if (!adjustTarget) return;
-                const qty = Number(adjustForm.quantity);
-                if (!qty || qty < 1) return;
-                adjustStock.mutate({
-                  id: adjustTarget.id,
-                  payload: {
-                    type: adjustForm.type,
-                    quantity: qty,
-                    ...(adjustForm.remark.trim()
-                      ? { remark: adjustForm.remark.trim() }
-                      : {}),
-                  },
-                });
-              }}
-            >
-              {adjustStock.isPending ? "Saving…" : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>
