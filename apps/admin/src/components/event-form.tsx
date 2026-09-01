@@ -183,6 +183,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [itemTab, setItemTab] = useState<"list">("list");
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
   const [rowKey, setRowKey] = useState(0);
@@ -207,11 +208,16 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
     [items],
   );
 
+  const search = searchQuery.trim().toLowerCase();
+
   const addableItems = items?.filter(
     (item) =>
       !allocations.some((row) => row.itemId === item.id) &&
       !inventoryByItemId.has(item.id) &&
-      (!categoryFilter || item.category === categoryFilter),
+      (!categoryFilter || item.category === categoryFilter) &&
+      (!search ||
+        item.itemName.toLowerCase().includes(search) ||
+        item.sku.toLowerCase().includes(search)),
   );
 
   function handleAddAllocation() {
@@ -453,24 +459,6 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select
-                      value={categoryFilter}
-                      onValueChange={(value) =>
-                        setCategoryFilter(typeof value === "string" ? value : "")
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
-                        {categoryOptions.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <Button
                     type="button"
@@ -481,6 +469,33 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                     <Plus />
                     Add
                   </Button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by SKU or item name…"
+                    className="w-full sm:max-w-xs"
+                  />
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(value) =>
+                      setCategoryFilter(typeof value === "string" ? value : "")
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-52">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Categories</SelectItem>
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {allocations.length > 0 ? (

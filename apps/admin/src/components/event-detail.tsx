@@ -26,6 +26,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -259,6 +266,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient();
 
   const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [itemCategoryFilter, setItemCategoryFilter] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -416,20 +424,27 @@ export function EventDetail({ eventId }: { eventId: string }) {
       !inventoryByItemId.has(item.id),
   );
 
+  const itemCategoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set((addableItems ?? []).map((item) => item.category)),
+      ).sort(),
+    [addableItems],
+  );
+
   const filteredAddableItems = useMemo(() => {
     if (!addableItems) {
       return [];
     }
     const query = itemSearchQuery.trim().toLowerCase();
-    if (!query) {
-      return addableItems;
-    }
     return addableItems.filter(
       (item) =>
-        item.sku.toLowerCase().includes(query) ||
-        item.itemName.toLowerCase().includes(query),
+        (!itemCategoryFilter || item.category === itemCategoryFilter) &&
+        (!query ||
+          item.sku.toLowerCase().includes(query) ||
+          item.itemName.toLowerCase().includes(query)),
     );
-  }, [addableItems, itemSearchQuery]);
+  }, [addableItems, itemSearchQuery, itemCategoryFilter]);
 
   if (isPending) {
     return (
@@ -556,12 +571,35 @@ export function EventDetail({ eventId }: { eventId: string }) {
               <>
                 {!isCompleted && (addableItems?.length ?? 0) > 0 ? (
                   <div className="flex flex-col gap-2">
-                    <Input
-                      value={itemSearchQuery}
-                      onChange={(e) => setItemSearchQuery(e.target.value)}
-                      placeholder="Search by SKU or item name…"
-                      disabled={isCompleted}
-                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        value={itemSearchQuery}
+                        onChange={(e) => setItemSearchQuery(e.target.value)}
+                        placeholder="Search by SKU or item name…"
+                        className="w-full sm:max-w-xs"
+                        disabled={isCompleted}
+                      />
+                      <Select
+                        value={itemCategoryFilter}
+                        onValueChange={(value) =>
+                          setItemCategoryFilter(
+                            typeof value === "string" ? value : "",
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full sm:w-52">
+                          <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Categories</SelectItem>
+                          {itemCategoryOptions.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {filteredAddableItems.length > 0 ? (
                       <div className="max-h-64 overflow-y-auto rounded-xl border">
                         {filteredAddableItems.map((item) => {
@@ -607,7 +645,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
                       <p className="text-sm text-muted-foreground">
                         {itemSearchQuery
                           ? "No items match your search."
-                          : "No more items to add."}
+                          : itemCategoryFilter
+                            ? "No items in this category."
+                            : "No more items to add."}
                       </p>
                     )}
                     <div className="flex justify-end">
