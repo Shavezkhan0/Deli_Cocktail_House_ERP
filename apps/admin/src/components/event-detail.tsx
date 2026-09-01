@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
+  FileDown,
   Loader2,
   PackageCheck,
   PackagePlus,
@@ -218,11 +219,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
   );
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
   const [rowKey, setRowKey] = useState(0);
-  const [newChecklistLabel, setNewChecklistLabel] = useState("");
   const [itemTab, setItemTab] = useState<"list" | "activity" | "damage">("list");
-  const [sectionTab, setSectionTab] = useState<"checklist" | "items">(
-    "checklist",
-  );
 
   const {
     data: event,
@@ -240,60 +237,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
   });
 
   const isCompleted = event?.status === "COMPLETED";
-
-  const addChecklistItem = useMutation({
-    mutationFn: (label: string) =>
-      apiFetch(`/api/events/${eventId}/crm-checklist`, {
-        method: "POST",
-        body: { label },
-        token,
-      }),
-    onSuccess: () => {
-      setNewChecklistLabel("");
-      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const deleteChecklistItem = useMutation({
-    mutationFn: (itemId: string) =>
-      apiFetch(`/api/events/${eventId}/crm-checklist/${itemId}`, {
-        method: "DELETE",
-        token,
-      }),
-    onSuccess: () => {
-      toast.success("Task removed");
-      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const toggleChecklistItem = useMutation({
-    mutationFn: ({ itemId, completed }: { itemId: string; completed: boolean }) =>
-      apiFetch(`/api/events/${eventId}/crm-checklist/${itemId}`, {
-        method: "PATCH",
-        body: { completed },
-        token,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["warehouse-event", eventId] });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  function handleAddChecklist() {
-    const label = newChecklistLabel.trim();
-    if (!label) {
-      return;
-    }
-    addChecklistItem.mutate(label);
-  }
 
   const inventoryByItemId = useMemo(() => {
     const map = new Map<string, EventInventoryRecord>();
@@ -517,140 +460,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
           </CardContent>
         </Card>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSectionTab("checklist")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
-              sectionTab === "checklist"
-                ? "bg-foreground text-background shadow-sm"
-                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-            )}
-          >
-            CRM Checklist
-          </button>
-          <button
-            type="button"
-            onClick={() => setSectionTab("items")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
-              sectionTab === "items"
-                ? "bg-foreground text-background shadow-sm"
-                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-            )}
-          >
-            Item List
-          </button>
-        </div>
-
-        {sectionTab === "checklist" ? (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
-            <div>
-              <CardTitle>CRM Checklist</CardTitle>
-              <CardDescription>
-                Define tasks the assigned CRM must complete for this event.
-                They tick each one off; when all are done the event is fully
-                checked.
-              </CardDescription>
-            </div>
-            {event.crmChecklist.length > 0 ? (
-              <Badge variant="secondary">
-                {event.crmChecklist.filter((item) => item.completed).length} /{" "}
-                {event.crmChecklist.length} done
-              </Badge>
-            ) : null}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 pt-4">
-            {event.crmChecklist.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {event.crmChecklist.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-lg border px-3 py-2.5"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleChecklistItem.mutate({
-                          itemId: item.id,
-                          completed: !item.completed,
-                        })
-                      }
-                      aria-label={
-                        item.completed
-                          ? "Mark as incomplete"
-                          : "Mark as complete"
-                      }
-                      className={cn(
-                        "flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors",
-                        item.completed
-                          ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-border hover:border-emerald-500/50",
-                      )}
-                    >
-                      {item.completed ? <Check className="size-4" /> : null}
-                    </button>
-                    <span
-                      className={cn(
-                        "flex-1 text-sm",
-                        item.completed &&
-                          "text-muted-foreground line-through",
-                      )}
-                    >
-                      {item.label}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteChecklistItem.mutate(item.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-                No CRM checklist items yet. Add tasks like &quot;Client
-                Onboarding&quot; below.
-              </p>
-            )}
-
-            <div className="flex items-end gap-2">
-              <div className="flex flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium text-foreground">
-                  Add Task
-                </span>
-                <Input
-                  value={newChecklistLabel}
-                  onChange={(event) => setNewChecklistLabel(event.target.value)}
-                  placeholder="e.g. Client onboarding"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      handleAddChecklist();
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleAddChecklist}
-                disabled={
-                  addChecklistItem.isPending ||
-                  newChecklistLabel.trim() === ""
-                }
-              >
-                <Plus />
-                Add
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        ) : (
         <>
         <Card>
           <CardHeader className="border-b">
@@ -998,7 +807,6 @@ export function EventDetail({ eventId }: { eventId: string }) {
           event={event}
         />
         </>
-        )}
       </div>
     </div>
   );
@@ -1039,6 +847,10 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
   const [returns, setReturns] = useState<Record<string, ReturnRow>>(() =>
     buildReturnRows(event),
   );
+  const [issuedItems, setIssuedItems] = useState<Set<string>>(() => new Set());
+  const [returnedItems, setReturnedItems] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   function updateReturn(itemId: string, patch: Partial<ReturnRow>) {
     setReturns((prev) => ({
@@ -1067,6 +879,66 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
       toast.error(error.message);
     },
   });
+
+  const checkout = useMutation({
+    mutationFn: (payload: { itemId: string; quantity: number }[]) =>
+      apiFetch(`/api/events/${event.id}/checkout`, {
+        method: "POST",
+        body: payload,
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Items issued from IMS");
+      queryClient.invalidateQueries({
+        queryKey: ["warehouse-event", event.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-items"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+      setIssuedItems(new Set(event.inventory.map((r) => r.itemId)));
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const checkin = useMutation({
+    mutationFn: (payload: { itemId: string; quantity: number }[]) =>
+      apiFetch(`/api/events/${event.id}/checkin`, {
+        method: "POST",
+        body: payload,
+        token,
+      }),
+    onSuccess: () => {
+      toast.success("Items returned to IMS");
+      queryClient.invalidateQueries({
+        queryKey: ["warehouse-event", event.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-items"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+      setReturnedItems(new Set(event.inventory.map((r) => r.itemId)));
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  function handleCheckout() {
+    const payload = event.inventory.map((r) => ({
+      itemId: r.itemId,
+      quantity: r.issueQuantity,
+    }));
+    checkout.mutate(payload);
+  }
+
+  function handleCheckin() {
+    const payload = event.inventory.map((r) => {
+      const row = returns[r.itemId];
+      return { itemId: r.itemId, quantity: Number(row?.returned ?? 0) };
+    });
+    checkin.mutate(payload);
+  }
 
   function handleComplete() {
     if (event.inventory.length === 0) {
@@ -1106,6 +978,120 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
     complete.mutate(payload);
   }
 
+  function handleDownloadChecklist() {
+    const rows = event.inventory.map((record) => ({
+      ...(returns[record.itemId] ?? emptyReturnRow(record.itemId)),
+      record,
+    }));
+
+    const rowsHtml = rows
+      .map(
+        (row) => `
+        <tr>
+          <td>${row.record.item.itemName}</td>
+          <td>${row.record.item.sku}</td>
+          <td>${row.record.item.unit}</td>
+          <td><input type="checkbox" /> ${row.issued}</td>
+          <td><input type="checkbox" /> ${row.returned}</td>
+          <td>${row.damaged}</td>
+          <td>${row.lost}</td>
+          <td>${row.remarks || "&nbsp;"}</td>
+        </tr>`,
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>${event.eventName} — Return Checklist</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 0 0 4px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 24px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #bbb;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+    .print-btn {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 10px 18px;
+      font-size: 14px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      background: #f0f0f0;
+      cursor: pointer;
+    }
+    @media print {
+      .print-btn {
+        display: none;
+      }
+      body {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">Print</button>
+  <h1>${event.eventName} — Return Checklist</h1>
+  <div class="subtitle">Event Code: ${event.eventCode} &nbsp;|&nbsp; Date: ${formatDate(
+        event.eventDate,
+      )}</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>SKU</th>
+        <th>Unit</th>
+        <th>Issued</th>
+        <th>Returned</th>
+        <th>Damaged</th>
+        <th>Lost</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank", "noopener,noreferrer");
+    if (!win) {
+      toast.error("Popup blocked. Allow popups to download the checklist.");
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 300);
+  }
+
   const returnRows = event.inventory.map(
     (record) => returns[record.itemId] ?? emptyReturnRow(record.itemId),
   );
@@ -1115,7 +1101,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
       <CardHeader className="border-b">
         <CardTitle>Return Summary</CardTitle>
         <CardDescription>
-          Record returned, damaged, lost and consumed quantities when the event
+          Record returned, damaged and lost quantities when the event
           wraps up. Completing the event updates stock and marks it completed.
         </CardDescription>
       </CardHeader>
@@ -1131,7 +1117,6 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                     <TableHead className="text-right">Returned</TableHead>
                     <TableHead className="text-right">Damaged</TableHead>
                     <TableHead className="text-right">Lost</TableHead>
-                    <TableHead className="text-right">Consumed</TableHead>
                     <TableHead>Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1156,34 +1141,54 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={row.issued}
-                            onChange={(event) =>
-                              updateReturn(row.itemId, {
-                                issued: event.target.value,
-                              })
-                            }
-                            disabled={isCompleted}
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Issued quantity for ${record.item.itemName}`}
-                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.issued}
+                              onChange={(event) =>
+                                updateReturn(row.itemId, {
+                                  issued: event.target.value,
+                                })
+                              }
+                              disabled={isCompleted}
+                              className="h-8 w-20 text-right tabular-nums"
+                              aria-label={`Issued quantity for ${record.item.itemName}`}
+                            />
+                            {issuedItems.has(row.itemId) ? (
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 border-transparent bg-emerald-500/15 text-emerald-700"
+                              >
+                                Issued ✓
+                              </Badge>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={row.returned}
-                            onChange={(event) =>
-                              updateReturn(row.itemId, {
-                                returned: event.target.value,
-                              })
-                            }
-                            disabled={isCompleted}
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Returned quantity for ${record.item.itemName}`}
-                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={row.returned}
+                              onChange={(event) =>
+                                updateReturn(row.itemId, {
+                                  returned: event.target.value,
+                                })
+                              }
+                              disabled={isCompleted}
+                              className="h-8 w-20 text-right tabular-nums"
+                              aria-label={`Returned quantity for ${record.item.itemName}`}
+                            />
+                            {returnedItems.has(row.itemId) ? (
+                              <Badge
+                                variant="outline"
+                                className="shrink-0 border-transparent bg-sky-500/15 text-sky-700"
+                              >
+                                Returned ✓
+                              </Badge>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -1217,21 +1222,6 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                         </TableCell>
                         <TableCell>
                           <Input
-                            type="number"
-                            min={0}
-                            value={row.consumed}
-                            onChange={(event) =>
-                              updateReturn(row.itemId, {
-                                consumed: event.target.value,
-                              })
-                            }
-                            disabled={isCompleted}
-                            className="h-8 text-right tabular-nums"
-                            aria-label={`Consumed quantity for ${record.item.itemName}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
                             value={row.remarks}
                             onChange={(event) =>
                               updateReturn(row.itemId, {
@@ -1250,7 +1240,35 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
               </Table>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCheckout}
+                disabled={
+                  isCompleted ||
+                  checkout.isPending ||
+                  issuedItems.size === event.inventory.length
+                }
+              >
+                <PackagePlus />
+                {checkout.isPending ? "Issuing…" : "Issue All Items (from IMS)"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCheckin}
+                disabled={isCompleted || checkin.isPending}
+              >
+                <PackageCheck />
+                {checkin.isPending ? "Returning…" : "Return All Items (to IMS)"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDownloadChecklist}
+                disabled={isCompleted}
+              >
+                <FileDown />
+                Download Checklist
+              </Button>
               <Button
                 variant="default"
                 onClick={handleComplete}

@@ -13,7 +13,7 @@ const eventInclude = {
 router.get("/events", async (_req, res) => {
   try {
     const events = await prisma.event.findMany({
-      where: { status: { not: EventStatus.CANCELLED } },
+      where: { status: EventStatus.ONGOING },
       orderBy: { eventDate: "desc" },
       include: eventInclude,
     });

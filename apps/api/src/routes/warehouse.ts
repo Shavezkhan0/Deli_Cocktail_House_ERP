@@ -99,7 +99,7 @@ router.get("/dashboard", requireAuth, async (_req, res) => {
       }),
       prisma.event.count({
         where: {
-          status: { in: [EventStatus.UPCOMING, EventStatus.ONGOING] },
+          status: { in: [EventStatus.ONGOING] },
         },
       }),
       prisma.eventReturnSummary.aggregate({
