@@ -119,7 +119,7 @@ app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
 
-cron.schedule("35 14 * * *", () => {
+cron.schedule("30 14 * * *", () => {
   markAbsentEmployeesForToday()
     .then((result) => {
       console.log(

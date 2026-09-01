@@ -386,8 +386,8 @@ router.get("/attendance/history", async (req, res) => {
     let where: Prisma.AttendanceWhereInput = { employeeId };
 
     if (hasMonth && hasYear) {
-      const start = new Date(yearNum, monthNum - 1, 1);
-      const end = new Date(yearNum, monthNum, 1);
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, -5, -30, 0, 0));
+      const end = new Date(Date.UTC(yearNum, monthNum, 1, -5, -30, 0, 0));
       where = {
         employeeId,
         date: { gte: start, lt: end },
@@ -438,8 +438,8 @@ router.get("/attendance/holidays", async (req, res) => {
 
     let where: Prisma.HolidayWhereInput = {};
     if (hasMonth && hasYear) {
-      const start = new Date(yearNum, monthNum - 1, 1);
-      const end = new Date(yearNum, monthNum, 1);
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, -5, -30, 0, 0));
+      const end = new Date(Date.UTC(yearNum, monthNum, 1, -5, -30, 0, 0));
       where = { date: { gte: start, lt: end } };
     }
 
