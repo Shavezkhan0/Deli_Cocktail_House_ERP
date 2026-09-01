@@ -67,10 +67,8 @@ enum ItemUnit {
 }
 
 enum EventStatus {
-  UPCOMING
   ONGOING
   COMPLETED
-  CANCELLED
 }
 
 enum AppPlatform {
@@ -193,7 +191,7 @@ model Event {
   clientName     String
   clientPhone    String
   clientEmail    String?
-  status         EventStatus @default(UPCOMING)
+  status         EventStatus @default(ONGOING)
   inventoryCost  Float
   staffCost      Float
   totalCost      Float

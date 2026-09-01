@@ -38,6 +38,11 @@ type ReturnSummaryInput = {
   remarks: string;
 };
 
+type CheckoutInput = {
+  itemId: string;
+  quantity: number;
+};
+
 type EventBodyInput = Omit<Prisma.EventUncheckedCreateInput, "eventCode"> & {
   crmChecklist?: CrmChecklistItemInput[];
 };
@@ -53,7 +58,7 @@ const eventInclude = {
 
 const VALID_EVENT_STATUSES = new Set<string>(Object.values(EventStatus));
 
-const OPEN_EVENT_STATUSES = [EventStatus.UPCOMING, EventStatus.ONGOING];
+const OPEN_EVENT_STATUSES = [EventStatus.ONGOING];
 
 function parseAllocations(
   value: unknown,
@@ -148,6 +153,37 @@ function parseReturnSummaries(
       lostQuantity,
       consumedQuantity,
       remarks: typeof item.remarks === "string" ? item.remarks : "",
+    });
+  }
+
+  return { ok: true, data };
+}
+
+function parseCheckoutItems(
+  value: unknown,
+): { ok: true; data: CheckoutInput[] } | { ok: false; message: string } {
+  if (!Array.isArray(value) || value.length === 0) {
+    return {
+      ok: false,
+      message: "Expected a non-empty array of checkout items",
+    };
+  }
+
+  const data: CheckoutInput[] = [];
+  for (const entry of value) {
+    const item = entry as Record<string, unknown> | null;
+    if (!item || !isNonEmptyString(item.itemId)) {
+      return { ok: false, message: "Each checkout item requires an itemId" };
+    }
+
+    const quantity = toNonNegativeInt(item.quantity, 0);
+    if (quantity === null || quantity < 1) {
+      return { ok: false, message: "quantity must be a positive integer" };
+    }
+
+    data.push({
+      itemId: item.itemId.trim(),
+      quantity,
     });
   }
 
@@ -689,6 +725,165 @@ router.post("/:id/complete", requireAuth, async (req, res) => {
     }
     console.error("[Events] Failed to complete event:", error);
     return res.status(500).json({ message: "Failed to complete event" });
+  }
+});
+
+router.post("/:id/checkout", requireAuth, async (req, res) => {
+  const id = req.params.id;
+
+  if (typeof id !== "string" || id.trim().length === 0) {
+    return res.status(400).json({ message: "A valid event id is required" });
+  }
+
+  const parsed = parseCheckoutItems(req.body);
+  if (!parsed.ok) {
+    return res.status(400).json({ message: parsed.message });
+  }
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) {
+    return res.status(404).json({ message: "Event not found" });
+  }
+  if (event.status === EventStatus.COMPLETED) {
+    return res.status(409).json({ message: "Event is already completed" });
+  }
+
+  try {
+    const inventory = await prisma.$transaction(
+      async (tx) => {
+        const records = [];
+
+        for (const entry of parsed.data) {
+          const eventInventory = await tx.eventInventory.findFirst({
+            where: { eventId: id, itemId: entry.itemId },
+          });
+          if (!eventInventory) {
+            throw new OperationError(
+              `Item ${entry.itemId} is not allocated to this event`,
+            );
+          }
+
+          await tx.item.update({
+            where: { id: entry.itemId },
+            data: {
+              currentStock: { increment: -entry.quantity },
+            },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              itemId: entry.itemId,
+              eventId: id,
+              type: "EVENT_OUT",
+              quantity: entry.quantity,
+              remark: "Event checkout",
+              createdByAdminId: req.user?.userId,
+            },
+          });
+
+          const updated = await tx.eventInventory.update({
+            where: { id: eventInventory.id },
+            data: {
+              issueQuantity: entry.quantity,
+            },
+          });
+
+          records.push(updated);
+        }
+
+        return records;
+      },
+      { timeout: 30000 },
+    );
+
+    return res.json({ message: "Items issued from IMS", inventory });
+  } catch (error) {
+    if (error instanceof OperationError) {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error("[Events] Failed to checkout items:", error);
+    return res.status(500).json({ message: "Failed to checkout items" });
+  }
+});
+
+router.post("/:id/checkin", requireAuth, async (req, res) => {
+  const id = req.params.id;
+
+  if (typeof id !== "string" || id.trim().length === 0) {
+    return res.status(400).json({ message: "A valid event id is required" });
+  }
+
+  const parsed = parseCheckoutItems(req.body);
+  if (!parsed.ok) {
+    return res.status(400).json({ message: parsed.message });
+  }
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) {
+    return res.status(404).json({ message: "Event not found" });
+  }
+
+  try {
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const records = [];
+
+        for (const entry of parsed.data) {
+          await tx.item.update({
+            where: { id: entry.itemId },
+            data: {
+              currentStock: { increment: entry.quantity },
+            },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              itemId: entry.itemId,
+              eventId: id,
+              type: "EVENT_IN",
+              quantity: entry.quantity,
+              remark: "Event check-in",
+              createdByAdminId: req.user?.userId,
+            },
+          });
+
+          const existingSummary = await tx.eventReturnSummary.findFirst({
+            where: { eventId: id, itemId: entry.itemId },
+          });
+
+          const summary = existingSummary
+            ? await tx.eventReturnSummary.update({
+                where: { id: existingSummary.id },
+                data: { returnedQuantity: entry.quantity },
+              })
+            : await tx.eventReturnSummary.create({
+                data: {
+                  eventId: id,
+                  itemId: entry.itemId,
+                  issuedQuantity: 0,
+                  returnedQuantity: entry.quantity,
+                  damagedQuantity: 0,
+                  lostQuantity: 0,
+                  consumedQuantity: 0,
+                  remarks: "",
+                },
+              });
+
+          records.push(summary);
+        }
+
+        return records;
+      },
+      { timeout: 30000 },
+    );
+
+    return res.json({ message: "Items returned to IMS", summaries: result });
+  } catch (error) {
+    if (error instanceof OperationError) {
+      return res.status(400).json({ message: error.message });
+    }
+    console.error("[Events] Failed to checkin items:", error);
+    return res.status(500).json({ message: "Failed to checkin items" });
   }
 });
 

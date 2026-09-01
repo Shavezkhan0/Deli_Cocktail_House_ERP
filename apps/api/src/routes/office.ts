@@ -34,15 +34,13 @@ function parseDateString(value: unknown): Date | null {
   const month = Number(m);
   const day = Number(d);
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-  return new Date(year, month - 1, day);
+  return new Date(Date.UTC(year, month - 1, day, -5, -30, 0, 0));
 }
 
 router.get("/dashboard", requireAuth, async (_req, res) => {
   try {
-    const today = parseDateString(_req.query.date) ?? new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = parseDateString(_req.query.date) ?? istStartOfDay(new Date());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
     const [
       totalEmployees,
@@ -98,10 +96,8 @@ router.get("/employees", requireAuth, async (req, res) => {
   try {
     const { attendanceStatus, employeeStatus, date: dateQuery } = req.query;
 
-    const today = parseDateString(dateQuery) ?? new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = parseDateString(dateQuery) ?? istStartOfDay(new Date());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
     const todayWindow = { gte: today, lt: tomorrow };
 
     let where: Record<string, unknown> = {};
@@ -661,8 +657,8 @@ router.get("/employees/:id/attendance", requireAuth, async (req, res) => {
 
     let where: Prisma.AttendanceWhereInput = { employeeId: id };
     if (hasMonth && hasYear) {
-      const start = new Date(yearNum, monthNum - 1, 1);
-      const end = new Date(yearNum, monthNum, 1);
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, -5, -30, 0, 0));
+      const end = new Date(Date.UTC(yearNum, monthNum, 1, -5, -30, 0, 0));
       where = { employeeId: id, date: { gte: start, lt: end } };
     }
 
@@ -701,16 +697,13 @@ router.post("/employees/:id/attendance-status", requireAuth, async (req, res) =>
 
     const { date, status } = req.body ?? {};
     const dayStart = parseDateString(date);
-    if (!dayStart) {
-      return res.status(400).json({ message: "A valid date is required" });
-    }
+    if (!dayStart) return res.status(400).json({ message: "Invalid date format" });
     if (!Object.values(AttendanceStatus).includes(status)) {
       return res.status(400).json({ message: "A valid status is required" });
     }
 
     const canonicalDay = istStartOfDay(dayStart);
-    const dayEnd = new Date(canonicalDay);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+    const dayEnd = new Date(canonicalDay.getTime() + 24 * 60 * 60 * 1000);
 
     const rows = await prisma.attendance.findMany({
       where: { employeeId: id, date: { gte: canonicalDay, lt: dayEnd } },

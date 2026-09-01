@@ -248,7 +248,7 @@ const MONTH_NAMES = [
 ];
 
 const CHECK_IN_LATE_MINUTES = 10 * 60 + 45; // late if checked in after 10:45 AM
-const CHECK_OUT_EARLY_MINUTES = 17 * 60 + 30; // early if checked out before 5:30 PM
+const CHECK_OUT_EARLY_MINUTES = 18 * 60 + 0; // early if checked out before 6:00 PM
 
 function timeToMinutes(value: string | null): number {
   if (!value) {
@@ -1982,7 +1982,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   <CardDescription>
                     Daily check-in and check-out times. Red highlights mark a
                     late check-in (after 10:45 AM) or an early departure (before
-                    5:30 PM).
+                    6:00 PM).
                   </CardDescription>
                 </div>
               </div>
@@ -2066,7 +2066,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                                 >
                                   {formatTime(record.checkOutTime)}
                                   {isEarlyCheckOut ? (
-                                    <span title="Left early (before 5:30 PM)">
+                                    <span title="Left early (before 6:00 PM)">
                                       <TriangleAlert
                                         className="size-3.5 shrink-0 text-rose-500"
                                         aria-label="Early check-out"

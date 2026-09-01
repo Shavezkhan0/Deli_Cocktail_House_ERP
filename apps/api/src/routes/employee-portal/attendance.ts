@@ -62,7 +62,7 @@ async function getEffectiveLocation(designation: string) {
   return getGlobalOfficeSettings();
 }
 
-const SHIFT_END = { hour: 17, minute: 30 }; // 5:30 PM
+const SHIFT_END = { hour: 18, minute: 0 }; // 6:00 PM
 
 const CHECK_IN_FULL_CUTOFF = { hour: 10, minute: 15 }; // at or before → PRESENT (Full)
 const CHECK_IN_SHORT_CUTOFF = { hour: 11, minute: 30 }; // at or before → SHORT_LEAVE
@@ -386,8 +386,8 @@ router.get("/attendance/history", async (req, res) => {
     let where: Prisma.AttendanceWhereInput = { employeeId };
 
     if (hasMonth && hasYear) {
-      const start = new Date(yearNum, monthNum - 1, 1);
-      const end = new Date(yearNum, monthNum, 1);
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, -5, -30, 0, 0));
+      const end = new Date(Date.UTC(yearNum, monthNum, 1, -5, -30, 0, 0));
       where = {
         employeeId,
         date: { gte: start, lt: end },
@@ -438,8 +438,8 @@ router.get("/attendance/holidays", async (req, res) => {
 
     let where: Prisma.HolidayWhereInput = {};
     if (hasMonth && hasYear) {
-      const start = new Date(yearNum, monthNum - 1, 1);
-      const end = new Date(yearNum, monthNum, 1);
+      const start = new Date(Date.UTC(yearNum, monthNum - 1, 1, -5, -30, 0, 0));
+      const end = new Date(Date.UTC(yearNum, monthNum, 1, -5, -30, 0, 0));
       where = { date: { gte: start, lt: end } };
     }
 

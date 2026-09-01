@@ -397,10 +397,10 @@ class _TodayCard extends StatelessWidget {
             else
               _infoRow(
                 'Status',
-                DateTime.now().hour > 17 ||
-                        (DateTime.now().hour == 17 && DateTime.now().minute >= 30)
+                DateTime.now().hour > 18 ||
+                        (DateTime.now().hour == 18)
                     ? 'You\u2019re past checkout time \u2014 check out now to close today\u2019s attendance.'
-                    : 'Check out after 5:30 PM for a full Present day \u2014 checking out earlier may mark today as Half Day or Short Leave.',
+                    : 'Check out after 6:00 PM for a full Present day \u2014 checking out earlier may mark today as Half Day or Short Leave.',
               ),
             const SizedBox(height: 8),
             if (record != null) _StatusBadge(status: record!.status),
@@ -622,7 +622,7 @@ class _TodayCard extends StatelessWidget {
       context,
       title: hasCheckedIn ? 'Check out now?' : 'Check in now?',
       message: hasCheckedIn
-          ? 'Are you sure you want to Check Out now?\n\nChecking out before 5:30 PM may reduce today\'s attendance to Half Day or Short Leave, depending on your check-in time.'
+          ? 'Are you sure you want to Check Out now?\n\nChecking out before 6:00 PM may reduce today\'s attendance to Half Day or Short Leave, depending on your check-in time.'
           : 'Are you sure you want to Check In now? Your current location will be recorded for attendance.',
       confirmLabel: hasCheckedIn ? 'Check Out' : 'Check In',
       confirmIcon: hasCheckedIn ? Icons.logout : Icons.login,
