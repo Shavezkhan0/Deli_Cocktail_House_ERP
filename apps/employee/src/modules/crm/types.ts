@@ -39,8 +39,6 @@ export type CrmEvent = {
   endTime: string | null;
   venue: string;
   pax: number;
-  eventType: string;
-  company: string;
   crm: string | null;
   crmEmployee?: {
     id: string;
@@ -51,12 +49,6 @@ export type CrmEvent = {
   siteManager: string | null;
   siteSupervisor: string | null;
   butlerVendor: string | null;
-  bartenders: number;
-  maleButler: number;
-  femaleButler: number;
-  clientName: string;
-  clientPhone: string;
-  clientEmail: string | null;
   status: EventStatus;
   inventoryCost: number;
   staffCost: number;

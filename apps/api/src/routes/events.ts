@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { prisma, Prisma, EventStatus } from "@repo/database";
 import { requireAuth } from "../middleware/requireAuth";
 import { nextEventCode, createWithSequentialCode } from "../lib/codes";
@@ -17,6 +17,8 @@ import {
   type CrmChecklistItemInput,
 } from "../lib/crmChecklist";
 import crmChecklistRouter from "./crmChecklist";
+import { buildEventChecklistPdf } from "../services/event-checklist-pdf";
+import { loadCompanyLogo } from "../lib/company-assets";
 
 const router: Router = Router();
 
@@ -177,8 +179,8 @@ function parseCheckoutItems(
     }
 
     const quantity = toNonNegativeInt(item.quantity, 0);
-    if (quantity === null || quantity < 1) {
-      return { ok: false, message: "quantity must be a positive integer" };
+    if (quantity === null || quantity < 0) {
+      return { ok: false, message: "quantity must be a non-negative integer" };
     }
 
     data.push({
@@ -198,8 +200,6 @@ function parseEventBody(body: Record<string, unknown>): EventBodyInput {
     endTime,
     venue,
     pax,
-    eventType,
-    company,
     crm,
     siteManager,
     siteSupervisor,
@@ -207,12 +207,6 @@ function parseEventBody(body: Record<string, unknown>): EventBodyInput {
     siteManagerId,
     siteSupervisorId,
     butlerVendor,
-    bartenders,
-    maleButler,
-    femaleButler,
-    clientName,
-    clientPhone,
-    clientEmail,
     status,
     inventoryCost,
     staffCost,
@@ -231,39 +225,6 @@ function parseEventBody(body: Record<string, unknown>): EventBodyInput {
   }
   if (typeof pax !== "number" || !Number.isInteger(pax) || pax < 0) {
     throw new ValidationError("A valid pax count is required");
-  }
-  if (!isNonEmptyString(eventType)) {
-    throw new ValidationError("Event type is required");
-  }
-  if (!isNonEmptyString(company)) {
-    throw new ValidationError("Company is required");
-  }
-  if (
-    typeof bartenders !== "number" ||
-    !Number.isInteger(bartenders) ||
-    bartenders < 0
-  ) {
-    throw new ValidationError("A valid bartender count is required");
-  }
-  if (
-    typeof maleButler !== "number" ||
-    !Number.isInteger(maleButler) ||
-    maleButler < 0
-  ) {
-    throw new ValidationError("A valid male butler count is required");
-  }
-  if (
-    typeof femaleButler !== "number" ||
-    !Number.isInteger(femaleButler) ||
-    femaleButler < 0
-  ) {
-    throw new ValidationError("A valid female butler count is required");
-  }
-  if (!isNonEmptyString(clientName)) {
-    throw new ValidationError("Client name is required");
-  }
-  if (!isNonEmptyString(clientPhone)) {
-    throw new ValidationError("Client phone is required");
   }
   if (
     status !== undefined &&
@@ -291,8 +252,6 @@ function parseEventBody(body: Record<string, unknown>): EventBodyInput {
     startTime: parseOptionalString(startTime, "Start time"),
     venue: venue.trim(),
     pax,
-    eventType: eventType.trim(),
-    company: company.trim(),
     crm: parseOptionalString(crm, "CRM"),
     siteManager: parseOptionalString(siteManager, "Site manager"),
     siteSupervisor: parseOptionalString(siteSupervisor, "Site supervisor"),
@@ -311,12 +270,6 @@ function parseEventBody(body: Record<string, unknown>): EventBodyInput {
       "Site supervisor employee",
       "must be a valid employee selection",
     ),
-    bartenders,
-    maleButler,
-    femaleButler,
-    clientName: clientName.trim(),
-    clientPhone: clientPhone.trim(),
-    clientEmail: parseOptionalString(clientEmail, "Client email"),
     inventoryCost: inventoryCostValue,
     staffCost: staffCostValue,
     totalCost: totalCostValue,
@@ -447,6 +400,103 @@ router.get("/:id", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("[Events] Failed to fetch event:", error);
     return res.status(500).json({ message: "Failed to fetch event" });
+  }
+});
+
+// GET /:id/checklist-pdf â€” printable warehouse checklist (issue + return)
+router.get("/:id/checklist-pdf", requireAuth, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: eventInclude,
+    });
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    const movements = await prisma.stockMovement.findMany({
+      where: {
+        eventId: event.id,
+        type: { in: ["EVENT_OUT", "EVENT_IN"] },
+      },
+      select: { itemId: true, type: true, quantity: true },
+    });
+
+    const agg: Record<string, { loaded: number; returned: number }> = {};
+    for (const m of movements) {
+      if (!agg[m.itemId]) agg[m.itemId] = { loaded: 0, returned: 0 };
+      if (m.type === "EVENT_OUT") agg[m.itemId]!.loaded += m.quantity;
+      else if (m.type === "EVENT_IN") agg[m.itemId]!.returned += m.quantity;
+    }
+
+    const eventDate = new Date(event.eventDate);
+    const dateStr = Number.isNaN(eventDate.getTime())
+      ? "â€”"
+      : `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(
+          2,
+          "0",
+        )}-${String(eventDate.getDate()).padStart(2, "0")}`;
+
+    const company = await prisma.pdfCompanySettings.findFirst({
+      orderBy: { createdAt: "asc" },
+      select: {
+        companyName: true,
+        logoUrl: true,
+        headerLogoUrl: true,
+      },
+    });
+    const logo = await loadCompanyLogo(
+      company?.logoUrl ?? company?.headerLogoUrl,
+    );
+
+    const header = {
+      title: "Checklist",
+      companyName: company?.companyName ?? "Deli Cocktail House",
+      eventName: event.eventName,
+      eventCode: event.eventCode,
+      eventDate: dateStr,
+    };
+
+    const rows: {
+      itemName: string;
+      category: string;
+      issued: number;
+      returned: number;
+      unit: string;
+    }[] = [];
+
+    for (const inv of event.inventory) {
+      const counts = agg[inv.itemId] ?? { loaded: 0, returned: 0 };
+      const issued = counts.loaded || inv.issueQuantity || 0;
+      // The Returned column shows the quantity expected back (the issued
+      // total) until actual returns are recorded, instead of a bare 0.
+      const returned = counts.returned || issued;
+
+      if (issued <= 0 && returned <= 0) continue;
+
+      rows.push({
+        itemName: inv.item.itemName,
+        category: inv.item.category,
+        issued,
+        returned,
+        unit: inv.item.unit,
+      });
+    }
+
+    const pdf = await buildEventChecklistPdf(header, rows, logo);
+    const baseName = `${event.eventCode}-checklist`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${baseName}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (error) {
+    console.error("[Events] Failed to generate checklist PDF:", error);
+    return res.status(500).json({ message: "Failed to generate checklist PDF" });
   }
 });
 
@@ -644,90 +694,6 @@ router.post("/:id/allocate", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/:id/complete", requireAuth, async (req, res) => {
-  const id = req.params.id;
-
-  if (typeof id !== "string" || id.trim().length === 0) {
-    return res.status(400).json({ message: "A valid event id is required" });
-  }
-
-  const parsed = parseReturnSummaries(req.body);
-  if (!parsed.ok) {
-    return res.status(400).json({ message: parsed.message });
-  }
-
-  const event = await prisma.event.findUnique({ where: { id } });
-  if (!event) {
-    return res.status(404).json({ message: "Event not found" });
-  }
-  if (event.status === EventStatus.COMPLETED) {
-    return res.status(409).json({ message: "Event is already completed" });
-  }
-
-  try {
-    const result = await prisma.$transaction(
-      async (tx) => {
-        const summaries = [];
-
-        for (const summary of parsed.data) {
-        const item = await tx.item.findUnique({
-          where: { id: summary.itemId },
-        });
-        if (!item) {
-          throw new OperationError(`Item with id ${summary.itemId} not found`);
-        }
-
-        const deduction =
-          summary.lostQuantity +
-          summary.damagedQuantity +
-          summary.consumedQuantity;
-        const nextCurrentStock =
-          item.currentStock + summary.returnedQuantity - deduction;
-
-        await tx.item.update({
-          where: { id: summary.itemId },
-          data: {
-            currentStock: { increment: summary.returnedQuantity - deduction },
-            status: calculateStatus(nextCurrentStock, item.maxLevel),
-          },
-        });
-
-        const record = await tx.eventReturnSummary.create({
-          data: {
-            eventId: id,
-            itemId: summary.itemId,
-            issuedQuantity: summary.issuedQuantity,
-            returnedQuantity: summary.returnedQuantity,
-            damagedQuantity: summary.damagedQuantity,
-            lostQuantity: summary.lostQuantity,
-            consumedQuantity: summary.consumedQuantity,
-            remarks: summary.remarks,
-          },
-        });
-
-        summaries.push(record);
-      }
-
-      const updatedEvent = await tx.event.update({
-        where: { id },
-        data: { status: EventStatus.COMPLETED },
-      });
-
-      return { summaries, event: updatedEvent };
-      },
-      { timeout: 30000 },
-    );
-
-    return res.json({ message: "Event completed", ...result });
-  } catch (error) {
-    if (error instanceof OperationError) {
-      return res.status(400).json({ message: error.message });
-    }
-    console.error("[Events] Failed to complete event:", error);
-    return res.status(500).json({ message: "Failed to complete event" });
-  }
-});
-
 router.post("/:id/checkout", requireAuth, async (req, res) => {
   const id = req.params.id;
 
@@ -749,6 +715,12 @@ router.post("/:id/checkout", requireAuth, async (req, res) => {
   }
 
   try {
+    if (event.isIssued) {
+      return res
+        .status(409)
+        .json({ message: "Items have already been issued for this event" });
+    }
+
     const inventory = await prisma.$transaction(
       async (tx) => {
         const records = [];
@@ -763,10 +735,51 @@ router.post("/:id/checkout", requireAuth, async (req, res) => {
             );
           }
 
+          const item = await tx.item.findUnique({
+            where: { id: entry.itemId },
+          });
+          if (!item) {
+            throw new OperationError(`Item ${entry.itemId} not found`);
+          }
+
+          const issueQty = entry.quantity;
+          if (issueQty <= 0) {
+            continue;
+          }
+
+          if (issueQty > item.currentStock) {
+            throw new OperationError(
+              `Insufficient stock for ${item.itemName} (SKU ${item.sku}): requested ${issueQty}, available ${item.currentStock}`,
+            );
+          }
+
+          const decremented = await tx.item.updateMany({
+            where: {
+              id: entry.itemId,
+              currentStock: { gte: issueQty },
+            },
+            data: {
+              currentStock: { decrement: issueQty },
+            },
+          });
+          if (decremented.count === 0) {
+            throw new OperationError(
+              `Insufficient stock for ${item.itemName} (SKU ${item.sku}): requested ${issueQty}, available ${item.currentStock}`,
+            );
+          }
+
+          const updatedItem = await tx.item.findUniqueOrThrow({
+            where: { id: entry.itemId },
+            select: { currentStock: true, maxLevel: true },
+          });
+
           await tx.item.update({
             where: { id: entry.itemId },
             data: {
-              currentStock: { increment: -entry.quantity },
+              status: calculateStatus(
+                updatedItem.currentStock,
+                updatedItem.maxLevel,
+              ),
             },
           });
 
@@ -775,21 +788,48 @@ router.post("/:id/checkout", requireAuth, async (req, res) => {
               itemId: entry.itemId,
               eventId: id,
               type: "EVENT_OUT",
-              quantity: entry.quantity,
-              remark: "Event checkout",
+              quantity: issueQty,
+              remark: "Item issued to event",
               createdByAdminId: req.user?.userId,
             },
           });
 
-          const updated = await tx.eventInventory.update({
+          await tx.eventInventory.update({
             where: { id: eventInventory.id },
             data: {
-              issueQuantity: entry.quantity,
+              issueQuantity: issueQty,
             },
           });
 
-          records.push(updated);
+          const existingSummary = await tx.eventReturnSummary.findFirst({
+            where: { eventId: id, itemId: entry.itemId },
+          });
+
+          const summary = existingSummary
+            ? await tx.eventReturnSummary.update({
+                where: { id: existingSummary.id },
+                data: { issuedQuantity: issueQty },
+              })
+            : await tx.eventReturnSummary.create({
+                data: {
+                  eventId: id,
+                  itemId: entry.itemId,
+                  issuedQuantity: issueQty,
+                  returnedQuantity: 0,
+                  damagedQuantity: 0,
+                  lostQuantity: 0,
+                  consumedQuantity: 0,
+                  remarks: "",
+                },
+              });
+
+          records.push(summary);
         }
+
+        await tx.event.update({
+          where: { id },
+          data: { isIssued: true },
+        });
 
         return records;
       },
@@ -813,7 +853,7 @@ router.post("/:id/checkin", requireAuth, async (req, res) => {
     return res.status(400).json({ message: "A valid event id is required" });
   }
 
-  const parsed = parseCheckoutItems(req.body);
+  const parsed = parseReturnSummaries(req.body);
   if (!parsed.ok) {
     return res.status(400).json({ message: parsed.message });
   }
@@ -822,62 +862,132 @@ router.post("/:id/checkin", requireAuth, async (req, res) => {
   if (!event) {
     return res.status(404).json({ message: "Event not found" });
   }
+  if (event.status === EventStatus.COMPLETED) {
+    return res.status(409).json({ message: "Event is already completed" });
+  }
 
   try {
+    if (event.isReturned) {
+      return res.status(409).json({
+        message: "Items have already been returned to IMS for this event",
+      });
+    }
+
     const result = await prisma.$transaction(
       async (tx) => {
         const records = [];
 
-        for (const entry of parsed.data) {
-          await tx.item.update({
-            where: { id: entry.itemId },
-            data: {
-              currentStock: { increment: entry.quantity },
-            },
+        for (const summary of parsed.data) {
+          const eventInventory = await tx.eventInventory.findFirst({
+            where: { eventId: id, itemId: summary.itemId },
           });
+          if (!eventInventory) {
+            throw new OperationError(
+              `Item ${summary.itemId} is not allocated to this event`,
+            );
+          }
 
-          await tx.stockMovement.create({
+          const item = await tx.item.findUnique({
+            where: { id: summary.itemId },
+          });
+          if (!item) {
+            throw new OperationError(`Item ${summary.itemId} not found`);
+          }
+
+          const adminId = req.user?.userId;
+
+          if (summary.returnedQuantity > 0) {
+            await tx.stockMovement.create({
+              data: {
+                itemId: summary.itemId,
+                eventId: id,
+                type: "EVENT_IN",
+                quantity: summary.returnedQuantity,
+                remark: "Item returned to IMS",
+                createdByAdminId: adminId,
+              },
+            });
+          }
+
+          if (summary.damagedQuantity > 0) {
+            await tx.stockMovement.create({
+              data: {
+                itemId: summary.itemId,
+                eventId: id,
+                type: "EVENT_DAMAGE",
+                quantity: summary.damagedQuantity,
+                remark: summary.remarks || "Item damaged during event",
+                createdByAdminId: adminId,
+              },
+            });
+          }
+
+          if (summary.lostQuantity > 0) {
+            await tx.stockMovement.create({
+              data: {
+                itemId: summary.itemId,
+                eventId: id,
+                type: "EVENT_LOST",
+                quantity: summary.lostQuantity,
+                remark: summary.remarks || "Item lost during event",
+                createdByAdminId: adminId,
+              },
+            });
+          }
+
+          const nextCurrentStock =
+            item.currentStock + summary.returnedQuantity;
+
+          await tx.item.update({
+            where: { id: summary.itemId },
             data: {
-              itemId: entry.itemId,
-              eventId: id,
-              type: "EVENT_IN",
-              quantity: entry.quantity,
-              remark: "Event check-in",
-              createdByAdminId: req.user?.userId,
+              currentStock: { increment: summary.returnedQuantity },
+              status: calculateStatus(nextCurrentStock, item.maxLevel),
             },
           });
 
           const existingSummary = await tx.eventReturnSummary.findFirst({
-            where: { eventId: id, itemId: entry.itemId },
+            where: { eventId: id, itemId: summary.itemId },
           });
 
-          const summary = existingSummary
+          const record = existingSummary
             ? await tx.eventReturnSummary.update({
                 where: { id: existingSummary.id },
-                data: { returnedQuantity: entry.quantity },
+                data: {
+                  returnedQuantity: summary.returnedQuantity,
+                  damagedQuantity: summary.damagedQuantity,
+                  lostQuantity: summary.lostQuantity,
+                  consumedQuantity: summary.consumedQuantity,
+                  remarks: summary.remarks,
+                },
               })
             : await tx.eventReturnSummary.create({
                 data: {
                   eventId: id,
-                  itemId: entry.itemId,
-                  issuedQuantity: 0,
-                  returnedQuantity: entry.quantity,
-                  damagedQuantity: 0,
-                  lostQuantity: 0,
-                  consumedQuantity: 0,
-                  remarks: "",
+                  itemId: summary.itemId,
+                  issuedQuantity: summary.issuedQuantity,
+                  returnedQuantity: summary.returnedQuantity,
+                  damagedQuantity: summary.damagedQuantity,
+                  lostQuantity: summary.lostQuantity,
+                  consumedQuantity: summary.consumedQuantity,
+                  remarks: summary.remarks,
                 },
               });
 
-          records.push(summary);
+          records.push(record);
         }
 
-        return records;
+        const updatedEvent = await tx.event.update({
+          where: { id },
+          data: { isReturned: true },
+        });
+
+        return { summaries: records, event: updatedEvent };
       },
       { timeout: 30000 },
     );
 
-    return res.json({ message: "Items returned to IMS", summaries: result });
+    return res.json({ message: "Items returned to IMS", ...result });
   } catch (error) {
     if (error instanceof OperationError) {
       return res.status(400).json({ message: error.message });

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import {
   Loader2,
   PackageCheck,
   PackagePlus,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { downloadFile } from "@/lib/download";
 import { formatDate, statusColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +48,6 @@ type EventDetail = {
   endTime?: string | null;
   venue: string;
   pax: number;
-  eventType: string;
-  company: string;
   crm: string | null;
   siteManager: string | null;
   siteSupervisor: string | null;
@@ -55,13 +55,9 @@ type EventDetail = {
   siteManagerEmp?: { id: string; name: string; employeeId: string } | null;
   siteSupervisorEmp?: { id: string; name: string; employeeId: string } | null;
   butlerVendor?: string | null;
-  bartenders: number;
-  maleButler: number;
-  femaleButler: number;
-  clientName: string;
-  clientPhone: string;
-  clientEmail: string | null;
   status: string;
+  isIssued: boolean;
+  isReturned: boolean;
   inventoryCost: number;
   staffCost: number;
   totalCost: number;
@@ -155,6 +151,7 @@ type AllocationRow = {
   itemName: string;
   unit: string;
   quantity: string;
+  currentStock: number;
 };
 
 type ReturnRow = {
@@ -206,6 +203,45 @@ function emptyReturnRow(itemId: string): ReturnRow {
     lost: "0",
     consumed: "0",
     remarks: "",
+  };
+}
+
+function rowQty(value: string): number {
+  const parsed = parseQuantity(value);
+  return parsed === null ? 0 : parsed;
+}
+
+type ReturnRowStatus = {
+  accounted: number;
+  issued: number;
+  invalid: boolean;
+  over: boolean;
+  short: boolean;
+  balanceLabel: string;
+};
+
+function returnRowStatus(row: ReturnRow): ReturnRowStatus {
+  const issued = rowQty(row.issued);
+  const accounted =
+    rowQty(row.returned) +
+    rowQty(row.damaged) +
+    rowQty(row.lost) +
+    rowQty(row.consumed);
+  const invalid =
+    parseQuantity(row.issued) === null ||
+    parseQuantity(row.returned) === null ||
+    parseQuantity(row.damaged) === null ||
+    parseQuantity(row.lost) === null ||
+    parseQuantity(row.consumed) === null;
+  const over = accounted > issued;
+  const short = !over && accounted < issued;
+  return {
+    accounted,
+    issued,
+    invalid,
+    over,
+    short,
+    balanceLabel: `${accounted} / ${issued}`,
   };
 }
 
@@ -280,6 +316,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
           itemName: item.itemName,
           unit: item.unit,
           quantity: "",
+          currentStock: item.currentStock,
         },
       ]);
     }
@@ -344,6 +381,24 @@ export function EventDetail({ eventId }: { eventId: string }) {
     }
 
     allocate.mutate(payload);
+  }
+
+  function handleEditSaved() {
+    if (!event || event.inventory.length === 0) {
+      return;
+    }
+    const rows = event.inventory.map((record, i) => ({
+      key: `row-${rowKey + i}`,
+      itemId: record.itemId,
+      sku: record.item.sku,
+      itemName: record.item.itemName,
+      unit: record.item.unit,
+      quantity: String(record.requiredQuantity),
+      currentStock:
+        items?.find((item) => item.id === record.itemId)?.currentStock ?? 0,
+    }));
+    setAllocations(rows);
+    setRowKey((prev) => prev + rows.length);
   }
 
   const addableItems = items?.filter(
@@ -426,36 +481,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
               <Field label="Date">
                 {formatDate(event.eventDate)}
               </Field>
-              <Field label="Time">
-                {event.startTime ?? "—"}
-                {event.endTime ? ` – ${event.endTime}` : ""}
-              </Field>
               <Field label="Venue">{event.venue}</Field>
               <Field label="Pax">{event.pax.toLocaleString()}</Field>
-              <Field label="Event Type">{event.eventType}</Field>
-              <Field label="Company">{event.company}</Field>
-              <Field label="CRM">
-                {event.crmEmployee?.name ?? event.crm ?? "—"}
-              </Field>
-              <Field label="Butler Vendor">
-                {event.butlerVendor ?? "—"}
-              </Field>
-              <Field label="Site Manager">
-                {event.siteManagerEmp?.name ?? event.siteManager ?? "—"}
-              </Field>
-              <Field label="Site Supervisor">
-                {event.siteSupervisorEmp?.name ?? event.siteSupervisor ?? "—"}
-              </Field>
-              <Field label="Staff">
-                {event.bartenders} bartenders · {event.maleButler} male ·{" "}
-                {event.femaleButler} female
-              </Field>
-              <Field label="Client">
-                {event.clientName}
-                <span className="block font-normal text-muted-foreground">
-                  {event.clientPhone} · {event.clientEmail ?? "—"}
-                </span>
-              </Field>
             </div>
           </CardContent>
         </Card>
@@ -598,6 +625,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                           <TableHead>Item</TableHead>
                           <TableHead>SKU</TableHead>
                           <TableHead>Unit</TableHead>
+                          <TableHead className="text-right">Current Stock</TableHead>
                           <TableHead className="text-right">Quantity Needed</TableHead>
                           <TableHead className="w-10" />
                         </TableRow>
@@ -613,6 +641,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {row.unit}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                              {row.currentStock.toLocaleString()}
                             </TableCell>
                             <TableCell>
                               <Input
@@ -683,6 +714,15 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         ))}
                       </TableBody>
                     </Table>
+                    <div className="flex justify-end border-t border-border p-3">
+                      <Button
+                        onClick={handleEditSaved}
+                        disabled={isCompleted}
+                      >
+                        <Pencil />
+                        Edit Quantities
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
@@ -821,10 +861,11 @@ function buildReturnRows(event: EventDetail): Record<string, ReturnRow> {
   const next: Record<string, ReturnRow> = {};
   for (const record of event.inventory) {
     const existing = byReturn.get(record.itemId);
+    const issuedQty = record.loadedQty || record.issueQuantity || 0;
     next[record.itemId] = existing
       ? {
           itemId: existing.itemId,
-          issued: String(existing.issuedQuantity),
+          issued: String(issuedQty || existing.issuedQuantity || 0),
           returned: String(existing.returnedQuantity),
           damaged: String(existing.damagedQuantity),
           lost: String(existing.lostQuantity),
@@ -833,7 +874,7 @@ function buildReturnRows(event: EventDetail): Record<string, ReturnRow> {
         }
       : {
           ...emptyReturnRow(record.itemId),
-          issued: String(record.issueQuantity),
+          issued: String(issuedQty),
         };
   }
   return next;
@@ -851,6 +892,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
   const [returnedItems, setReturnedItems] = useState<Set<string>>(
     () => new Set(),
   );
+  const [pdfBusy, setPdfBusy] = useState<null | "issued" | "returned">(null);
 
   function updateReturn(itemId: string, patch: Partial<ReturnRow>) {
     setReturns((prev) => ({
@@ -858,27 +900,6 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
       [itemId]: { ...prev[itemId], ...patch },
     }));
   }
-
-  const complete = useMutation({
-    mutationFn: (payload: ReturnSummaryInput[]) =>
-      apiFetch(`/api/events/${event.id}/complete`, {
-        method: "POST",
-        body: payload,
-        token,
-      }),
-    onSuccess: () => {
-      toast.success("Event completed and stock returned");
-      queryClient.invalidateQueries({
-        queryKey: ["warehouse-event", event.id],
-      });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-items"] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-events"] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
 
   const checkout = useMutation({
     mutationFn: (payload: { itemId: string; quantity: number }[]) =>
@@ -903,7 +924,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
   });
 
   const checkin = useMutation({
-    mutationFn: (payload: { itemId: string; quantity: number }[]) =>
+    mutationFn: (payload: ReturnSummaryInput[]) =>
       apiFetch(`/api/events/${event.id}/checkin`, {
         method: "POST",
         body: payload,
@@ -924,28 +945,23 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
     },
   });
 
-  function handleCheckout() {
-    const payload = event.inventory.map((r) => ({
-      itemId: r.itemId,
-      quantity: r.issueQuantity,
-    }));
-    checkout.mutate(payload);
-  }
-
-  function handleCheckin() {
-    const payload = event.inventory.map((r) => {
-      const row = returns[r.itemId];
-      return { itemId: r.itemId, quantity: Number(row?.returned ?? 0) };
-    });
-    checkin.mutate(payload);
-  }
-
-  function handleComplete() {
-    if (event.inventory.length === 0) {
-      toast.error("Allocate inventory to the event before completing");
-      return;
+  function buildCheckoutPayload() {
+    const payload: { itemId: string; quantity: number }[] = [];
+    for (const record of event.inventory) {
+      const row = returns[record.itemId] ?? emptyReturnRow(record.itemId);
+      const issued = parseQuantity(row.issued);
+      if (issued === null) {
+        toast.error(`Enter a valid issued quantity for ${record.item.itemName}`);
+        return null;
+      }
+      if (issued > 0) {
+        payload.push({ itemId: record.itemId, quantity: issued });
+      }
     }
+    return payload;
+  }
 
+  function buildReturnPayload() {
     const payload: ReturnSummaryInput[] = [];
     for (const record of event.inventory) {
       const row = returns[record.itemId] ?? emptyReturnRow(record.itemId);
@@ -962,7 +978,13 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
         consumed === null
       ) {
         toast.error(`Invalid quantity for ${record.item.itemName}`);
-        return;
+        return null;
+      }
+      if (returned + damaged + lost + consumed > issued) {
+        toast.error(
+          `${record.item.itemName}: returned + damaged + lost (${returned + damaged + lost}) exceeds issued (${issued})`,
+        );
+        return null;
       }
       payload.push({
         itemId: record.itemId,
@@ -974,135 +996,71 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
         remarks: row.remarks.trim(),
       });
     }
-
-    complete.mutate(payload);
+    return payload;
   }
 
-  function handleDownloadChecklist() {
-    const rows = event.inventory.map((record) => ({
-      ...(returns[record.itemId] ?? emptyReturnRow(record.itemId)),
-      record,
-    }));
-
-    const rowsHtml = rows
-      .map(
-        (row) => `
-        <tr>
-          <td>${row.record.item.itemName}</td>
-          <td>${row.record.item.sku}</td>
-          <td>${row.record.item.unit}</td>
-          <td><input type="checkbox" /> ${row.issued}</td>
-          <td><input type="checkbox" /> ${row.returned}</td>
-          <td>${row.damaged}</td>
-          <td>${row.lost}</td>
-          <td>${row.remarks || "&nbsp;"}</td>
-        </tr>`,
-      )
-      .join("");
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>${event.eventName} — Return Checklist</title>
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      color: #111;
-      padding: 24px;
-    }
-    h1 {
-      font-size: 22px;
-      margin: 0 0 4px;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 24px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    th, td {
-      border: 1px solid #bbb;
-      padding: 8px 10px;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background: #f0f0f0;
-      font-weight: 600;
-    }
-    .print-btn {
-      display: inline-block;
-      margin-bottom: 20px;
-      padding: 10px 18px;
-      font-size: 14px;
-      border: 1px solid #999;
-      border-radius: 6px;
-      background: #f0f0f0;
-      cursor: pointer;
-    }
-    @media print {
-      .print-btn {
-        display: none;
-      }
-      body {
-        padding: 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <button class="print-btn" onclick="window.print()">Print</button>
-  <h1>${event.eventName} — Return Checklist</h1>
-  <div class="subtitle">Event Code: ${event.eventCode} &nbsp;|&nbsp; Date: ${formatDate(
-        event.eventDate,
-      )}</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th>SKU</th>
-        <th>Unit</th>
-        <th>Issued</th>
-        <th>Returned</th>
-        <th>Damaged</th>
-        <th>Lost</th>
-        <th>Remarks</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-    </tbody>
-  </table>
-</body>
-</html>`;
-
-    const win = window.open("", "_blank", "noopener,noreferrer");
-    if (!win) {
-      toast.error("Popup blocked. Allow popups to download the checklist.");
+  function handleCheckout() {
+    const payload = buildCheckoutPayload();
+    if (!payload) {
       return;
     }
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 300);
+    if (payload.length === 0) {
+      toast.info("Enter issued quantities before issuing items");
+      return;
+    }
+    checkout.mutate(payload);
+  }
+
+  function handleCheckin() {
+    if (event.inventory.length === 0) {
+      toast.error("Allocate inventory to the event before returning");
+      return;
+    }
+    if (!event.isIssued) {
+      toast.error("Items must be issued before they can be returned");
+      return;
+    }
+    const payload = buildReturnPayload();
+    if (!payload) {
+      return;
+    }
+    checkin.mutate(payload);
+  }
+
+  function handleDownloadPdf() {
+    setPdfBusy("issued");
+    const filename = `${event.eventCode || event.eventName || "event"}-checklist.pdf`;
+    downloadFile(`/api/events/${event.id}/checklist-pdf`, token, filename)
+      .then(() => {
+        toast.success("Checklist downloaded");
+      })
+      .catch((error) => {
+        toast.error(
+          error instanceof Error ? error.message : "Could not download checklist",
+        );
+      })
+      .finally(() => setPdfBusy(null));
   }
 
   const returnRows = event.inventory.map(
     (record) => returns[record.itemId] ?? emptyReturnRow(record.itemId),
   );
 
+  const hasReturnErrors = returnRows.some(
+    (row) => returnRowStatus(row).over || returnRowStatus(row).invalid,
+  );
+
+  const hasIssued = event.isIssued || event.inventory.some(
+    (r) => (r.loadedQty || r.issueQuantity || 0) > 0,
+  );
+
   return (
     <Card>
       <CardHeader className="border-b">
-        <CardTitle>Return Summary</CardTitle>
+        <CardTitle>Summary</CardTitle>
         <CardDescription>
-          Record returned, damaged and lost quantities when the event
-          wraps up. Completing the event updates stock and marks it completed.
+          Issue items to the event from IMS, and record returned, damaged and
+          lost quantities when the event wraps up.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 pt-4">
@@ -1113,10 +1071,12 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Quantity Needed</TableHead>
                     <TableHead className="text-right">Issued</TableHead>
                     <TableHead className="text-right">Returned</TableHead>
                     <TableHead className="text-right">Damaged</TableHead>
                     <TableHead className="text-right">Lost</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1128,6 +1088,22 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                     if (!record) {
                       return null;
                     }
+                    const status = returnRowStatus(row);
+                    const balanceClass = status.invalid
+                      ? "text-destructive"
+                      : status.over
+                        ? "text-destructive"
+                        : status.short
+                          ? "text-amber-600"
+                          : "text-emerald-600";
+                    const inputErrClass =
+                      status.over || status.invalid
+                        ? " border-destructive/60"
+                        : "";
+                    const unaccounted = Math.max(
+                      0,
+                      status.issued - status.accounted,
+                    );
                     return (
                       <TableRow key={row.itemId}>
                         <TableCell>
@@ -1140,6 +1116,9 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                             </p>
                           </div>
                         </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {record.requiredQuantity}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-2">
                             <Input
@@ -1151,7 +1130,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                                   issued: event.target.value,
                                 })
                               }
-                              disabled={isCompleted}
+                              disabled={isCompleted || event.isIssued}
                               className="h-8 w-20 text-right tabular-nums"
                               aria-label={`Issued quantity for ${record.item.itemName}`}
                             />
@@ -1176,8 +1155,8 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                                   returned: event.target.value,
                                 })
                               }
-                              disabled={isCompleted}
-                              className="h-8 w-20 text-right tabular-nums"
+                              disabled={isCompleted || event.isReturned}
+                              className={`h-8 w-20 text-right tabular-nums${inputErrClass}`}
                               aria-label={`Returned quantity for ${record.item.itemName}`}
                             />
                             {returnedItems.has(row.itemId) ? (
@@ -1200,8 +1179,8 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                                 damaged: event.target.value,
                               })
                             }
-                            disabled={isCompleted}
-                            className="h-8 text-right tabular-nums"
+                            disabled={isCompleted || event.isReturned}
+                            className={`h-8 text-right tabular-nums${inputErrClass}`}
                             aria-label={`Damaged quantity for ${record.item.itemName}`}
                           />
                         </TableCell>
@@ -1215,10 +1194,32 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                                 lost: event.target.value,
                               })
                             }
-                            disabled={isCompleted}
-                            className="h-8 text-right tabular-nums"
+                            disabled={isCompleted || event.isReturned}
+                            className={`h-8 text-right tabular-nums${inputErrClass}`}
                             aria-label={`Lost quantity for ${record.item.itemName}`}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span
+                              className={`text-sm font-semibold tabular-nums ${balanceClass}`}
+                            >
+                              {status.accounted} / {status.issued}
+                            </span>
+                            {status.invalid ? (
+                              <span className="text-xs text-destructive">
+                                invalid
+                              </span>
+                            ) : status.over ? (
+                              <span className="text-xs text-destructive">
+                                exceeds issued
+                              </span>
+                            ) : status.short ? (
+                              <span className="text-xs text-amber-600">
+                                {unaccounted} unaccounted
+                              </span>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -1240,46 +1241,71 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
               </Table>
             </div>
 
+            {hasReturnErrors ? (
+              <p className="text-sm text-destructive">
+                Some rows have invalid or over-accounted quantities (accounted
+                exceeds issued). Fix them before completing the event.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Tip: returned + damaged + lost should add up to the issued
+                quantity for each item.
+              </p>
+            )}
+
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={handleCheckout}
                 disabled={
                   isCompleted ||
-                  checkout.isPending ||
-                  issuedItems.size === event.inventory.length
+                  event.isIssued ||
+                  checkout.isPending
                 }
               >
-                <PackagePlus />
-                {checkout.isPending ? "Issuing…" : "Issue All Items (from IMS)"}
+                {event.isIssued ? (
+                  <Check />
+                ) : (
+                  <PackagePlus />
+                )}
+                {checkout.isPending
+                  ? "Issuing…"
+                  : event.isIssued
+                    ? "Items Issued"
+                    : "Issue All Items (from IMS)"}
               </Button>
               <Button
                 variant="outline"
                 onClick={handleCheckin}
-                disabled={isCompleted || checkin.isPending}
+                disabled={
+                  isCompleted ||
+                  event.isReturned ||
+                  !event.isIssued ||
+                  checkin.isPending
+                }
               >
-                <PackageCheck />
-                {checkin.isPending ? "Returning…" : "Return All Items (to IMS)"}
+                {event.isReturned ? (
+                  <Check />
+                ) : (
+                  <PackageCheck />
+                )}
+                {checkin.isPending
+                  ? "Returning…"
+                  : event.isReturned
+                    ? "Items Returned"
+                    : "Return to IMS"}
               </Button>
               <Button
                 variant="outline"
-                onClick={handleDownloadChecklist}
-                disabled={isCompleted}
+                onClick={() => handleDownloadPdf()}
+                disabled={!hasIssued || pdfBusy !== null}
               >
-                <FileDown />
+                {pdfBusy !== null ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <FileDown />
+                )}
                 Download Checklist
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleComplete}
-                disabled={complete.isPending || isCompleted}
-              >
-                <PackageCheck />
-                {isCompleted
-                  ? "Event Completed"
-                  : complete.isPending
-                    ? "Completing…"
-                    : "Complete Event & Return Stock"}
               </Button>
             </div>
           </>
