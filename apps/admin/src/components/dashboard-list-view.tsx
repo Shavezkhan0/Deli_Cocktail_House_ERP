@@ -634,7 +634,7 @@ export default function DashboardListView({
               />
             )}
           </Table>
-          {config.kind === "items" && filteredItemsData.length > pageSize ? (
+          {config.kind === "items" && filteredItemsData.length > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <div className="flex items-center gap-3">
                 <Select
