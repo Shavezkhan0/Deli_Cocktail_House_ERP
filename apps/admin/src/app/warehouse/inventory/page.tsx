@@ -904,7 +904,7 @@ export default function WarehouseInventoryPage() {
             </TableBody>
           </Table>
         </CardContent>
-        {filteredItems.length > pageSize ? (
+        {filteredItems.length > 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
             <div className="flex items-center gap-3">
               <Select

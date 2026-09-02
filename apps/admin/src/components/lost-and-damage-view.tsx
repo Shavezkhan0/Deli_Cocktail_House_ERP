@@ -197,7 +197,7 @@ export function LostAndDamageView({
                   />
                 </Table>
               )}
-              {activeItems.length > pageSize ? (
+              {activeItems.length > 0 ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                   <div className="flex items-center gap-3">
                     <Select
