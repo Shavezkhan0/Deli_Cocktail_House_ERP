@@ -233,10 +233,10 @@ export default function HolidaysPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Holidays
         </h1>
-        <p className="text-white-85 text-sm">
+        <p className="text-slate-600 text-sm">
           Manage system-wide holidays. Holidays are non-working days and are
           excluded from salary deductions. Past dates can be added or edited
           too — useful for backfilling holidays that were missed.
@@ -401,10 +401,10 @@ export default function HolidaysPage() {
               ) : (
                 (holidays ?? []).map((holiday) => (
                   <TableRow key={holiday.id}>
-                    <TableCell className="font-medium tabular-nums text-foreground">
+                    <TableCell className="font-medium tabular-nums text-white">
                       {formatDate(holiday.date)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-white/80">
                       {holiday.name}
                     </TableCell>
                     <TableCell>

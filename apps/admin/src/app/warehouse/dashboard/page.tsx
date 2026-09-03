@@ -273,7 +273,7 @@ export default function WarehouseDashboardPage() {
     <div className="flex flex-col gap-3">
       {!activeView ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             Live overview of Inventory and Events
           </p>
           {!isPending && !isError && data ? (
@@ -327,7 +327,7 @@ export default function WarehouseDashboardPage() {
         <>
           {stats.map((category) => (
             <section key={category.title} className="space-y-4">
-              <h2 className="text-2xl font-bold tracking-tight text-white">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 {category.title}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

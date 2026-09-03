@@ -82,10 +82,8 @@ export function Header() {
     <header
       className="flex h-16 shrink-0 items-center justify-between px-6 sticky top-0 z-50"
       style={{
-        background: "rgba(255,255,255,0.06)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        borderBottom: "1px solid rgba(255,255,255,0.15)",
+        background: "#1e3a8a",
+        borderBottom: "1px solid #1e40af",
       }}
     >
       <div className="flex items-center gap-3">
@@ -98,7 +96,7 @@ export function Header() {
           />
         </div>
         <div className="leading-tight">
-          <p className="text-gold-accent text-sm font-semibold tracking-tight">
+          <p className="text-white text-sm font-semibold tracking-tight">
             {branding.title}
           </p>
           <p className="text-white-85 text-xs">{branding.subtitle}</p>
@@ -110,7 +108,7 @@ export function Header() {
           render={
             <button
               type="button"
-              className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-white/30"
             >
               <span className="gold-gradient-circle flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                 {initials}
@@ -123,7 +121,7 @@ export function Header() {
                   {user?.role ?? "Administrator"}
                 </span>
               </span>
-              <ChevronDown animateOnHover className="size-4 text-muted-foreground" />
+              <ChevronDown animateOnHover className="size-4 text-white/85" />
             </button>
           }
         />

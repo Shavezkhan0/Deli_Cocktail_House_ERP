@@ -135,7 +135,7 @@ export default function AttendancePage() {
     columnHelper.accessor("employeeId", {
       header: "Employee ID",
       cell: (info) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-white/80">
           {info.getValue()}
         </span>
       ),
@@ -143,7 +143,7 @@ export default function AttendancePage() {
     columnHelper.accessor("name", {
       header: "Name",
       cell: (info) => (
-        <span className="font-medium text-foreground">{info.getValue()}</span>
+        <span className="font-medium text-white">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("fullDays", {
@@ -205,16 +205,16 @@ export default function AttendancePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Attendance & Salary
           </h1>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             Monthly attendance summary and net salary for all employees.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-white">Month</label>
+            <label className="text-sm font-medium text-slate-900">Month</label>
             <Select
               value={String(month)}
               onValueChange={(value) =>
@@ -234,7 +234,7 @@ export default function AttendancePage() {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-white">Year</label>
+            <label className="text-sm font-medium text-slate-900">Year</label>
             <Input
               type="number"
               min={2000}

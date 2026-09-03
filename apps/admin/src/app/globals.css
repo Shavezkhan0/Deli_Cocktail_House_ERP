@@ -131,35 +131,50 @@
 
 /* GLOBAL THEME UTILITIES */
 .theme-gradient-bg {
-  background: linear-gradient(135deg, #c9a6f2 0%, #a06fe8 20%, #b566c9 42%, #e0709c 60%, #f0a06e 82%, #f7c68a 100%);
-  background-attachment: fixed;
+  background: #ffffff;
   min-height: 100vh;
 }
 
 .glass-card-global {
-  background: rgba(255, 255, 255, 0.16) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: #1e3a8a !important;
   border-radius: 20px !important;
-  box-shadow: none !important;
-  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  transition: transform 180ms ease, background 180ms ease !important;
 }
 
 .glass-card-global:hover {
+  background: #1e40af !important;
   transform: translateY(-2px) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  background: rgba(255, 255, 255, 0.20) !important;
+}
+
+.glass-card-global table {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.glass-card-global thead th {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.glass-card-global tbody td {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.glass-card-global table tr {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-card-global table tr:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 .gold-gradient-circle {
-  background: linear-gradient(135deg, #d4af37, #8a6a1a) !important;
-  color: white !important;
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
 }
 
 .gold-icon-bg {
-  background: linear-gradient(135deg, #d4af37, #8a6a1a) !important;
-  color: #ffffff !important;
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
 }
 
 .text-gold-accent {
@@ -168,4 +183,8 @@
 
 .text-white-85 {
   color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.text-dark-heading {
+  color: #0f172a !important;
 }

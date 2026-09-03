@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ export function AnimatedIcon({
   ...props
 }: AnimatedIconProps) {
   // Define animation variants based on the requested type
-  const getVariants = () => {
+  const getVariants = (): Variants => {
     switch (animationType) {
       case "hover-scale":
         return {
@@ -41,7 +41,7 @@ export function AnimatedIcon({
       case "bounce":
         return {
           initial: { y: 0 },
-          hover: { y: -4, transition: { yoyo: Infinity, duration: 0.4 } },
+          hover: { y: [0, -8, 0], transition: { repeat: Infinity, duration: 0.5 } },
           tap: { scale: 0.9 },
         };
       default:

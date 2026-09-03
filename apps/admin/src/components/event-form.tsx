@@ -155,9 +155,9 @@ function Field({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-white">{label}</label>
       {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-red-300">{error}</p>}
     </div>
   );
 }
@@ -439,7 +439,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
               <CardContent className="flex flex-col gap-4 pt-4">
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="flex min-w-56 flex-1 flex-col gap-1.5">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-sm font-medium text-white">
                       Add Item
                     </span>
                     <Select
@@ -517,13 +517,13 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                       <TableBody>
                         {allocations.map((row) => (
                           <TableRow key={row.key}>
-                            <TableCell className="text-sm font-medium text-foreground">
+                            <TableCell className="text-sm font-medium text-white">
                               {row.itemName}
                             </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">
+                            <TableCell className="font-mono text-xs text-white/80">
                               {row.sku}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-white/80">
                               {row.unit}
                             </TableCell>
                             <TableCell>

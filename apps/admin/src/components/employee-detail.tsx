@@ -547,14 +547,14 @@ function SalaryHistoryRow({
   return (
     <>
       <TableRow>
-        <TableCell className="text-foreground">
+        <TableCell className="text-white">
           {MONTH_NAMES[salary.month - 1]}
         </TableCell>
-        <TableCell className="tabular-nums text-muted-foreground">
+        <TableCell className="tabular-nums text-white/80">
           {salary.year}
         </TableCell>
         <TableCell>
-          <div className="text-right tabular-nums text-foreground">
+          <div className="text-right tabular-nums text-white">
             {formatSalary(salary.amount)}
           </div>
         </TableCell>
@@ -577,7 +577,7 @@ function SalaryHistoryRow({
             </Badge>
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="text-white/80">
           {salary.paidDate ? formatDate(salary.paidDate) : "—"}
         </TableCell>
         <TableCell>
@@ -592,7 +592,7 @@ function SalaryHistoryRow({
                 Mark Paid
               </Button>
             ) : (
-              <span className="text-xs text-muted-foreground">Completed</span>
+              <span className="text-xs text-white/80">Completed</span>
             )}
             <Button
               variant={expanded ? "secondary" : "outline"}
@@ -611,20 +611,20 @@ function SalaryHistoryRow({
         </TableCell>
       </TableRow>
       {expanded ? (
-        <TableRow className="bg-muted/30">
+        <TableRow className="bg-white/5">
           <TableCell colSpan={6} className="p-4">
             {isPending ? (
-              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 py-6 text-sm text-white/80">
                 <Loader2 className="size-4 animate-spin" />
                 Loading calculation…
               </div>
             ) : isError || !breakdown ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
+              <p className="py-6 text-center text-sm text-white/80">
                 Unable to load the salary calculation.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
                   Absent: {breakdown.attendance.ABSENT} ·{" "}
                   {MONTH_NAMES[salary.month - 1]} {salary.year}
                 </p>
@@ -1413,16 +1413,16 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             Back
           </Button>
           <div className="space-y-0.5">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {employee.name}
             </h1>
-            <p className="text-sm text-white-85">
+            <p className="text-slate-600 text-sm">
               {employee.employeeId} ·{" "}
               {DESIGNATION_LABELS[employee.designation] ?? employee.designation}
             </p>
           </div>
         </div>
-        <div className="flex gap-1 rounded-xl border border-white/20 bg-white/10 p-1 backdrop-blur">
+        <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -1441,7 +1441,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   active
                     ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-                    : "text-white-85 hover:bg-white/10 hover:text-white",
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
                 <Icon className="size-4" />

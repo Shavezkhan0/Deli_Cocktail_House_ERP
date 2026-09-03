@@ -38,18 +38,18 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-dark-heading">
             Module Selection
           </h1>
           <div
             style={{
-              borderBottom: "3px solid #f7d98a",
+              borderBottom: "3px solid #3b82f6",
               width: "4rem",
               marginTop: "8px",
             }}
           />
         </div>
-        <p className="text-white-85 text-sm">Choose a module to get started.</p>
+        <p className="text-slate-600 text-sm">Choose a module to get started.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -68,9 +68,9 @@ export default function DashboardPage() {
                       <AnimatedIcon icon={Icon} animationType="bounce" className="size-7" />
                     </span>
                     <span
-                      className="flex size-9 items-center justify-center rounded-full transition-colors group-hover:bg-white/10"
+                      className="flex size-9 items-center justify-center rounded-full transition-colors group-hover:bg-white/20"
                       style={{
-                        border: "1px solid rgba(255,255,255,0.35)",
+                        border: "1px solid rgba(255,255,255,0.2)",
                         background: "transparent",
                         color: "white",
                       }}

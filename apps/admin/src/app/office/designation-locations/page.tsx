@@ -265,10 +265,10 @@ export default function DesignationLocationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Designation Locations
         </h1>
-        <p className="text-white-85 text-sm">
+        <p className="text-slate-600 text-sm">
           Assign check-in locations per designation. Employees fall back to the
           global office location when none is set.
         </p>
@@ -422,14 +422,14 @@ export default function DesignationLocationsPage() {
 
                   return (
                     <TableRow key={designation}>
-                      <TableCell className="font-medium text-foreground">
+                      <TableCell className="font-medium text-white">
                         {humanizeDesignation(designation)}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
                           assignment.locationName
                         ) : (
-                          <span className="text-muted-foreground">
+                          <span className="text-white/80">
                             — Not Set —
                           </span>
                         )}
@@ -438,23 +438,23 @@ export default function DesignationLocationsPage() {
                         {assignment ? (
                           <Coordinate value={assignment.latitude} />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
                           <Coordinate value={assignment.longitude} />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
-                          <span className="tabular-nums text-muted-foreground">
+                          <span className="tabular-nums text-white/80">
                             {assignment.radiusM} m
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -486,14 +486,15 @@ export default function DesignationLocationsPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openForm(designation)}
-                            >
-                              <Plus />
-                              Assign
-                            </Button>
+<Button
+                          variant="outline"
+                          size="sm"
+                          className="text-white"
+                          onClick={() => openForm(designation)}
+                        >
+                          <Plus animateOnHover className="size-4" />
+                          Assign
+                        </Button>
                           )}
                         </div>
                       </TableCell>

@@ -191,10 +191,10 @@ export default function OfficeDashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Office Dashboard
           </h1>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             {isToday
               ? "Live overview of workforce and attendance. Click a card for details."
               : `Attendance overview for ${formatDateLong(selectedDate)}. Click a card for details.`}
@@ -224,7 +224,7 @@ export default function OfficeDashboardPage() {
               setSelectedDate(v);
             }
           }}
-          className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm text-white outline-none backdrop-blur focus:ring-2 focus:ring-primary/25 [color-scheme:dark]"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-600/25 [color-scheme:light]"
         />
         <Button
           variant="outline"

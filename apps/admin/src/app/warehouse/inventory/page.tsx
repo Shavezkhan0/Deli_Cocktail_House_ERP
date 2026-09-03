@@ -496,7 +496,7 @@ export default function WarehouseInventoryPage() {
     columnHelper.accessor("sku", {
       header: "SKU",
       cell: (info) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-white/80">
           {info.getValue()}
         </span>
       ),
@@ -504,7 +504,7 @@ export default function WarehouseInventoryPage() {
     columnHelper.accessor("itemName", {
       header: "Item Name",
       cell: (info) => (
-        <span className="font-medium text-foreground">{info.getValue()}</span>
+        <span className="font-medium text-white">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("category", {
@@ -590,12 +590,12 @@ export default function WarehouseInventoryPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              Inventory
-            </h1>
-            <p className="text-white-85 text-sm">
-              Browse all warehouse stock, available quantities and stock levels.
-            </p>
+<h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Inventory
+          </h1>
+          <p className="text-slate-600 text-sm">
+            Browse all warehouse stock, available quantities and stock levels.
+          </p>
           </div>
 
           <AnimatedDialog open={open} onOpenChange={handleOpenChange}>
@@ -860,10 +860,10 @@ export default function WarehouseInventoryPage() {
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-white">
                         Unable to load inventory
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-white/80">
                         Make sure the API is running and try again.
                       </p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -874,11 +874,11 @@ export default function WarehouseInventoryPage() {
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
-                  >
-                    No items yet. Add your first inventory item.
+<TableCell
+                      colSpan={columns.length}
+                      className="py-10 text-center text-white-85"
+                    >
+                      No items yet. Add your first inventory item.
                   </TableCell>
                 </TableRow>
               ) : filteredItems.length === 0 ? (

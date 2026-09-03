@@ -90,7 +90,7 @@ export default function EmployeesPage() {
     columnHelper.accessor("employeeId", {
       header: "Employee ID",
       cell: (info) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-white/80">
           {info.getValue()}
         </span>
       ),
@@ -100,7 +100,7 @@ export default function EmployeesPage() {
       cell: (info) => (
         <Link
           href={`/office/employees/${info.row.original.id}`}
-          className="font-medium text-foreground underline-offset-4 hover:underline"
+          className="font-medium text-white underline-offset-4 hover:underline"
         >
           {info.getValue()}
         </Link>
@@ -108,12 +108,12 @@ export default function EmployeesPage() {
     }),
     columnHelper.accessor("contact", {
       header: "Contact",
-      cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+      cell: (info) => <span className="text-white/80">{info.getValue()}</span>,
     }),
     columnHelper.accessor("email", {
       header: "Email",
       cell: (info) => (
-        <span className="text-muted-foreground">
+        <span className="text-white/80">
           {info.getValue() ?? "—"}
         </span>
       ),
@@ -164,10 +164,10 @@ export default function EmployeesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Employees
           </h1>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             Manage your catering staff and roles.
           </p>
         </div>

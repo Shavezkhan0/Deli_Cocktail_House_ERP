@@ -280,10 +280,10 @@ export default function StockMovementsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Stock Movements
         </h1>
-        <p className="text-white-85 text-sm">
+        <p className="text-slate-600 text-sm">
           View all stock adjustments, event allocations, and damage reports.
         </p>
       </div>
