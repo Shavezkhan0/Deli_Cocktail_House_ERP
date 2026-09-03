@@ -20,14 +20,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import {
   Table,
   TableBody,
@@ -323,7 +323,7 @@ export default function WarehouseEventsPage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={deleteTarget !== null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -331,7 +331,7 @@ export default function WarehouseEventsPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <AnimatedDialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Event</DialogTitle>
             <DialogDescription>
@@ -354,8 +354,8 @@ export default function WarehouseEventsPage() {
               {deleteEvent.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

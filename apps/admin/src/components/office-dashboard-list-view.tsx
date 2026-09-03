@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { DESIGNATION_LABELS } from "@/components/employee-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,7 +239,7 @@ export function OfficeDashboardListView({
             Office Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back to Dashboard
           </Button>
         </div>
@@ -265,7 +266,7 @@ export function OfficeDashboardListView({
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Dashboard
         </Button>
       </div>

@@ -17,12 +17,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -547,13 +547,13 @@ export default function StockMovementsPage() {
         </Card>
       )}
 
-      <Dialog
+      <AnimatedDialog
         open={Boolean(selectedEventId)}
         onOpenChange={(open) => {
           if (!open) setSelectedEventId(null);
         }}
       >
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+        <AnimatedDialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {eventDetail?.event.eventName ?? "Event Movements"}
@@ -630,8 +630,8 @@ export default function StockMovementsPage() {
               </TableBody>
             </Table>
           )}
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

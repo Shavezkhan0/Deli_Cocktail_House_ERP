@@ -18,13 +18,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import {
   Table,
   TableBody,
@@ -172,12 +172,12 @@ export default function EmployeesPage() {
           </p>
         </div>
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <AnimatedDialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button />}>
             <Plus />
             Add Employee
           </DialogTrigger>
-          <DialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-2xl">
+          <AnimatedDialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
               <DialogDescription>
@@ -190,8 +190,8 @@ export default function EmployeesPage() {
                 onCancel={() => setOpen(false)}
               />
             ) : null}
-          </DialogContent>
-        </Dialog>
+          </AnimatedDialogContent>
+        </AnimatedDialog>
       </div>
 
       <Card className="glass-card-global">

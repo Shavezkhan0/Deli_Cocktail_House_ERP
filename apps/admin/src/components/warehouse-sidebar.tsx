@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
-  ArrowLeft,
   CalendarDays,
   LayoutDashboard,
   Package,
   type LucideIcon,
 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { cn } from "@/lib/utils";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
@@ -72,7 +72,7 @@ export function WarehouseSidebar() {
             href="/dashboard"
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeftIcon animateOnHover className="size-4" />
             Back to Modules
           </Link>
         </div>

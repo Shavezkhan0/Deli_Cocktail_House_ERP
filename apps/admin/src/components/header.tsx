@@ -1,11 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import {
-  ChevronDown,
-  LayoutGrid,
-  LogOut,
-} from "lucide-react";
+import { ChevronDown } from "@/components/animate-ui/icons/chevron-down";
+import { LayoutDashboard } from "@/components/animate-ui/icons/layout-dashboard";
+import { LogOut } from "@/components/animate-ui/icons/log-out";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,7 +123,7 @@ export function Header() {
                   {user?.role ?? "Administrator"}
                 </span>
               </span>
-              <ChevronDown className="size-4 text-muted-foreground" />
+              <ChevronDown animateOnHover className="size-4 text-muted-foreground" />
             </button>
           }
         />
@@ -140,11 +138,11 @@ export function Header() {
             <DropdownMenuSeparator />
           </DropdownMenuGroup>
           <DropdownMenuItem onClick={handleBackToModules}>
-            <LayoutGrid />
+            <LayoutDashboard animateOnHover className="size-4" />
             Back to Modules
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onClick={handleLogout}>
-            <LogOut />
+            <LogOut animateOnHover className="size-4" />
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

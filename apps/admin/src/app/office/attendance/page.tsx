@@ -16,12 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -338,7 +338,7 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={selectedRow != null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -346,7 +346,7 @@ export default function AttendancePage() {
           }
         }}
       >
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-2xl">
+        <AnimatedDialogContent className="w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Salary Details</DialogTitle>
             <DialogDescription>
@@ -359,8 +359,8 @@ export default function AttendancePage() {
           {selectedRow ? (
             <SalaryDetailsView row={selectedRow} month={month} year={year} />
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

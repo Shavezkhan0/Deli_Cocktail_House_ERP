@@ -1,11 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  Warehouse,
-  type LucideIcon,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight, Building2, Warehouse } from "lucide-react";
+import { CardContent } from "@/components/ui/card";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { motion } from "motion/react";
+
+import { type LucideIcon } from "lucide-react";
 
 type ModuleConfig = {
   title: string;
@@ -55,22 +56,26 @@ export default function DashboardPage() {
         {modules.map((module) => {
           const Icon = module.icon;
           return (
-            <Link key={module.href} href={module.href} className="group">
-              <Card className="glass-card-global h-full">
+            <Link key={module.href} href={module.href} className="group outline-none">
+              <motion.div
+                whileHover="hover"
+                whileTap="tap"
+                className="glass-card-global h-full"
+              >
                 <CardContent className="flex h-full flex-col gap-8 p-6">
                   <div className="flex items-start justify-between gap-4">
                     <span className="gold-icon-bg flex size-14 items-center justify-center rounded-2xl">
-                      <Icon className="size-7" />
+                      <AnimatedIcon icon={Icon} animationType="bounce" className="size-7" />
                     </span>
                     <span
-                      className="flex size-9 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-1"
+                      className="flex size-9 items-center justify-center rounded-full transition-colors group-hover:bg-white/10"
                       style={{
                         border: "1px solid rgba(255,255,255,0.35)",
                         background: "transparent",
                         color: "white",
                       }}
                     >
-                      <ArrowRight className="size-4" />
+                      <AnimatedIcon icon={ArrowRight} animationType="spin-hover" className="size-4" />
                     </span>
                   </div>
                   <div className="mt-auto space-y-1.5">
@@ -82,7 +87,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </CardContent>
-              </Card>
+              </motion.div>
             </Link>
           );
         })}

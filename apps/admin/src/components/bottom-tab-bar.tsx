@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 
 export type BottomTabItem = {
   href: string;
   label: string;
   shortLabel?: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
 };
 
 export function BottomTabBar({ items }: { items: BottomTabItem[] }) {

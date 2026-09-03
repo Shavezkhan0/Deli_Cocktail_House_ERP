@@ -3,17 +3,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  Check,
-  FileDown,
-  Loader2,
-  PackageCheck,
-  PackagePlus,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { FileDown, Loader2, PackageCheck } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
+import { Check as CheckIcon } from "@/components/animate-ui/icons/check";
+import { PackagePlus as PackagePlusIcon } from "@/components/animate-ui/icons/package-plus";
+import { Pencil as PencilIcon } from "@/components/animate-ui/icons/pencil";
+import { Plus as PlusIcon } from "@/components/animate-ui/icons/plus";
+import { Trash2 as Trash2Icon } from "@/components/animate-ui/icons/trash-2";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,14 +29,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import {
   Table,
   TableBody,
@@ -490,7 +486,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
         </div>
 
         <Button variant="outline" nativeButton={false} render={<Link href="/warehouse/events" />}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Events
         </Button>
       </div>
@@ -623,7 +619,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                                 )}
                               >
                                 {checked ? (
-                                  <Check className="size-3.5" />
+                                  <CheckIcon className="size-3.5" animation="path" />
                                 ) : null}
                               </span>
                               <span className="flex-1">
@@ -656,7 +652,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleAddSelected}
                         disabled={selectedItemIds.size === 0}
                       >
-                        <Plus />
+                        <PlusIcon animateOnHover />
                         Add Selected
                         {selectedItemIds.size > 0
                           ? ` (${selectedItemIds.size})`
@@ -715,7 +711,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                                 onClick={() => removeAllocation(row.key)}
                                 aria-label={`Remove ${row.itemName}`}
                               >
-                                <Trash2 />
+                                <Trash2Icon animateOnHover />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -727,7 +723,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleAllocate}
                         disabled={allocate.isPending || isCompleted}
                       >
-                        <PackagePlus />
+                        <PackagePlusIcon animateOnHover />
                         {allocate.isPending ? "Saving…" : "Save Item List"}
                       </Button>
                     </div>
@@ -768,7 +764,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleEditSaved}
                         disabled={isCompleted}
                       >
-                        <Pencil />
+                        <PencilIcon animateOnHover />
                         Edit Quantities
                       </Button>
                     </div>
@@ -1336,9 +1332,9 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 }
               >
                 {event.isIssued ? (
-                  <Check />
+                  <CheckIcon animation="path" />
                 ) : (
-                  <PackagePlus />
+                  <PackagePlusIcon animateOnHover />
                 )}
                 {checkout.isPending
                   ? "Issuing…"
@@ -1357,7 +1353,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 }
               >
                 {event.isReturned ? (
-                  <Check />
+                  <CheckIcon animation="path" />
                 ) : (
                   <PackageCheck />
                 )}
@@ -1381,7 +1377,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
               </Button>
               {event.isReturned && !isCompleted ? (
                 <Button variant="default" onClick={() => setCompleteOpen(true)}>
-                  <Check />
+                  <CheckIcon animateOnHover />
                   Complete Event
                 </Button>
               ) : null}
@@ -1393,7 +1389,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
           </p>
         )}
 
-        <Dialog
+        <AnimatedDialog
           open={completeOpen}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
@@ -1401,7 +1397,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
             }
           }}
         >
-          <DialogContent className="sm:max-w-sm">
+          <AnimatedDialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Complete Event</DialogTitle>
               <DialogDescription>
@@ -1421,8 +1417,8 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 {completeEvent.isPending ? "Completing…" : "Complete Event"}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </AnimatedDialogContent>
+        </AnimatedDialog>
       </CardContent>
     </Card>
   );

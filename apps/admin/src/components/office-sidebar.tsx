@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft,
   Building2,
   CalendarClock,
   CalendarX2,
@@ -12,6 +11,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { Badge } from "@/components/ui/badge";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { cn } from "@/lib/utils";
@@ -98,7 +98,7 @@ export function OfficeSidebar() {
             href="/dashboard"
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeftIcon animateOnHover className="size-4" />
             Back to Modules
           </Link>
         </div>

@@ -4,7 +4,9 @@ import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PackagePlus, Plus, Trash2 } from "lucide-react";
+import { PackagePlus as PackagePlusIcon } from "@/components/animate-ui/icons/package-plus";
+import { Plus as PlusIcon } from "@/components/animate-ui/icons/plus";
+import { Trash2 as Trash2Icon } from "@/components/animate-ui/icons/trash-2";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -466,7 +468,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                     onClick={handleAddAllocation}
                     disabled={!selectedItem || (addableItems?.length ?? 0) === 0}
                   >
-                    <Plus />
+                    <PlusIcon animateOnHover />
                     Add
                   </Button>
                 </div>
@@ -546,7 +548,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                                 onClick={() => removeAllocation(row.key)}
                                 aria-label={`Remove ${row.itemName}`}
                               >
-                                <Trash2 />
+                                <Trash2Icon animateOnHover />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -559,7 +561,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                         onClick={handleAllocate}
                         disabled={allocate.isPending}
                       >
-                        <PackagePlus />
+                        <PackagePlusIcon animateOnHover />
                         {allocate.isPending ? "Saving…" : "Save Item List"}
                       </Button>
                     </div>

@@ -4,27 +4,27 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Banknote,
   CalendarDays,
   CalendarPlus,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Circle,
-  FileText,
   Loader2,
-  Pencil,
-  Plus,
   RotateCw,
-  Trash2,
   TriangleAlert,
-  UploadCloud,
   User,
   Wallet,
 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
+import { CheckCircle2 as CheckCircle2Icon } from "@/components/animate-ui/icons/check-circle-2";
+import { FileText as FileTextIcon } from "@/components/animate-ui/icons/file-text";
+import { Pencil as PencilIcon } from "@/components/animate-ui/icons/pencil";
+import { Plus as PlusIcon } from "@/components/animate-ui/icons/plus";
+import { Trash2 as Trash2Icon } from "@/components/animate-ui/icons/trash-2";
+import { UploadCloud as UploadCloudIcon } from "@/components/animate-ui/icons/upload-cloud";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,14 +36,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -564,7 +564,7 @@ function SalaryHistoryRow({
               variant="outline"
               className="border-transparent bg-emerald-100 text-emerald-700"
             >
-              <CheckCircle2 />
+              <CheckCircle2Icon animation="path" />
               PAID
             </Badge>
           ) : (
@@ -588,7 +588,7 @@ function SalaryHistoryRow({
                 onClick={() => onMarkPaid(salary)}
                 disabled={savingPaid}
               >
-                <CheckCircle2 />
+                <CheckCircle2Icon animateOnHover />
                 Mark Paid
               </Button>
             ) : (
@@ -1409,7 +1409,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             nativeButton={false}
             render={<Link href="/office/employees" />}
           >
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back
           </Button>
           <div className="space-y-0.5">
@@ -1468,7 +1468,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 onClick={openEditModal}
                 className="shrink-0"
               >
-                <Pencil />
+                <PencilIcon animateOnHover />
                 Edit Profile
               </Button>
             </CardHeader>
@@ -1503,7 +1503,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         variant="outline"
                         className="border-transparent bg-emerald-100 text-emerald-700"
                       >
-                        <CheckCircle2 />
+                        <CheckCircle2Icon animation="path" />
                         Active
                       </Badge>
                     )
@@ -1558,7 +1558,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                       className="flex items-center justify-between gap-3 rounded-lg border p-3"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <FileText className="size-4 shrink-0 text-white/80" />
+                        <FileTextIcon className="size-4 shrink-0 text-white/80" />
                         <span className="text-sm font-medium text-white">
                           {doc.label}
                         </span>
@@ -1569,7 +1569,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             variant="outline"
                             className="border-transparent bg-emerald-100 text-emerald-700"
                           >
-                            <CheckCircle2 />
+                            <CheckCircle2Icon animation="path" />
                             Uploaded
                           </Badge>
                         ) : null}
@@ -1609,7 +1609,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             {isUploading ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
-                              <UploadCloud className="size-3.5" />
+                              <UploadCloudIcon animateOnHover className="size-3.5" />
                             )}
                             {isUploading ? "Uploading…" : "Upload"}
                             <input
@@ -1634,7 +1634,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             {isDeleting ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
-                              <Trash2 className="size-3.5" />
+                              <Trash2Icon animateOnHover className="size-3.5" />
                             )}
                             {isDeleting ? "Deleting…" : "Delete"}
                           </Button>
@@ -2180,7 +2180,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               onClick={() => deleteOverride.mutate(override.id)}
                               aria-label="Remove override"
                             >
-                              <Trash2 />
+                              <Trash2Icon animateOnHover />
                             </Button>
                           </div>
                         </TableCell>
@@ -2212,7 +2212,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               onClick={() => deleteWfh.mutate(wfh.id)}
                               aria-label="Remove work-from-home day"
                             >
-                              <Trash2 />
+                              <Trash2Icon animateOnHover />
                             </Button>
                           </div>
                         </TableCell>
@@ -2226,7 +2226,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </div>
       ) : null}
 
-      <Dialog
+      <AnimatedDialog
         open={overrideDialogDate !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -2237,7 +2237,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-md">
+        <AnimatedDialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Attendance Day</DialogTitle>
             <DialogDescription>
@@ -2347,7 +2347,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     disabled={deleteOverride.isPending}
                     onClick={() => deleteOverride.mutate(selectedOverride.id)}
                   >
-                    <Trash2 />
+                    <Trash2Icon animateOnHover />
                     Remove
                   </Button>
                 ) : null}
@@ -2396,7 +2396,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     disabled={deleteWfh.isPending}
                     onClick={handleWfhRemove}
                   >
-                    <Trash2 />
+                    <Trash2Icon animateOnHover />
                     Remove
                   </Button>
                 ) : null}
@@ -2420,8 +2420,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               Cancel
             </DialogClose>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
 
       {activeTab === "bank" ? (
         <Card className="glass-card-global">
@@ -2479,7 +2479,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 onClick={handleBankSave}
                 disabled={updateEmployee.isPending}
               >
-                <Pencil />
+                <PencilIcon animateOnHover />
                 {updateEmployee.isPending ? "Saving…" : "Save Bank Details"}
               </Button>
             </div>
@@ -2618,7 +2618,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 </div>
                 <div className="flex justify-end">
                   <Button type="submit" disabled={createExpense.isPending}>
-                    <Plus />
+                    <PlusIcon animateOnHover />
                     {createExpense.isPending ? "Adding…" : "Add Expense"}
                   </Button>
                 </div>
@@ -2741,7 +2741,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     variant="outline"
                     className="border-transparent bg-emerald-100 text-emerald-700"
                   >
-                    <CheckCircle2 />
+                    <CheckCircle2Icon animation="path" />
                     Paid
                   </Badge>
                 ) : (
@@ -2749,7 +2749,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     onClick={handleMarkCurrentMonthPaid}
                     disabled={saveSalary.isPending || currentSalaryBreakdownQuery.isPending}
                   >
-                    <CheckCircle2 />
+                    <CheckCircle2Icon animateOnHover />
                     {saveSalary.isPending ? "Saving…" : "Mark as Paid"}
                   </Button>
                 )}
@@ -2815,8 +2815,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </div>
       ) : null}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-md">
+      <AnimatedDialog open={editOpen} onOpenChange={setEditOpen}>
+        <AnimatedDialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
@@ -2963,8 +2963,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

@@ -13,14 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -437,7 +437,7 @@ export default function HolidaysPage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={dialogDate !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -445,7 +445,7 @@ export default function HolidaysPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <AnimatedDialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>
               {isEditingExisting ? "Edit Holiday" : "Add Holiday"}
@@ -511,10 +511,10 @@ export default function HolidaysPage() {
               </Button>
             </div>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </AnimatedDialogContent>
+        </AnimatedDialog>
 
-      <Dialog
+      <AnimatedDialog
         open={deleteTarget !== null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -522,7 +522,7 @@ export default function HolidaysPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <AnimatedDialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Holiday</DialogTitle>
             <DialogDescription>
@@ -547,8 +547,8 @@ export default function HolidaysPage() {
               {deleteHoliday.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

@@ -158,8 +158,8 @@
 }
 
 .gold-icon-bg {
-  background: rgba(247, 217, 138, 0.25) !important;
-  color: #f7d98a !important;
+  background: linear-gradient(135deg, #d4af37, #8a6a1a) !important;
+  color: #ffffff !important;
 }
 
 .text-gold-accent {

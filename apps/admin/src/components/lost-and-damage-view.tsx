@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  ArrowLeft,
   PackageX,
   RotateCw,
   type LucideIcon,
 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -153,7 +153,7 @@ export function LostAndDamageView({
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Dashboard
         </Button>
       </div>
@@ -166,7 +166,7 @@ export function LostAndDamageView({
             className="self-start"
             onClick={() => setSelectedKind(null)}
           >
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back to Lost &amp; Damage
           </Button>
 

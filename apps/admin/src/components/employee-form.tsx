@@ -2,7 +2,10 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Loader2, UploadCloud, XCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { FileText as FileTextIcon } from "@/components/animate-ui/icons/file-text";
+import { UploadCloud as UploadCloudIcon } from "@/components/animate-ui/icons/upload-cloud";
+import { XCircle as XCircleIcon } from "@/components/animate-ui/icons/x-circle";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -278,7 +281,7 @@ function DocumentField({
   if (state.url) {
     return (
       <div className="flex h-8 items-center gap-2 rounded-lg border border-dashed border-border px-2.5 text-sm">
-        <FileText className="size-4 shrink-0 text-muted-foreground" />
+        <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-foreground">
           {state.fileName}
         </span>
@@ -288,7 +291,7 @@ function DocumentField({
           size="xs"
           onClick={() => onRemove(docKey)}
         >
-          <XCircle />
+          <XCircleIcon animateOnHover />
           Remove
         </Button>
       </div>
@@ -304,7 +307,7 @@ function DocumentField({
         </span>
       </label>
       <label className="flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-        <UploadCloud className="size-4 shrink-0" />
+        <UploadCloudIcon animateOnHover className="size-4 shrink-0" />
         Choose file
         <input
           type="file"

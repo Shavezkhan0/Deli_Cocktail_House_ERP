@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, PackageX } from "lucide-react";
+import { PackageX } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -540,7 +541,7 @@ export default function DashboardListView({
             Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back to Dashboard
           </Button>
         </div>
@@ -565,7 +566,7 @@ export default function DashboardListView({
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Dashboard
         </Button>
       </div>

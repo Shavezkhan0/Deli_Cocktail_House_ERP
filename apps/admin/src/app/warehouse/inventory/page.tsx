@@ -19,15 +19,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -598,12 +598,12 @@ export default function WarehouseInventoryPage() {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={handleOpenChange}>
+          <AnimatedDialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger render={<Button onClick={startCreate} />}>
             <Plus />
             Add Item
           </DialogTrigger>
-          <DialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-lg">
+          <AnimatedDialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Edit Inventory Item" : "Create New Inventory Item"}
@@ -796,8 +796,8 @@ export default function WarehouseInventoryPage() {
                 </Button>
               </DialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </AnimatedDialogContent>
+        </AnimatedDialog>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -954,7 +954,7 @@ export default function WarehouseInventoryPage() {
         ) : null}
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={deleteTarget !== null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -962,7 +962,7 @@ export default function WarehouseInventoryPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <AnimatedDialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Item</DialogTitle>
             <DialogDescription>
@@ -985,8 +985,8 @@ export default function WarehouseInventoryPage() {
               {deleteItem.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }
