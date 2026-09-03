@@ -104,11 +104,11 @@ function ErrorRow({
     <TableRow>
       <TableCell colSpan={colSpan} className="py-10 text-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">
+          <Loader2 className="size-8 text-white/60" />
+          <p className="text-sm font-medium text-white">
             Unable to load data
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             Make sure the API is running and try again.
           </p>
           <Button variant="outline" size="sm" onClick={onRetry}>
@@ -125,7 +125,7 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
     <TableRow>
       <TableCell
         colSpan={colSpan}
-        className="py-10 text-center text-muted-foreground"
+        className="py-10 text-center text-white-85"
       >
         {label}
       </TableCell>
@@ -234,7 +234,7 @@ export function OfficeDashboardListView({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-white">
             Office Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
@@ -242,8 +242,8 @@ export function OfficeDashboardListView({
             Back to Dashboard
           </Button>
         </div>
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+        <Card className="glass-card-global">
+          <CardContent className="py-10 text-center text-sm text-white-85">
             Unknown dashboard view: {viewId}
           </CardContent>
         </Card>
@@ -255,10 +255,10 @@ export function OfficeDashboardListView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-white">
             {displayTitle}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             {isToday
               ? "Filtered list for the selected metric."
               : `Showing data for ${formatDateLong(date)}.`}
@@ -270,9 +270,9 @@ export function OfficeDashboardListView({
         </Button>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>{displayTitle}</CardTitle>
+          <CardTitle className="text-white font-bold">{displayTitle}</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -304,7 +304,7 @@ export function OfficeDashboardListView({
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-white-85 text-xs">
                   Showing {paginatedEmployees.length} of {allEmployees.length} employees
                 </span>
               </div>
@@ -317,7 +317,7 @@ export function OfficeDashboardListView({
                 >
                   Previous
                 </Button>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-white-85 text-xs">
                   Page {safePage} of {totalPages}
                 </span>
                 <Button

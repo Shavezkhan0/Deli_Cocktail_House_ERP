@@ -36,7 +36,6 @@ import {
 import { ItemsTable, type DashboardItem } from "@/components/dashboard-list-view";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 const CATEGORIES: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "SETUP", label: "Setup", icon: Settings },
@@ -51,33 +50,16 @@ const CATEGORIES: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "OTHER", label: "Other", icon: Package },
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  SETUP: "bg-sky-100 text-sky-700",
-  UNIFORM: "bg-violet-100 text-violet-700",
-  GLASSWARE: "bg-emerald-100 text-emerald-700",
-  DISPOSALS: "bg-amber-100 text-amber-700",
-  CONSUMABLE: "bg-rose-100 text-rose-700",
-  SYRUP: "bg-pink-100 text-pink-700",
-  BEVERAGE: "bg-cyan-100 text-cyan-700",
-  ENTERTAINMENT: "bg-purple-100 text-purple-700",
-  CARTS: "bg-orange-100 text-orange-700",
-  OTHER: "bg-slate-100 text-slate-700",
-};
-
-function categoryColor(category: string): string {
-  return CATEGORY_COLORS[category] ?? "bg-indigo-100 text-indigo-700";
-}
-
 function CategoryCardSkeleton() {
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="flex flex-col gap-2.5">
-          <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-28 animate-pulse rounded bg-white/15" />
+          <div className="h-8 w-16 animate-pulse rounded bg-white/15" />
+          <div className="h-3 w-12 animate-pulse rounded bg-white/15" />
         </div>
-        <div className="size-11 animate-pulse rounded-xl bg-muted" />
+        <div className="size-11 animate-pulse rounded-xl bg-white/15" />
       </CardContent>
     </Card>
   );
@@ -134,10 +116,10 @@ export function CategoryBreakdownView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-white">
             Category Breakdown
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             {selected
               ? `Items filed under ${selected.label}.`
               : "Browse warehouse items grouped by category."}
@@ -161,9 +143,9 @@ export function CategoryBreakdownView({
             Back to Categories
           </Button>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>
+              <CardTitle className="text-white font-bold">
                 {selected.label} ({counts[selected.value] ?? 0} items)
               </CardTitle>
             </CardHeader>
@@ -197,7 +179,7 @@ export function CategoryBreakdownView({
                         ))}
                       </SelectContent>
                     </Select>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-white-85 text-xs">
                       Showing {paginatedCategoryItems.length} of{" "}
                       {categoryItems.length} items
                     </span>
@@ -211,7 +193,7 @@ export function CategoryBreakdownView({
                     >
                       Previous
                     </Button>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-white-85 text-xs">
                       Page {safePage} of {totalPages}
                     </span>
                     <Button
@@ -235,14 +217,14 @@ export function CategoryBreakdownView({
           ))}
         </div>
       ) : isError || !items ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <PackageX className="size-8 text-muted-foreground" />
+            <PackageX className="size-8 text-white/60" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 Unable to load categories
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-white-85 text-sm">
                 Make sure the API is running and try again.
               </p>
             </div>
@@ -260,24 +242,19 @@ export function CategoryBreakdownView({
               <Card
                 key={category.value}
                 onClick={() => setSelectedCategory(category.value)}
-                className="group relative cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/25"
+                className="glass-card-global group relative cursor-pointer overflow-hidden"
               >
                 <CardContent className="relative flex items-start justify-between gap-4 p-5">
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-white-85 text-sm font-medium">
                       {category.label}
                     </p>
-                    <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                    <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
                       {(counts[category.value] ?? 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">items</p>
+                    <p className="text-white-85 text-xs">items</p>
                   </div>
-                  <span
-                    className={cn(
-                      "flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-                      categoryColor(category.value),
-                    )}
-                  >
+                  <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
                     <Icon className="size-5" />
                   </span>
                 </CardContent>

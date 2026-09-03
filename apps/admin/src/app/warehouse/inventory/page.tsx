@@ -590,10 +590,10 @@ export default function WarehouseInventoryPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-white">
               Inventory
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-white-85 text-sm">
               Browse all warehouse stock, available quantities and stock levels.
             </p>
           </div>
@@ -828,9 +828,9 @@ export default function WarehouseInventoryPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>All Items</CardTitle>
+          <CardTitle className="text-white font-bold">All Items</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>

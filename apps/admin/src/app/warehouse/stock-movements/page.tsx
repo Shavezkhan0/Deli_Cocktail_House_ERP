@@ -280,10 +280,10 @@ export default function StockMovementsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-white">
           Stock Movements
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-white-85 text-sm">
           View all stock adjustments, event allocations, and damage reports.
         </p>
       </div>
@@ -306,10 +306,10 @@ export default function StockMovementsPage() {
       </div>
 
       {activeTab === "movements" ? (
-        <Card>
+        <Card className="glass-card-global">
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>All Movements</CardTitle>
+            <CardTitle className="text-white font-bold">All Movements</CardTitle>
             <div className="flex flex-wrap items-center gap-3">
               <Input
                 value={searchQuery}
@@ -471,10 +471,10 @@ export default function StockMovementsPage() {
         </CardContent>
       </Card>
       ) : (
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>Event Movements</CardTitle>
+              <CardTitle className="text-white font-bold">Event Movements</CardTitle>
               <Select
                 value={eventStatusFilter}
                 onValueChange={(value) =>

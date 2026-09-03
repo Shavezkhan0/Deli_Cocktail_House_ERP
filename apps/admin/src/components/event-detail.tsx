@@ -474,7 +474,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-white">
               {event.eventName}
             </h1>
             <Badge
@@ -484,7 +484,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
               {event.status}
             </Badge>
           </div>
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="font-mono text-xs text-white-85">
             {event.eventCode}
           </p>
         </div>
@@ -496,9 +496,9 @@ export function EventDetail({ eventId }: { eventId: string }) {
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
-            <CardTitle>Event Details</CardTitle>
+            <CardTitle className="text-white font-bold">Event Details</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -512,12 +512,12 @@ export function EventDetail({ eventId }: { eventId: string }) {
         </Card>
 
         <>
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle>Item List</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white font-bold">Item List</CardTitle>
+                <CardDescription className="text-white-85">
                   Add the items and quantities needed for this event.
                 </CardDescription>
               </div>
@@ -1127,10 +1127,10 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
   );
 
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardHeader className="border-b">
-        <CardTitle>Summary</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-white font-bold">Summary</CardTitle>
+        <CardDescription className="text-white-85">
           Issue items to the event from IMS, and record returned, damaged and
           lost quantities when the event wraps up.
         </CardDescription>

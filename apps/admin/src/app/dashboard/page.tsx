@@ -6,7 +6,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 type ModuleConfig = {
   title: string;
@@ -38,14 +37,18 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
             Module Selection
           </h1>
-          <div className="mt-1 h-0.5 w-16 rounded-full bg-primary" />
+          <div
+            style={{
+              borderBottom: "3px solid #f7d98a",
+              width: "4rem",
+              marginTop: "8px",
+            }}
+          />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Choose a module to get started.
-        </p>
+        <p className="text-white-85 text-sm">Choose a module to get started.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -53,26 +56,28 @@ export default function DashboardPage() {
           const Icon = module.icon;
           return (
             <Link key={module.href} href={module.href} className="group">
-              <Card className="h-full transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-xl group-hover:shadow-primary/15 group-hover:ring-2 group-hover:ring-primary/40">
+              <Card className="glass-card-global h-full">
                 <CardContent className="flex h-full flex-col gap-8 p-6">
                   <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={cn(
-                        "flex size-14 items-center justify-center rounded-2xl",
-                        module.accent,
-                      )}
-                    >
+                    <span className="gold-icon-bg flex size-14 items-center justify-center rounded-2xl">
                       <Icon className="size-7" />
                     </span>
-                    <span className="flex size-9 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary">
+                    <span
+                      className="flex size-9 items-center justify-center rounded-full transition-transform duration-200 group-hover:translate-x-1"
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        background: "transparent",
+                        color: "white",
+                      }}
+                    >
                       <ArrowRight className="size-4" />
                     </span>
                   </div>
                   <div className="mt-auto space-y-1.5">
-                    <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    <h2 className="text-lg font-bold tracking-tight text-white">
                       {module.title}
                     </h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
+                    <p className="text-white-85 text-sm leading-relaxed">
                       {module.description}
                     </p>
                   </div>

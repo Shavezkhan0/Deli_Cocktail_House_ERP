@@ -164,10 +164,10 @@ export default function EmployeesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
             Employees
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             Manage your catering staff and roles.
           </p>
         </div>
@@ -194,9 +194,9 @@ export default function EmployeesPage() {
         </Dialog>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>All Employees</CardTitle>
+          <CardTitle className="text-white font-bold">All Employees</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -218,7 +218,7 @@ export default function EmployeesPage() {
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell colSpan={columns.length}>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-full animate-pulse rounded bg-white/15" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -226,10 +226,10 @@ export default function EmployeesPage() {
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-white">
                         Unable to load employees
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-white-85 text-sm">
                         Make sure the API is running and try again.
                       </p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -242,7 +242,7 @@ export default function EmployeesPage() {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
+                    className="py-10 text-center text-white-85"
                   >
                     No employees yet. Add your first employee.
                   </TableCell>

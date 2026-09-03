@@ -201,10 +201,10 @@ export default function WarehouseEventsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
             Events
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             Scheduled events and their site allocation status.
           </p>
         </div>
@@ -239,9 +239,9 @@ export default function WarehouseEventsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>
+          <CardTitle className="text-white font-bold">
             {statusFilter === ""
               ? "All Events"
               : statusFilter === "ONGOING"

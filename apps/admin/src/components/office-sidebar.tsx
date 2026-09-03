@@ -52,14 +52,14 @@ export function OfficeSidebar() {
         <div
           key={item.label}
           className={cn(
-            "flex items-center rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground",
+            "flex items-center rounded-lg px-3 py-2 text-sm font-medium text-white-85",
             mobile ? "shrink-0 gap-2" : "gap-3",
             "opacity-70",
           )}
         >
           <Icon className="size-4" />
           {item.label}
-          <Badge variant="outline" className="ml-auto border-dashed text-muted-foreground">
+          <Badge variant="outline" className="ml-auto border-dashed text-white-85">
             Future
           </Badge>
         </div>
@@ -75,7 +75,7 @@ export function OfficeSidebar() {
           mobile ? "shrink-0 gap-2" : "gap-3",
           active
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            : "text-white-85 hover:bg-white/10 hover:text-white",
         )}
       >
         <Icon className="size-4" />
@@ -88,7 +88,7 @@ export function OfficeSidebar() {
     <>
       <BottomTabBar items={navItems.filter((item) => !item.future)} />
 
-      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm lg:flex">
+      <aside className="glass-card-global sticky top-16 hidden h-[calc(100vh-5.5rem)] w-64 shrink-0 flex-col p-3 lg:flex">
         <nav className="mt-3 flex flex-col gap-1">
           {navItems.map((item) => renderLink(item))}
         </nav>
@@ -96,7 +96,7 @@ export function OfficeSidebar() {
         <div className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
           <Link
             href="/dashboard"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white"
           >
             <ArrowLeft className="size-4" />
             Back to Modules

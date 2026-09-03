@@ -81,9 +81,17 @@ export function Header() {
   const initials = getInitials(user?.name, user?.email);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-primary/30 bg-gradient-to-r from-background via-background to-accent/20 px-6">
+    <header
+      className="flex h-16 shrink-0 items-center justify-between px-6 sticky top-0 z-50"
+      style={{
+        background: "rgba(255,255,255,0.06)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        borderBottom: "1px solid rgba(255,255,255,0.15)",
+      }}
+    >
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/40 shadow-md shadow-primary/20">
+        <div className="gold-gradient-circle flex size-9 items-center justify-center overflow-hidden rounded-xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={branding.logo}
@@ -92,10 +100,10 @@ export function Header() {
           />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-tight text-primary">
+          <p className="text-gold-accent text-sm font-semibold tracking-tight">
             {branding.title}
           </p>
-          <p className="text-xs text-muted-foreground">{branding.subtitle}</p>
+          <p className="text-white-85 text-xs">{branding.subtitle}</p>
         </div>
       </div>
 
@@ -106,14 +114,14 @@ export function Header() {
               type="button"
               className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-primary/50 shadow-sm shadow-primary/20">
+              <span className="gold-gradient-circle flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
                 {initials}
               </span>
               <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-sm font-medium text-foreground">
+                <span className="block text-sm font-medium text-white">
                   {user?.name ?? "Admin"}
                 </span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-white-85 text-xs">
                   {user?.role ?? "Administrator"}
                 </span>
               </span>

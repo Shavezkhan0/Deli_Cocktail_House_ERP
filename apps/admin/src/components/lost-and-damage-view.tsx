@@ -32,7 +32,6 @@ import {
 } from "@/components/dashboard-list-view";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 type Kind = "lost" | "damage";
 
@@ -58,14 +57,14 @@ const KIND_CARDS: {
 
 function SummaryCardSkeleton() {
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="flex flex-col gap-2.5">
-          <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-28 animate-pulse rounded bg-white/15" />
+          <div className="h-8 w-16 animate-pulse rounded bg-white/15" />
+          <div className="h-3 w-12 animate-pulse rounded bg-white/15" />
         </div>
-        <div className="size-11 animate-pulse rounded-xl bg-muted" />
+        <div className="size-11 animate-pulse rounded-xl bg-white/15" />
       </CardContent>
     </Card>
   );
@@ -142,10 +141,10 @@ export function LostAndDamageView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-white">
             Lost &amp; Damage
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             {selected
               ? selected.kind === "lost"
                 ? "Items reported lost across events."
@@ -171,9 +170,9 @@ export function LostAndDamageView({
             Back to Lost &amp; Damage
           </Button>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>
+              <CardTitle className="text-white font-bold">
                 {selected.kind === "lost" ? "Lost Items" : "Damaged Items"}
               </CardTitle>
             </CardHeader>
@@ -218,7 +217,7 @@ export function LostAndDamageView({
                         ))}
                       </SelectContent>
                     </Select>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-white-85 text-xs">
                       Showing {paginatedActiveItems.length} of{" "}
                       {activeItems.length} items
                     </span>
@@ -232,7 +231,7 @@ export function LostAndDamageView({
                     >
                       Previous
                     </Button>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-white-85 text-xs">
                       Page {safePage} of {totalPages}
                     </span>
                     <Button
@@ -256,14 +255,14 @@ export function LostAndDamageView({
           ))}
         </div>
       ) : isError ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <PackageX className="size-8 text-muted-foreground" />
+            <PackageX className="size-8 text-white/60" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 Unable to load lost &amp; damage data
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-white-85 text-sm">
                 Make sure the API is running and try again.
               </p>
             </div>
@@ -281,24 +280,19 @@ export function LostAndDamageView({
               <Card
                 key={card.kind}
                 onClick={() => setSelectedKind(card.kind)}
-                className="group relative cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/25"
+                className="glass-card-global group relative cursor-pointer overflow-hidden"
               >
                 <CardContent className="relative flex items-start justify-between gap-4 p-5">
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-white-85 text-sm font-medium">
                       {card.label}
                     </p>
-                    <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                    <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
                       {totals[card.kind].toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">items</p>
+                    <p className="text-white-85 text-xs">items</p>
                   </div>
-                  <span
-                    className={cn(
-                      "flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-                      card.accentClass,
-                    )}
-                  >
+                  <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
                     <Icon className="size-5" />
                   </span>
                 </CardContent>

@@ -233,22 +233,22 @@ export default function HolidaysPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-white">
           Holidays
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-white-85 text-sm">
           Manage system-wide holidays. Holidays are non-working days and are
           excluded from salary deductions. Past dates can be added or edited
           too — useful for backfilling holidays that were missed.
         </p>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <CardTitle>Holiday Calendar</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white font-bold">Holiday Calendar</CardTitle>
+              <CardDescription className="text-white-85">
                 Click any date — past or future — to add or edit a holiday.
               </CardDescription>
             </div>
@@ -262,7 +262,7 @@ export default function HolidaysPage() {
               >
                 <ChevronLeft />
               </Button>
-              <span className="min-w-32 text-center text-sm font-semibold text-foreground">
+              <span className="min-w-32 text-center text-sm font-semibold text-white">
                 {calendarMonthLabel}
               </span>
               <Button
@@ -283,7 +283,7 @@ export default function HolidaysPage() {
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div
                   key={day}
-                  className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-white-85"
                 >
                   {day}
                 </div>
@@ -322,7 +322,7 @@ export default function HolidaysPage() {
                       "relative flex aspect-square min-h-9 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
                       holiday
                         ? "text-white shadow-sm"
-                        : "bg-muted/60 text-muted-foreground",
+                        : "bg-white/10 text-white-85",
                       isToday
                         ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
                         : "",
@@ -337,24 +337,24 @@ export default function HolidaysPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white-85">
               <span
                 className="size-2.5 rounded-full"
                 style={{ backgroundColor: HOLIDAY_COLOR }}
               />
               Holiday
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <span className="size-2.5 rounded-full bg-muted-foreground/30" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white-85">
+              <span className="size-2.5 rounded-full bg-white-85/30" />
               No holiday — click to add
             </span>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>All Holidays</CardTitle>
+          <CardTitle className="text-white font-bold">All Holidays</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -372,7 +372,7 @@ export default function HolidaysPage() {
                 Array.from({ length: 3 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell colSpan={3}>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-full animate-pulse rounded bg-white/15" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -380,7 +380,7 @@ export default function HolidaysPage() {
                 <TableRow>
                   <TableCell colSpan={3} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-white">
                         Unable to load holidays
                       </p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -393,7 +393,7 @@ export default function HolidaysPage() {
                 <TableRow>
                   <TableCell
                     colSpan={3}
-                    className="py-10 text-center text-muted-foreground"
+                    className="py-10 text-center text-white-85"
                   >
                     No holidays added yet.
                   </TableCell>

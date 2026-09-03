@@ -349,9 +349,9 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
   }
 
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardHeader className="border-b">
-        <CardTitle>Event Details</CardTitle>
+        <CardTitle className="text-white font-bold">Event Details</CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -423,12 +423,12 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
           </div>
 
           {isEditing ? (
-            <Card>
+            <Card className="glass-card-global">
               <CardHeader className="border-b">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <CardTitle>Item List</CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <CardTitle className="text-white font-bold">Item List</CardTitle>
+                    <p className="text-white-85 text-sm">
                       Add the items and quantities needed for this event.
                     </p>
                   </div>
@@ -565,7 +565,7 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-white-85 text-sm">
                     No items added yet. Select an item above to add it to this
                     event.
                   </p>
@@ -573,8 +573,8 @@ export function EventForm({ initialData }: { initialData?: EventFormData }) {
               </CardContent>
             </Card>
           ) : (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-white/20 p-8 text-center">
+              <p className="text-white-85 text-sm">
                 Save the event first to manage the item list.
               </p>
             </div>
