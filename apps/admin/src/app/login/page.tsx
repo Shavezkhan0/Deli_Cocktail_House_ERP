@@ -101,20 +101,20 @@ export default function LoginPage() {
 
   if (isLoading || isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/20">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-accent/20 to-muted/30">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-accent/20 to-muted/30 p-4">
+      <Card className="w-full max-w-sm shadow-2xl shadow-primary/10 ring-1 ring-primary/20">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary/20">
             <GlassWater className="size-6" />
           </div>
-          <CardTitle className="text-xl">Welcome back</CardTitle>
+          <CardTitle className="text-foreground text-2xl font-bold">Welcome back</CardTitle>
           <CardDescription>
             {otpSent
               ? `Enter the 6-digit code sent to ${email.trim()}`

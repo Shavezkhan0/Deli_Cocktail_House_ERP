@@ -42,7 +42,7 @@ export function ModuleSidebar({
           mobile ? "shrink-0 gap-2" : "gap-3",
           active
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            : "text-muted-foreground hover:bg-accent hover:text-foreground hover:ring-1 hover:ring-primary/20 transition-all",
         )}
       >
         <TabIcon className="size-4" />
@@ -55,7 +55,7 @@ export function ModuleSidebar({
     <>
       <BottomTabBar items={tabs} />
 
-      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm lg:flex">
+      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm shadow-lg lg:flex">
         <nav className="mt-3 flex flex-col gap-1">
           {tabs.map((tab) => renderLink(tab))}
         </nav>

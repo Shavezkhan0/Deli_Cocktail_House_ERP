@@ -81,9 +81,9 @@ export function Header() {
   const initials = getInitials(user?.name, user?.email);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-primary/30 bg-gradient-to-r from-background via-background to-accent/20 px-6">
       <div className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm">
+        <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/40 shadow-md shadow-primary/20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={branding.logo}
@@ -92,7 +92,7 @@ export function Header() {
           />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-tight text-foreground">
+          <p className="text-sm font-semibold tracking-tight text-primary">
             {branding.title}
           </p>
           <p className="text-xs text-muted-foreground">{branding.subtitle}</p>
@@ -106,7 +106,7 @@ export function Header() {
               type="button"
               className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-primary/50 shadow-sm shadow-primary/20">
                 {initials}
               </span>
               <span className="hidden text-left leading-tight sm:block">
