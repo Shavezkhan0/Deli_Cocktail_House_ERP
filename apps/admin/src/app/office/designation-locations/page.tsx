@@ -486,14 +486,14 @@ export default function DesignationLocationsPage() {
                               </Button>
                             </>
                           ) : (
-<Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openForm(designation)}
-                        >
-                          <Plus className="size-4" />
-                          Assign
-                        </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => openForm(designation)}
+                            >
+                              <Plus className="size-4" />
+                              Assign
+                            </Button>
                           )}
                         </div>
                       </TableCell>

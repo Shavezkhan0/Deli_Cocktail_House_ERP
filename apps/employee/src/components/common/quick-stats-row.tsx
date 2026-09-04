@@ -208,10 +208,15 @@ export function QuickStatsRow() {
           <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white/60 ring-1 ring-white/15">
             Unavailable
           </span>
-        ) : isMarked ? (
+        ) : isMarked && attendance.data?.attendance?.status !== "ABSENT" ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40">
             <Check className="size-3.5" />
             {checkInTime ? `Checked in · ${formatTime(checkInTime)}` : "Present"}
+          </span>
+        ) : isMarked && attendance.data?.attendance?.status === "ABSENT" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300 ring-1 ring-red-500/40">
+            <Clock className="size-3.5" />
+            Absent
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white/80 ring-1 ring-white/20">

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft,
   Briefcase,
   CalendarCheck,
   CalendarDays,
@@ -142,13 +141,6 @@ export function RoleSidebar() {
         </nav>
 
         <div className="mt-auto border-t border-white/10 pt-3">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Modules
-          </Link>
           <div className="mt-2">
             <LogoutButton className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white" />
           </div>
