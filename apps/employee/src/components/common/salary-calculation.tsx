@@ -63,7 +63,7 @@ function formatEntryDate(value: string): string {
 
 function SectionRow({ children }: { children: ReactNode }) {
   return (
-    <div className="pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
+    <div className="pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "rgba(0,0,0,0.5)" }}>
       {children}
     </div>
   );
@@ -84,27 +84,28 @@ function CalcRow({
 }) {
   const valueColor =
     tone === "pos"
-      ? "text-emerald-400"
+      ? "#059669"
       : tone === "neg"
-        ? "text-rose-400"
+        ? "#e11d48"
         : tone === "muted"
-          ? "text-white/50"
-          : "text-white";
+          ? "rgba(0,0,0,0.5)"
+          : "#000";
   return (
     <div className="flex items-start justify-between gap-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-white">{label}</p>
+        <p className="text-sm" style={{ color: "#000" }}>{label}</p>
         {hint ? (
-          <p className="break-words text-[11px] text-white/50">{hint}</p>
+          <p className="break-words text-[11px]" style={{ color: "rgba(0,0,0,0.5)" }}>{hint}</p>
         ) : null}
         {extra ? (
-          <div className="mt-0.5 space-y-0.5 break-words text-[11px] text-white/50">
+          <div className="mt-0.5 space-y-0.5 break-words text-[11px]" style={{ color: "rgba(0,0,0,0.5)" }}>
             {extra}
           </div>
         ) : null}
       </div>
       <span
-        className={`shrink-0 whitespace-nowrap text-right text-sm font-medium tabular-nums ${valueColor}`}
+        className="shrink-0 whitespace-nowrap text-right text-sm font-medium tabular-nums"
+        style={{ color: valueColor }}
       >
         {value}
       </span>
@@ -133,18 +134,18 @@ export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
     paidLeave.overageDays > 0 || shortLeave.overageDays > 0;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-      <div className="border-b border-white/10 px-4 py-3">
-        <h4 className="text-sm font-bold text-white">
+    <div className="overflow-hidden rounded-2xl border" style={{ background: "#fff", borderColor: "rgba(0,0,0,0.1)" }}>
+      <div className="border-b px-4 py-3" style={{ borderColor: "rgba(0,0,0,0.1)" }}>
+        <h4 className="text-sm font-bold" style={{ color: "#000" }}>
           Salary Calculation
         </h4>
-        <p className="mt-0.5 text-xs text-white/50">
+        <p className="mt-0.5 text-xs" style={{ color: "rgba(0,0,0,0.5)" }}>
           How {formatCurrency(baseSalary)} becomes {formatCurrency(finalAmount)}{" "}
           for {monthLabel(month, year)}
         </p>
       </div>
 
-      <div className="divide-y divide-white/10 px-4">
+      <div className="px-4" style={{ borderColor: "rgba(0,0,0,0.1)" }}>
         <CalcRow
           label={`Base salary`}
           hint={`${daysInMonth}-day month`}
@@ -223,16 +224,16 @@ export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
         ) : null}
 
         <div className="flex items-center justify-between gap-3 py-3">
-          <span className="text-sm font-bold text-white">
+          <span className="text-sm font-bold" style={{ color: "#000" }}>
             Net payable
           </span>
-          <span className="text-base font-bold tabular-nums text-white">
+          <span className="text-base font-bold tabular-nums" style={{ color: "#000" }}>
             {formatCurrency(finalAmount)}
           </span>
         </div>
       </div>
 
-      <div className="space-y-1 border-t border-white/10 px-4 py-3 text-[11px] leading-relaxed text-white/40">
+      <div className="space-y-1 border-t px-4 py-3 text-[11px] leading-relaxed" style={{ borderColor: "rgba(0,0,0,0.1)", color: "rgba(0,0,0,0.4)" }}>
         <p>
           Attendance: {attendance.PRESENT} present · {attendance.HALF_DAY} half{" "}
           · {attendance.SHORT_LEAVE} short · {attendance.ON_LEAVE} on leave ·{" "}

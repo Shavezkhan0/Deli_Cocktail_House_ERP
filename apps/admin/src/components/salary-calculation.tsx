@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -90,7 +91,15 @@ function formatEntryDate(value: string): string {
   });
 }
 
-export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
+export function SalaryCalculation({
+  data,
+  variant = "glass",
+  className,
+}: {
+  data: SalaryCalcData;
+  variant?: "glass" | "default";
+  className?: string;
+}) {
   const {
     month,
     year,
@@ -110,18 +119,46 @@ export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
   const showDeductions =
     paidLeave.overageDays > 0 || shortLeave.overageDays > 0;
 
+  const isGlass = variant === "glass";
+
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <div className="border-b border-border px-5 py-3">
-        <h4 className="text-sm font-semibold text-foreground">
+    <div
+      className={cn(
+        "rounded-xl overflow-hidden",
+        isGlass
+          ? "border border-white/15 bg-white/10 text-white shadow-sm salary-calc-glass"
+          : "border border-border bg-card text-card-foreground shadow-sm",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "px-5 py-3.5",
+          isGlass
+            ? "border-b border-white/15 bg-white/5"
+            : "border-b border-border bg-muted/20",
+        )}
+      >
+        <h4
+          className={cn(
+            "text-sm font-semibold",
+            isGlass ? "text-white" : "text-foreground",
+          )}
+        >
           Salary Calculation
         </h4>
-        <p className="text-xs text-muted-foreground">
+        <p
+          className={cn(
+            "text-xs mt-0.5",
+            isGlass ? "text-white-85" : "text-muted-foreground",
+          )}
+        >
           How {formatSalary(baseSalary)} becomes {formatSalary(finalAmount)} for{" "}
           {MONTH_NAMES[month - 1]} {year}
         </p>
       </div>
-      <div className="p-5">
+
+      <div className="p-4 sm:p-5">
         <Table className="w-full table-fixed text-xs sm:text-sm">
           <colgroup>
             <col className="w-auto" />
@@ -130,69 +167,176 @@ export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
             <col className="w-24" />
           </colgroup>
           <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead className="whitespace-normal text-right">
+            <TableRow
+              className={cn(
+                isGlass
+                  ? "border-b border-white/15 hover:bg-transparent"
+                  : "border-b border-border",
+              )}
+            >
+              <TableHead
+                className={cn(isGlass ? "text-white-85 font-semibold" : "")}
+              >
+                Item
+              </TableHead>
+              <TableHead
+                className={cn(
+                  "whitespace-normal text-right font-semibold",
+                  isGlass ? "text-white-85" : "",
+                )}
+              >
                 Days charged
               </TableHead>
-              <TableHead className="text-right">Rate</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead
+                className={cn(
+                  "text-right font-semibold",
+                  isGlass ? "text-white-85" : "",
+                )}
+              >
+                Rate
+              </TableHead>
+              <TableHead
+                className={cn(
+                  "text-right font-semibold",
+                  isGlass ? "text-white-85" : "",
+                )}
+              >
+                Amount
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell className="whitespace-normal break-words">
+            <TableRow
+              className={cn(
+                isGlass
+                  ? "border-b border-white/10 hover:bg-white/5"
+                  : "border-b border-border/50",
+              )}
+            >
+              <TableCell
+                className={cn(
+                  "whitespace-normal break-words",
+                  isGlass ? "text-white" : "",
+                )}
+              >
                 Base salary ({daysInMonth}-day month)
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
                 —
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
                 —
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap font-medium",
+                  isGlass ? "text-white" : "text-foreground",
+                )}
+              >
                 {formatSalary(baseSalary)}
               </TableCell>
             </TableRow>
-            <TableRow>
-              <TableCell className="whitespace-normal break-words">
+
+            <TableRow
+              className={cn(
+                isGlass
+                  ? "border-b border-white/10 hover:bg-white/5"
+                  : "border-b border-border/50",
+              )}
+            >
+              <TableCell
+                className={cn(
+                  "whitespace-normal break-words",
+                  isGlass ? "text-white" : "",
+                )}
+              >
                 Daily wage = base ÷ {daysInMonth}
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
                 —
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap font-medium",
+                  isGlass ? "text-white" : "text-foreground",
+                )}
+              >
                 {formatSalary(dailyWage)}
               </TableCell>
-              <TableCell className="text-right tabular-nums whitespace-nowrap">
+              <TableCell
+                className={cn(
+                  "text-right tabular-nums whitespace-nowrap",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
                 —
               </TableCell>
             </TableRow>
 
             {showEarnings ? (
-              <TableRow>
+              <TableRow
+                className={cn(isGlass ? "border-b border-white/10" : "")}
+              >
                 <TableCell
                   colSpan={4}
-                  className="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    "text-xs font-semibold uppercase tracking-wide py-2 px-3",
+                    isGlass
+                      ? "bg-white/10 text-white/90"
+                      : "bg-muted/40 text-muted-foreground",
+                  )}
                 >
                   Earnings
                 </TableCell>
               </TableRow>
             ) : null}
+
             {data.holidayWork.extraDays > 0 ? (
-              <TableRow>
+              <TableRow
+                className={cn(
+                  isGlass
+                    ? "border-b border-white/10 hover:bg-white/5"
+                    : "border-b border-border/50",
+                )}
+              >
                 <TableCell className="whitespace-normal break-words">
-                  <div>Holiday / Sunday work</div>
-                  <div className="text-[11px] text-muted-foreground break-words">
+                  <div className={cn(isGlass ? "text-white font-medium" : "")}>
+                    Holiday / Sunday work
+                  </div>
+                  <div
+                    className={cn(
+                      "text-[11px] break-words mt-0.5",
+                      isGlass ? "text-white-85" : "text-muted-foreground",
+                    )}
+                  >
                     {data.holidayWork.extraDays} day(s) worked on
                     holidays/Sundays, paid at the daily wage
                   </div>
-                  {data.holidayWork.entries && data.holidayWork.entries.length > 0 ? (
+                  {data.holidayWork.entries &&
+                  data.holidayWork.entries.length > 0 ? (
                     <ul className="mt-1 space-y-0.5">
                       {data.holidayWork.entries.map((entry) => (
                         <li
                           key={entry.date}
-                          className="text-[11px] text-muted-foreground break-words"
+                          className={cn(
+                            "text-[11px] break-words",
+                            isGlass ? "text-white-85" : "text-muted-foreground",
+                          )}
                         >
                           {formatEntryDate(entry.date)} — {entry.label} — +
                           {dayCount(entry.credit)} day
@@ -201,103 +345,253 @@ export function SalaryCalculation({ data }: { data: SalaryCalcData }) {
                     </ul>
                   ) : null}
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {dayCount(data.holidayWork.extraDays)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {formatSalary(dailyWage)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap text-emerald-600">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap font-semibold",
+                    isGlass ? "text-emerald-300" : "text-emerald-600",
+                  )}
+                >
                   + {formatSalary(data.holidayWork.extraDays * dailyWage)}
                 </TableCell>
               </TableRow>
             ) : null}
+
             {extraExpenses > 0 ? (
-              <TableRow>
-                <TableCell className="whitespace-normal break-words">
+              <TableRow
+                className={cn(
+                  isGlass
+                    ? "border-b border-white/10 hover:bg-white/5"
+                    : "border-b border-border/50",
+                )}
+              >
+                <TableCell
+                  className={cn(
+                    "whitespace-normal break-words font-medium",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   Approved expenses
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap",
+                    isGlass ? "text-white/60" : "text-muted-foreground",
+                  )}
+                >
                   —
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap",
+                    isGlass ? "text-white/60" : "text-muted-foreground",
+                  )}
+                >
                   —
                 </TableCell>
-                <TableCell className="text-right tabular-nums whitespace-nowrap text-emerald-600">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums whitespace-nowrap font-semibold",
+                    isGlass ? "text-emerald-300" : "text-emerald-600",
+                  )}
+                >
                   + {formatSalary(extraExpenses)}
                 </TableCell>
               </TableRow>
             ) : null}
 
             {showDeductions ? (
-              <TableRow>
+              <TableRow
+                className={cn(isGlass ? "border-b border-white/10" : "")}
+              >
                 <TableCell
                   colSpan={4}
-                  className="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    "text-xs font-semibold uppercase tracking-wide py-2 px-3",
+                    isGlass
+                      ? "bg-white/10 text-white/90"
+                      : "bg-muted/40 text-muted-foreground",
+                  )}
                 >
                   Deductions
                 </TableCell>
               </TableRow>
             ) : null}
+
             {paidLeave.overageDays > 0 ? (
-              <TableRow>
+              <TableRow
+                className={cn(
+                  isGlass
+                    ? "border-b border-white/10 hover:bg-white/5"
+                    : "border-b border-border/50",
+                )}
+              >
                 <TableCell>
-                  <div>Unpaid leave</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className={cn(isGlass ? "text-white font-medium" : "")}>
+                    Unpaid leave
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs mt-0.5",
+                      isGlass ? "text-white-85" : "text-muted-foreground",
+                    )}
+                  >
                     {paidLeave.usedThisMonth} leave day(s) used −{" "}
                     {paidLeave.available} paid-leave available
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div
+                    className={cn(
+                      "text-xs mt-0.5",
+                      isGlass ? "text-white-85" : "text-muted-foreground",
+                    )}
+                  >
                     {attendance.ON_LEAVE} on leave + {attendance.ABSENT} absent +{" "}
                     {attendance.HALF_DAY} half-day(s) × ½
                   </div>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {dayCount(paidLeave.overageDays)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {formatSalary(dailyWage)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums text-rose-600">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums font-semibold",
+                    isGlass ? "text-rose-300" : "text-rose-600",
+                  )}
+                >
                   − {formatSalary(paidLeave.overageDays * dailyWage)}
                 </TableCell>
               </TableRow>
             ) : null}
+
             {shortLeave.overageDays > 0 ? (
-              <TableRow>
+              <TableRow
+                className={cn(
+                  isGlass
+                    ? "border-b border-white/10 hover:bg-white/5"
+                    : "border-b border-border/50",
+                )}
+              >
                 <TableCell>
-                  <div>Short-leave overage</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className={cn(isGlass ? "text-white font-medium" : "")}>
+                    Short-leave overage
+                  </div>
+                  <div
+                    className={cn(
+                      "text-xs mt-0.5",
+                      isGlass ? "text-white-85" : "text-muted-foreground",
+                    )}
+                  >
                     {shortLeave.usedThisMonth} short leave(s) −{" "}
                     {shortLeave.allowance} free, charged ¼ day each
                   </div>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {dayCount(shortLeave.overageDays)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums",
+                    isGlass ? "text-white" : "",
+                  )}
+                >
                   {formatSalary(dailyWage)}
                 </TableCell>
-                <TableCell className="text-right tabular-nums text-rose-600">
+                <TableCell
+                  className={cn(
+                    "text-right tabular-nums font-semibold",
+                    isGlass ? "text-rose-300" : "text-rose-600",
+                  )}
+                >
                   − {formatSalary(shortLeave.overageDays * dailyWage)}
                 </TableCell>
               </TableRow>
             ) : null}
 
-            <TableRow>
-              <TableCell className="font-semibold text-foreground">
+            <TableRow
+              className={cn(
+                isGlass
+                  ? "border-t-2 border-white/20 hover:bg-white/5"
+                  : "border-t-2 border-border",
+              )}
+            >
+              <TableCell
+                className={cn(
+                  "font-bold text-sm",
+                  isGlass ? "text-white" : "text-foreground",
+                )}
+              >
                 Net payable
               </TableCell>
-              <TableCell className="text-right">—</TableCell>
-              <TableCell className="text-right">—</TableCell>
-              <TableCell className="text-right text-base font-bold tabular-nums text-foreground">
+              <TableCell
+                className={cn(
+                  "text-right",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
+                —
+              </TableCell>
+              <TableCell
+                className={cn(
+                  "text-right",
+                  isGlass ? "text-white/60" : "text-muted-foreground",
+                )}
+              >
+                —
+              </TableCell>
+              <TableCell
+                className={cn(
+                  "text-right text-base font-bold tabular-nums",
+                  isGlass ? "text-white" : "text-foreground",
+                )}
+              >
                 {formatSalary(finalAmount)}
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
       </div>
-      <div className="space-y-1 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+
+      <div
+        className={cn(
+          "space-y-1.5 px-5 py-3.5 text-xs",
+          isGlass
+            ? "border-t border-white/15 bg-white/5 text-white-85"
+            : "border-t border-border bg-muted/20 text-muted-foreground",
+        )}
+      >
         <p>
           Attendance: {attendance.PRESENT} present · {attendance.HALF_DAY} half{" "}
           · {attendance.SHORT_LEAVE} short · {attendance.ON_LEAVE} on leave ·{" "}
