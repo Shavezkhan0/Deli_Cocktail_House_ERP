@@ -489,10 +489,9 @@ export default function DesignationLocationsPage() {
 <Button
                           variant="outline"
                           size="sm"
-                          className="text-white"
                           onClick={() => openForm(designation)}
                         >
-                          <Plus animateOnHover className="size-4" />
+                          <Plus className="size-4" />
                           Assign
                         </Button>
                           )}

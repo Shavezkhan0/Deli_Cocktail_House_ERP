@@ -235,7 +235,7 @@ export function OfficeDashboardListView({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             Office Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
@@ -256,10 +256,10 @@ export function OfficeDashboardListView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {displayTitle}
           </h2>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             {isToday
               ? "Filtered list for the selected metric."
               : `Showing data for ${formatDateLong(date)}.`}

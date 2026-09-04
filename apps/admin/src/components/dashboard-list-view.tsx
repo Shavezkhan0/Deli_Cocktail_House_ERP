@@ -537,7 +537,7 @@ export default function DashboardListView({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
@@ -558,10 +558,10 @@ export default function DashboardListView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {config.title}
           </h2>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             Filtered list for the selected metric.
           </p>
         </div>

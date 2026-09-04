@@ -524,7 +524,7 @@ export default function WarehouseInventoryPage() {
     }),
     columnHelper.accessor("unit", {
       header: "Unit",
-      cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+      cell: (info) => <span>{info.getValue()}</span>,
     }),
     columnHelper.accessor("maxLevel", {
       header: () => <div className="text-right">Max Level</div>,
@@ -925,7 +925,7 @@ export default function WarehouseInventoryPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-white/80">
                 Showing {paginatedItems.length} of {filteredItems.length} items
               </span>
             </div>
@@ -938,7 +938,7 @@ export default function WarehouseInventoryPage() {
               >
                 Previous
               </Button>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-white/80">
                 Page {safePage} of {totalPages}
               </span>
               <Button

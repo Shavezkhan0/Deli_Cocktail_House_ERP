@@ -116,10 +116,10 @@ export function CategoryBreakdownView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             Category Breakdown
           </h2>
-          <p className="text-white-85 text-sm">
+          <p className="text-slate-600 text-sm">
             {selected
               ? `Items filed under ${selected.label}.`
               : "Browse warehouse items grouped by category."}

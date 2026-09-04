@@ -167,6 +167,18 @@
   background: rgba(255, 255, 255, 0.06) !important;
 }
 
+.glass-card-global [data-slot="select-trigger"] {
+  color: white !important;
+}
+
+.glass-card-global [data-slot="select-content"] {
+  color: var(--popover-foreground) !important;
+}
+
+[data-slot="select-item"] {
+  color: var(--popover-foreground) !important;
+}
+
 .gold-gradient-circle {
   background: #e0f2fe !important;
   color: #0369a1 !important;
