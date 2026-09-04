@@ -118,29 +118,24 @@ function StatCard({ stat, onClick }: { stat: Stat; onClick: () => void }) {
       onClick={onClick}
       className="group block w-full cursor-pointer rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
-      <Card className="overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/25">
+      <Card className="glass-card-global group relative overflow-hidden">
         <CardContent className="relative flex items-start justify-between gap-4 p-5">
           <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="truncate text-sm font-medium text-muted-foreground">
+            <p className="truncate text-sm font-medium text-white-85">
               {stat.label}
             </p>
-            <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+            <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
               {stat.value.toLocaleString()}
             </p>
-            <p className="truncate text-xs text-muted-foreground">{stat.hint}</p>
+            <p className="truncate text-xs text-white-85">{stat.hint}</p>
           </div>
-          <span
-            className={cn(
-              "flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-              stat.iconClass,
-            )}
-          >
+          <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
             <Icon className="size-5" />
           </span>
         </CardContent>
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r opacity-70 transition-opacity duration-300 group-hover:opacity-100",
+            "pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r opacity-70",
             stat.barClass,
           )}
         />
@@ -151,14 +146,14 @@ function StatCard({ stat, onClick }: { stat: Stat; onClick: () => void }) {
 
 function StatSkeleton() {
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="flex flex-col gap-2.5">
-          <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-36 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-28 animate-pulse rounded bg-white/15" />
+          <div className="h-8 w-16 animate-pulse rounded bg-white/15" />
+          <div className="h-3 w-36 animate-pulse rounded bg-white/15" />
         </div>
-        <div className="size-11 animate-pulse rounded-xl bg-muted" />
+        <div className="size-11 animate-pulse rounded-xl bg-white/15" />
       </CardContent>
     </Card>
   );
@@ -196,10 +191,10 @@ export default function OfficeDashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Office Dashboard
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             {isToday
               ? "Live overview of workforce and attendance. Click a card for details."
               : `Attendance overview for ${formatDateLong(selectedDate)}. Click a card for details.`}
@@ -229,7 +224,7 @@ export default function OfficeDashboardPage() {
               setSelectedDate(v);
             }
           }}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-600/25 [color-scheme:light]"
         />
         <Button
           variant="outline"
@@ -266,14 +261,14 @@ export default function OfficeDashboardPage() {
           ))}
         </div>
       ) : isError || !data ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <Loader2 className="size-8 text-muted-foreground" />
+            <Loader2 className="size-8 text-white/60" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 Unable to load dashboard metrics
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-white-85 text-sm">
                 Make sure the API is running and try again.
               </p>
             </div>

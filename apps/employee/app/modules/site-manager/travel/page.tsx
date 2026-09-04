@@ -5,10 +5,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2, Plane, Send } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ErrorState, EmptyState } from "@/components/common/states";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -92,7 +92,10 @@ export default function TravelPage() {
     >
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-2 lg:h-fit">
-          <CardHeader title="New Trip" subtitle="Record a travel entry" />
+          <CardHeader>
+            <CardTitle>New Trip</CardTitle>
+            <CardDescription>Record a travel entry</CardDescription>
+          </CardHeader>
           <form
             className="mt-5 flex flex-col gap-4"
             onSubmit={(event) => {
@@ -139,15 +142,19 @@ export default function TravelPage() {
             <div>
               <Label htmlFor="travel-mode">Mode</Label>
               <Select
-                id="travel-mode"
                 value={mode}
-                onChange={(event) => setMode(event.target.value)}
+                onValueChange={(value) => setMode(value ?? "")}
               >
-                {TRAVEL_MODES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAVEL_MODES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 
@@ -167,16 +174,20 @@ export default function TravelPage() {
             <div>
               <Label htmlFor="travel-event">Related Event (optional)</Label>
               <Select
-                id="travel-event"
                 value={eventId}
-                onChange={(event) => setEventId(event.target.value)}
+                onValueChange={(value) => setEventId(value ?? "")}
               >
-                <option value="">None</option>
-                {events?.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.eventName} — {event.eventCode}
-                  </option>
-                ))}
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {events?.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.eventName} — {event.eventCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 

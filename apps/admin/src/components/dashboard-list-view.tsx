@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, PackageX } from "lucide-react";
+import { PackageX } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,11 +150,11 @@ function ErrorRow({
     <TableRow>
       <TableCell colSpan={colSpan} className="py-10 text-center">
         <div className="flex flex-col items-center gap-3">
-          <PackageX className="size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">
+          <PackageX className="size-8 text-white/60" />
+          <p className="text-sm font-medium text-white">
             Unable to load data
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             Make sure the API is running and try again.
           </p>
           <Button variant="outline" size="sm" onClick={onRetry}>
@@ -170,7 +171,7 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
     <TableRow>
       <TableCell
         colSpan={colSpan}
-        className="py-10 text-center text-muted-foreground"
+        className="py-10 text-center text-white-85"
       >
         {label}
       </TableCell>
@@ -536,16 +537,16 @@ export default function DashboardListView({
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             Dashboard
           </h2>
           <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back to Dashboard
           </Button>
         </div>
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+        <Card className="glass-card-global">
+          <CardContent className="py-10 text-center text-sm text-white-85">
             Unknown dashboard view: {viewId}
           </CardContent>
         </Card>
@@ -557,22 +558,22 @@ export default function DashboardListView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {config.title}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             Filtered list for the selected metric.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={onBack}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Dashboard
         </Button>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>{config.title}</CardTitle>
+          <CardTitle className="text-white font-bold">{config.title}</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           {config.kind === "items" ? (
@@ -655,7 +656,7 @@ export default function DashboardListView({
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-white-85 text-xs">
                   Showing {paginatedItemsData.length} of {filteredItemsData.length} items
                 </span>
               </div>
@@ -668,7 +669,7 @@ export default function DashboardListView({
                 >
                   Previous
                 </Button>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-white-85 text-xs">
                   Page {safePage} of {totalPages}
                 </span>
                 <Button

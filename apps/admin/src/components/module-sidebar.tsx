@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, type LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+import { ArrowLeft } from "@/components/animate-ui/icons/arrow-left";
 import { cn } from "@/lib/utils";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 
 export type ModuleTab = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
 };
 
 type ModuleSidebarProps = {
@@ -42,7 +43,7 @@ export function ModuleSidebar({
           mobile ? "shrink-0 gap-2" : "gap-3",
           active
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            : "text-white-85 hover:bg-white/10 hover:text-white",
         )}
       >
         <TabIcon className="size-4" />
@@ -55,7 +56,7 @@ export function ModuleSidebar({
     <>
       <BottomTabBar items={tabs} />
 
-      <aside className="sticky top-6 hidden h-[calc(100vh-7rem)] w-64 shrink-0 flex-col rounded-2xl border bg-card p-3 shadow-sm lg:flex">
+      <aside className="glass-card-global sticky top-16 hidden h-[calc(100vh-5.5rem)] w-64 shrink-0 flex-col p-3 lg:flex">
         <nav className="mt-3 flex flex-col gap-1">
           {tabs.map((tab) => renderLink(tab))}
         </nav>
@@ -63,9 +64,9 @@ export function ModuleSidebar({
         <div className="mt-auto border-t border-border pt-3">
           <Link
             href="/dashboard"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white-85 transition-colors hover:bg-white/10 hover:text-white"
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft animateOnHover className="size-4" />
             Back to Dashboard
           </Link>
         </div>

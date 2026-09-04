@@ -115,7 +115,7 @@ function Field({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-white">{label}</label>
       {children}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -124,7 +124,7 @@ function Field({
 
 function Coordinate({ value }: { value: number }) {
   return (
-    <span className="font-mono text-xs text-muted-foreground">
+    <span className="font-mono text-xs text-white-85">
       {value.toFixed(6)}
     </span>
   );
@@ -265,20 +265,20 @@ export default function DesignationLocationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Designation Locations
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-slate-600 text-sm">
           Assign check-in locations per designation. Employees fall back to the
           global office location when none is set.
         </p>
       </div>
 
       {selectedDesignation ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="size-4 text-muted-foreground" />
+            <CardTitle className="flex items-center gap-2 text-white font-bold">
+              <Building2 className="size-4 text-white-85" />
               {humanizeDesignation(selectedDesignation)}
             </CardTitle>
           </CardHeader>
@@ -353,7 +353,7 @@ export default function DesignationLocationsPage() {
                 </Field>
               </div>
 
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <p className="flex items-center gap-1.5 text-xs text-white-85">
                 <Info className="size-3.5 shrink-0" />
                 Tip: You can get lat/lng from Google Maps by right-clicking on
                 a location.
@@ -372,9 +372,9 @@ export default function DesignationLocationsPage() {
         </Card>
       ) : null}
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>All Designations</CardTitle>
+          <CardTitle className="text-white font-bold">All Designations</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -394,7 +394,7 @@ export default function DesignationLocationsPage() {
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell colSpan={7}>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-full animate-pulse rounded bg-white/15" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -402,7 +402,7 @@ export default function DesignationLocationsPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-white">
                         Unable to load designation locations
                       </p>
                       <Button
@@ -422,14 +422,14 @@ export default function DesignationLocationsPage() {
 
                   return (
                     <TableRow key={designation}>
-                      <TableCell className="font-medium text-foreground">
+                      <TableCell className="font-medium text-white">
                         {humanizeDesignation(designation)}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
                           assignment.locationName
                         ) : (
-                          <span className="text-muted-foreground">
+                          <span className="text-white/80">
                             — Not Set —
                           </span>
                         )}
@@ -438,23 +438,23 @@ export default function DesignationLocationsPage() {
                         {assignment ? (
                           <Coordinate value={assignment.latitude} />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
                           <Coordinate value={assignment.longitude} />
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {assignment ? (
-                          <span className="tabular-nums text-muted-foreground">
+                          <span className="tabular-nums text-white/80">
                             {assignment.radiusM} m
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-white/80">—</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -486,14 +486,14 @@ export default function DesignationLocationsPage() {
                               </Button>
                             </>
                           ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openForm(designation)}
-                            >
-                              <Plus />
-                              Assign
-                            </Button>
+<Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openForm(designation)}
+                        >
+                          <Plus className="size-4" />
+                          Assign
+                        </Button>
                           )}
                         </div>
                       </TableCell>

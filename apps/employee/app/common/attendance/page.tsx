@@ -1044,10 +1044,8 @@ export default function AttendancePage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" type="button">
-                Close
-              </Button>
+            <DialogClose render={<Button variant="outline" type="button" />}>
+              Close
             </DialogClose>
           </DialogFooter>
         </DialogContent>

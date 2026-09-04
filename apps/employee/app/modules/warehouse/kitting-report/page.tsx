@@ -6,7 +6,7 @@ import { Package, Printer } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ErrorState, EmptyState } from "@/components/common/states";
 import { formatEventDate } from "@/modules/crm/utils";
@@ -39,18 +39,22 @@ export default function KittingReportPage() {
       <Card className="no-print">
         <Label htmlFor="event-select">Select Event</Label>
         <Select
-          id="event-select"
           value={selected?.id ?? ""}
-          onChange={(event) => setSelectedId(event.target.value)}
+          onValueChange={(value) => setSelectedId(value ?? "")}
           disabled={isPending || isError || (events?.length ?? 0) === 0}
         >
-          {!isPending && !isError
-            ? events?.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.eventName} — {event.eventCode}
-                </option>
-              ))
-            : null}
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select an event" />
+          </SelectTrigger>
+          <SelectContent>
+            {!isPending && !isError
+              ? events?.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.eventName} — {event.eventCode}
+                  </SelectItem>
+                ))
+              : null}
+          </SelectContent>
         </Select>
       </Card>
 

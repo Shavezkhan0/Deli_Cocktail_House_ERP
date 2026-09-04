@@ -18,9 +18,9 @@ export function EditEventForm({ eventId }: { eventId: string }) {
 
   if (isPending) {
     return (
-      <Card>
+      <Card className="glass-card-global">
         <CardContent className="pt-4">
-          <div className="h-6 w-full animate-pulse rounded bg-muted" />
+          <div className="h-6 w-full animate-pulse rounded bg-white/15" />
         </CardContent>
       </Card>
     );
@@ -28,14 +28,14 @@ export function EditEventForm({ eventId }: { eventId: string }) {
 
   if (isError || !event) {
     return (
-      <Card>
+      <Card className="glass-card-global">
         <CardContent className="pt-4">
           <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <CalendarX2 className="size-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">
+            <CalendarX2 className="size-8 text-white/60" />
+            <p className="text-sm font-medium text-white">
               Unable to load event
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-white-85 text-sm">
               Make sure the API is running and try again.
             </p>
             <Button variant="outline" size="sm" onClick={() => refetch()}>

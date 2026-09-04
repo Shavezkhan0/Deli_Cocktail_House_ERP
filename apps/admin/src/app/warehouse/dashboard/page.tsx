@@ -185,32 +185,24 @@ const placeholders: { label: string; hint: string; icon: LucideIcon }[] = [
 function StatCard({ stat, onClick }: { stat: Stat; onClick?: () => void }) {
   const Icon = stat.icon;
   return (
-    <Card
-      onClick={onClick}
-      className="group relative cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/25"
-    >
+    <Card onClick={onClick} className="glass-card-global group relative cursor-pointer overflow-hidden">
       <CardContent className="relative flex items-start justify-between gap-4 p-5">
         <div className="space-y-1.5">
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-white-85 text-sm font-medium">
             {stat.label}
           </p>
-          <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
             {stat.value.toLocaleString()}
           </p>
-          <p className="text-xs text-muted-foreground">{stat.hint}</p>
+          <p className="text-white-85 text-xs">{stat.hint}</p>
         </div>
-        <span
-          className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-            stat.iconClass,
-          )}
-        >
+        <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
           <Icon className="size-5" />
         </span>
       </CardContent>
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r opacity-70 transition-opacity duration-300 group-hover:opacity-100",
+          "pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r opacity-70",
           stat.barClass,
         )}
       />
@@ -228,20 +220,20 @@ function PlaceholderCard({
   icon: LucideIcon;
 }) {
   return (
-    <Card className="relative overflow-hidden border-dashed transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-primary/15">
+    <Card className="glass-card-global relative overflow-hidden border-dashed">
       <CardContent className="flex items-center gap-4 p-5">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
           <Icon className="size-5" />
         </span>
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="truncate text-sm font-semibold text-foreground">
+          <p className="truncate text-sm font-semibold text-white">
             {label}
           </p>
-          <p className="truncate text-xs text-muted-foreground">{hint}</p>
+          <p className="text-white-85 truncate text-xs">{hint}</p>
         </div>
         <Badge
           variant="outline"
-          className="shrink-0 border-dashed text-muted-foreground"
+          className="shrink-0 border-dashed text-white-85"
         >
           Coming soon
         </Badge>
@@ -252,14 +244,14 @@ function PlaceholderCard({
 
 function StatSkeleton() {
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div className="flex flex-col gap-2.5">
-          <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-36 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-28 animate-pulse rounded bg-white/15" />
+          <div className="h-8 w-16 animate-pulse rounded bg-white/15" />
+          <div className="h-3 w-36 animate-pulse rounded bg-white/15" />
         </div>
-        <div className="size-11 animate-pulse rounded-xl bg-muted" />
+        <div className="size-11 animate-pulse rounded-xl bg-white/15" />
       </CardContent>
     </Card>
   );
@@ -281,7 +273,7 @@ export default function WarehouseDashboardPage() {
     <div className="flex flex-col gap-3">
       {!activeView ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             Live overview of Inventory and Events
           </p>
           {!isPending && !isError && data ? (
@@ -305,14 +297,14 @@ export default function WarehouseDashboardPage() {
           ))}
         </div>
       ) : isError || !data ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <PackageX className="size-8 text-muted-foreground" />
+            <PackageX className="size-8 text-white/60" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 Unable to load dashboard metrics
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-white-85 text-sm">
                 Make sure the API is running and try again.
               </p>
             </div>
@@ -335,7 +327,7 @@ export default function WarehouseDashboardPage() {
         <>
           {stats.map((category) => (
             <section key={category.title} className="space-y-4">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 {category.title}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -2,16 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
-import { BOTTOM_NAV } from "@/components/layout/nav-items";
 
-export function BottomNav() {
+export type BottomTabItem = {
+  href: string;
+  label: string;
+  shortLabel?: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+export function BottomTabBar({ items }: { items: BottomTabItem[] }) {
   const pathname = usePathname();
 
   return (
     <nav className="no-print fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
       <div className="relative mx-auto flex max-w-lg items-center gap-1 rounded-full border border-border bg-popover p-1.5 shadow-xl shadow-foreground/5">
-        {BOTTOM_NAV.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
           return (
@@ -27,7 +34,7 @@ export function BottomNav() {
             >
               <Icon className="size-5 shrink-0" />
               <span className="max-w-full truncate text-[10px] font-semibold leading-none">
-                {item.label}
+                {item.shortLabel ?? item.label}
               </span>
             </Link>
           );

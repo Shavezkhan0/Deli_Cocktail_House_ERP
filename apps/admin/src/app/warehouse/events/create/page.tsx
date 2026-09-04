@@ -10,10 +10,10 @@ export default function CreateEventPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Create Event
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             Schedule a new event for site operations.
           </p>
         </div>

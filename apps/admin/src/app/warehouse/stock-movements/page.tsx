@@ -17,12 +17,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -280,10 +280,10 @@ export default function StockMovementsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Stock Movements
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-slate-600 text-sm">
           View all stock adjustments, event allocations, and damage reports.
         </p>
       </div>
@@ -306,10 +306,10 @@ export default function StockMovementsPage() {
       </div>
 
       {activeTab === "movements" ? (
-        <Card>
+        <Card className="glass-card-global">
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>All Movements</CardTitle>
+            <CardTitle className="text-white font-bold">All Movements</CardTitle>
             <div className="flex flex-wrap items-center gap-3">
               <Input
                 value={searchQuery}
@@ -471,10 +471,10 @@ export default function StockMovementsPage() {
         </CardContent>
       </Card>
       ) : (
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>Event Movements</CardTitle>
+              <CardTitle className="text-white font-bold">Event Movements</CardTitle>
               <Select
                 value={eventStatusFilter}
                 onValueChange={(value) =>
@@ -547,13 +547,13 @@ export default function StockMovementsPage() {
         </Card>
       )}
 
-      <Dialog
+      <AnimatedDialog
         open={Boolean(selectedEventId)}
         onOpenChange={(open) => {
           if (!open) setSelectedEventId(null);
         }}
       >
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+        <AnimatedDialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {eventDetail?.event.eventName ?? "Event Movements"}
@@ -630,8 +630,8 @@ export default function StockMovementsPage() {
               </TableBody>
             </Table>
           )}
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

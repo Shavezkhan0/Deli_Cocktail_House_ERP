@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
+import { FileSpreadsheet, Loader2 } from "lucide-react";
+import { Download as DownloadIcon } from "@/components/animate-ui/icons/download";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { downloadFile } from "@/lib/download";
@@ -53,7 +54,7 @@ export function DownloadButtons({
         onClick={() => run("pdf")}
         disabled={busy !== null}
       >
-        {busy === "pdf" ? <Loader2 className="animate-spin" /> : <Download />}
+        {busy === "pdf" ? <Loader2 className="animate-spin" /> : <DownloadIcon animateOnHover />}
         {label} PDF
       </Button>
       <Button

@@ -16,12 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -135,7 +135,7 @@ export default function AttendancePage() {
     columnHelper.accessor("employeeId", {
       header: "Employee ID",
       cell: (info) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-white/80">
           {info.getValue()}
         </span>
       ),
@@ -143,7 +143,7 @@ export default function AttendancePage() {
     columnHelper.accessor("name", {
       header: "Name",
       cell: (info) => (
-        <span className="font-medium text-foreground">{info.getValue()}</span>
+        <span className="font-medium text-white">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("fullDays", {
@@ -205,16 +205,16 @@ export default function AttendancePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Attendance & Salary
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             Monthly attendance summary and net salary for all employees.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Month</label>
+            <label className="text-sm font-medium text-slate-900">Month</label>
             <Select
               value={String(month)}
               onValueChange={(value) =>
@@ -234,7 +234,7 @@ export default function AttendancePage() {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Year</label>
+            <label className="text-sm font-medium text-slate-900">Year</label>
             <Input
               type="number"
               min={2000}
@@ -265,9 +265,9 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>Monthly Summary</CardTitle>
+          <CardTitle className="text-white font-bold">Monthly Summary</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           <Table>
@@ -289,7 +289,7 @@ export default function AttendancePage() {
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell colSpan={columns.length}>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-full animate-pulse rounded bg-white/15" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -297,10 +297,10 @@ export default function AttendancePage() {
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-white">
                         Unable to load attendance summary
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-white-85 text-sm">
                         Make sure the API is running and try again.
                       </p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -313,7 +313,7 @@ export default function AttendancePage() {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
+                    className="py-10 text-center text-white-85"
                   >
                     No attendance records yet.
                   </TableCell>
@@ -338,7 +338,7 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={selectedRow != null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -346,7 +346,7 @@ export default function AttendancePage() {
           }
         }}
       >
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-2xl">
+        <AnimatedDialogContent className="w-[calc(100vw-2rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Salary Details</DialogTitle>
             <DialogDescription>
@@ -359,8 +359,8 @@ export default function AttendancePage() {
           {selectedRow ? (
             <SalaryDetailsView row={selectedRow} month={month} year={year} />
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

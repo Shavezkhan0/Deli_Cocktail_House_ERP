@@ -20,14 +20,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import {
   Table,
   TableBody,
@@ -134,7 +134,7 @@ export default function WarehouseEventsPage() {
     columnHelper.accessor("eventCode", {
       header: "Event Code",
       cell: (info) => (
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-white/80">
           {info.getValue()}
         </span>
       ),
@@ -142,7 +142,7 @@ export default function WarehouseEventsPage() {
     columnHelper.accessor("eventName", {
       header: "Name",
       cell: (info) => (
-        <span className="font-medium text-foreground">{info.getValue()}</span>
+        <span className="font-medium text-white">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("eventDate", {
@@ -154,7 +154,7 @@ export default function WarehouseEventsPage() {
     columnHelper.accessor("venue", {
       header: "Venue",
       cell: (info) => (
-        <span className="text-muted-foreground">{info.getValue()}</span>
+        <span className="text-white/80">{info.getValue()}</span>
       ),
     }),
     columnHelper.accessor("status", {
@@ -201,10 +201,10 @@ export default function WarehouseEventsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Events
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-slate-600 text-sm">
             Scheduled events and their site allocation status.
           </p>
         </div>
@@ -239,9 +239,9 @@ export default function WarehouseEventsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="glass-card-global">
         <CardHeader className="border-b">
-          <CardTitle>
+          <CardTitle className="text-white font-bold">
             {statusFilter === ""
               ? "All Events"
               : statusFilter === "ONGOING"
@@ -269,7 +269,7 @@ export default function WarehouseEventsPage() {
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell colSpan={columns.length}>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-full animate-pulse rounded bg-white/15" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -277,11 +277,11 @@ export default function WarehouseEventsPage() {
                 <TableRow>
                   <TableCell colSpan={columns.length} className="py-10 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <CalendarX2 className="size-8 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">
+                      <CalendarX2 className="size-8 text-white/60" />
+                      <p className="text-sm font-medium text-white">
                         Unable to load events
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-white-85 text-sm">
                         Make sure the API is running and try again.
                       </p>
                       <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -294,7 +294,7 @@ export default function WarehouseEventsPage() {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="py-10 text-center text-muted-foreground"
+                    className="py-10 text-center text-white-85"
                   >
                     {statusFilter
                       ? `No ${statusFilter === "ONGOING" ? "ongoing" : "completed"} events found.`
@@ -323,7 +323,7 @@ export default function WarehouseEventsPage() {
         </CardContent>
       </Card>
 
-      <Dialog
+      <AnimatedDialog
         open={deleteTarget !== null}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
@@ -331,7 +331,7 @@ export default function WarehouseEventsPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <AnimatedDialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Event</DialogTitle>
             <DialogDescription>
@@ -354,8 +354,8 @@ export default function WarehouseEventsPage() {
               {deleteEvent.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

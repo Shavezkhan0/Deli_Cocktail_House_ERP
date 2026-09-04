@@ -1,12 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import {
-  ArrowRight,
-  Building2,
-  Warehouse,
-  type LucideIcon,
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { ArrowRight, Building2, Warehouse } from "lucide-react";
+import { CardContent } from "@/components/ui/card";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { motion } from "motion/react";
+
+import { type LucideIcon } from "lucide-react";
 
 type ModuleConfig = {
   title: string;
@@ -22,14 +22,14 @@ const modules: ModuleConfig[] = [
     description: "HR, attendance, approvals and administrative operations.",
     href: "/office/dashboard",
     icon: Building2,
-    accent: "bg-sky-100 text-sky-700",
+    accent: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
   },
   {
     title: "Warehouse/Site",
     description: "Inventory, low-stock alerts and event dispatch management.",
     href: "/warehouse/dashboard",
     icon: Warehouse,
-    accent: "bg-amber-100 text-amber-700",
+    accent: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300",
   },
 ];
 
@@ -37,44 +37,57 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Module Selection
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Choose a module to get started.
-        </p>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-dark-heading">
+            Module Selection
+          </h1>
+          <div
+            style={{
+              borderBottom: "3px solid #3b82f6",
+              width: "4rem",
+              marginTop: "8px",
+            }}
+          />
+        </div>
+        <p className="text-slate-600 text-sm">Choose a module to get started.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {modules.map((module) => {
           const Icon = module.icon;
           return (
-            <Link key={module.href} href={module.href} className="group">
-              <Card className="h-full transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lg group-hover:ring-primary/30">
+            <Link key={module.href} href={module.href} className="group outline-none">
+              <motion.div
+                whileHover="hover"
+                whileTap="tap"
+                className="glass-card-global h-full"
+              >
                 <CardContent className="flex h-full flex-col gap-8 p-6">
                   <div className="flex items-start justify-between gap-4">
-                    <span
-                      className={cn(
-                        "flex size-14 items-center justify-center rounded-2xl",
-                        module.accent,
-                      )}
-                    >
-                      <Icon className="size-7" />
+                    <span className="gold-icon-bg flex size-14 items-center justify-center rounded-2xl">
+                      <AnimatedIcon icon={Icon} animationType="bounce" className="size-7" />
                     </span>
-                    <span className="flex size-9 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary">
-                      <ArrowRight className="size-4" />
+                    <span
+                      className="flex size-9 items-center justify-center rounded-full transition-colors group-hover:bg-white/20"
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        background: "transparent",
+                        color: "white",
+                      }}
+                    >
+                      <AnimatedIcon icon={ArrowRight} animationType="spin-hover" className="size-4" />
                     </span>
                   </div>
                   <div className="mt-auto space-y-1.5">
-                    <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    <h2 className="text-lg font-bold tracking-tight text-white">
                       {module.title}
                     </h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
+                    <p className="text-white-85 text-sm leading-relaxed">
                       {module.description}
                     </p>
                   </div>
                 </CardContent>
-              </Card>
+              </motion.div>
             </Link>
           );
         })}

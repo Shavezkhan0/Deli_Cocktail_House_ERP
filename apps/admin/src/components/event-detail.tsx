@@ -3,17 +3,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  Check,
-  FileDown,
-  Loader2,
-  PackageCheck,
-  PackagePlus,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { FileDown, Loader2, PackageCheck } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
+import { Check as CheckIcon } from "@/components/animate-ui/icons/check";
+import { PackagePlus as PackagePlusIcon } from "@/components/animate-ui/icons/package-plus";
+import { Pencil as PencilIcon } from "@/components/animate-ui/icons/pencil";
+import { Plus as PlusIcon } from "@/components/animate-ui/icons/plus";
+import { Trash2 as Trash2Icon } from "@/components/animate-ui/icons/trash-2";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,14 +29,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import {
   Table,
   TableBody,
@@ -191,10 +187,10 @@ function Field({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs uppercase tracking-wide text-white/70">
         {label}
       </span>
-      <span className="text-sm font-medium text-foreground">{children}</span>
+      <span className="text-sm font-medium text-white">{children}</span>
     </div>
   );
 }
@@ -449,7 +445,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-slate-400" />
       </div>
     );
   }
@@ -457,10 +453,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
   if (isError || !event) {
     return (
       <div className="flex flex-col items-center gap-3 py-24 text-center">
-        <p className="text-sm font-medium text-foreground">
+        <p className="text-sm font-medium text-slate-900">
           Unable to load event
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-600">
           Make sure the API is running and try again.
         </p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -474,7 +470,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {event.eventName}
             </h1>
             <Badge
@@ -484,21 +480,21 @@ export function EventDetail({ eventId }: { eventId: string }) {
               {event.status}
             </Badge>
           </div>
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="font-mono text-xs text-slate-500">
             {event.eventCode}
           </p>
         </div>
 
         <Button variant="outline" nativeButton={false} render={<Link href="/warehouse/events" />}>
-          <ArrowLeft />
+          <ArrowLeftIcon animateOnHover />
           Back to Events
         </Button>
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
-            <CardTitle>Event Details</CardTitle>
+            <CardTitle className="text-white font-bold">Event Details</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -512,12 +508,12 @@ export function EventDetail({ eventId }: { eventId: string }) {
         </Card>
 
         <>
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle>Item List</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white font-bold">Item List</CardTitle>
+                <CardDescription className="text-white-85">
                   Add the items and quantities needed for this event.
                 </CardDescription>
               </div>
@@ -528,8 +524,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   className={cn(
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
                     itemTab === "list"
-                      ? "bg-foreground text-background shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                      ? "bg-white text-blue-900 shadow-sm"
+                      : "bg-white/10 text-white-85 hover:bg-white/20 hover:text-white",
                   )}
                 >
                   Item List
@@ -540,8 +536,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   className={cn(
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
                     itemTab === "activity"
-                      ? "bg-foreground text-background shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                      ? "bg-white text-blue-900 shadow-sm"
+                      : "bg-white/10 text-white-85 hover:bg-white/20 hover:text-white",
                   )}
                 >
                   Warehouse Activity
@@ -552,8 +548,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                   className={cn(
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
                     itemTab === "damage"
-                      ? "bg-foreground text-background shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                      ? "bg-white text-blue-900 shadow-sm"
+                      : "bg-white/10 text-white-85 hover:bg-white/20 hover:text-white",
                   )}
                 >
                   Reports
@@ -610,8 +606,8 @@ export function EventDetail({ eventId }: { eventId: string }) {
                               type="button"
                               onClick={() => toggleItemSelection(item.id)}
                               className={cn(
-                                "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
-                                checked && "bg-muted/70",
+                                "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10",
+                                checked && "bg-white/15",
                               )}
                             >
                               <span
@@ -619,22 +615,22 @@ export function EventDetail({ eventId }: { eventId: string }) {
                                   "flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors",
                                   checked
                                     ? "border-emerald-500 bg-emerald-500 text-white"
-                                    : "border-border hover:border-emerald-500/50",
+                                    : "border-white/30 hover:border-emerald-500/50",
                                 )}
                               >
                                 {checked ? (
-                                  <Check className="size-3.5" />
+                                  <CheckIcon className="size-3.5" animation="path" />
                                 ) : null}
                               </span>
                               <span className="flex-1">
-                                <span className="font-mono text-xs text-muted-foreground">
+                                <span className="font-mono text-xs text-white/80">
                                   {item.sku}
                                 </span>
-                                <span className="ml-2 font-medium text-foreground">
+                                <span className="ml-2 font-medium text-white">
                                   {item.itemName}
                                 </span>
                               </span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-white/80">
                                 {item.currentStock.toLocaleString()} in stock
                               </span>
                             </button>
@@ -642,7 +638,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-white/80">
                         {itemSearchQuery
                           ? "No items match your search."
                           : itemCategoryFilter
@@ -656,7 +652,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleAddSelected}
                         disabled={selectedItemIds.size === 0}
                       >
-                        <Plus />
+                        <PlusIcon animateOnHover />
                         Add Selected
                         {selectedItemIds.size > 0
                           ? ` (${selectedItemIds.size})`
@@ -682,16 +678,16 @@ export function EventDetail({ eventId }: { eventId: string }) {
                       <TableBody>
                         {allocations.map((row) => (
                           <TableRow key={row.key}>
-                            <TableCell className="text-sm font-medium text-foreground">
+                            <TableCell className="text-sm font-medium text-white">
                               {row.itemName}
                             </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">
+                            <TableCell className="font-mono text-xs text-white/80">
                               {row.sku}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-white/80">
                               {row.unit}
                             </TableCell>
-                            <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                            <TableCell className="text-right tabular-nums text-sm text-white/80">
                               {row.currentStock.toLocaleString()}
                             </TableCell>
                             <TableCell>
@@ -715,7 +711,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                                 onClick={() => removeAllocation(row.key)}
                                 aria-label={`Remove ${row.itemName}`}
                               >
-                                <Trash2 />
+                                <Trash2Icon animateOnHover />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -727,7 +723,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleAllocate}
                         disabled={allocate.isPending || isCompleted}
                       >
-                        <PackagePlus />
+                        <PackagePlusIcon animateOnHover />
                         {allocate.isPending ? "Saving…" : "Save Item List"}
                       </Button>
                     </div>
@@ -748,10 +744,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
                           <TableRow key={record.id}>
                             <TableCell>
                               <div className="leading-tight">
-                                <p className="text-sm font-medium text-foreground">
+                                <p className="text-sm font-medium text-white">
                                   {record.item.itemName}
                                 </p>
-                                <p className="font-mono text-xs text-muted-foreground">
+                                <p className="font-mono text-xs text-white/80">
                                   {record.item.sku}
                                 </p>
                               </div>
@@ -768,13 +764,13 @@ export function EventDetail({ eventId }: { eventId: string }) {
                         onClick={handleEditSaved}
                         disabled={isCompleted}
                       >
-                        <Pencil />
+                        <PencilIcon animateOnHover />
                         Edit Quantities
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/80">
                     No items added to this event yet.
                   </p>
                 )}
@@ -798,10 +794,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
                       <TableBody>
                         {event.inventory.map((record) => (
                           <TableRow key={record.id}>
-                            <TableCell className="text-sm font-medium text-foreground">
+                            <TableCell className="text-sm font-medium text-white">
                               {record.item.itemName}
                             </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">
+                            <TableCell className="font-mono text-xs text-white/80">
                               {record.item.sku}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
@@ -825,7 +821,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/80">
                     No items allocated to this event yet.
                   </p>
                 )}
@@ -848,10 +844,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
                       <TableBody>
                         {event.damageReports.map((report) => (
                           <TableRow key={report.id}>
-                            <TableCell className="text-sm font-medium text-foreground">
+                            <TableCell className="text-sm font-medium text-white">
                               {report.item.itemName}
                             </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">
+                            <TableCell className="font-mono text-xs text-white/80">
                               {report.item.sku}
                             </TableCell>
                             <TableCell>
@@ -870,10 +866,10 @@ export function EventDetail({ eventId }: { eventId: string }) {
                             <TableCell className="text-right tabular-nums">
                               {report.quantity}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-white/80">
                               {report.remark || "—"}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-sm text-white/80">
                               {formatDate(report.createdAt)}
                             </TableCell>
                           </TableRow>
@@ -882,7 +878,7 @@ export function EventDetail({ eventId }: { eventId: string }) {
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/80">
                     No damage has been reported for this event.
                   </p>
                 )}
@@ -1127,10 +1123,10 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
   );
 
   return (
-    <Card>
+    <Card className="glass-card-global">
       <CardHeader className="border-b">
-        <CardTitle>Summary</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-white font-bold">Summary</CardTitle>
+        <CardDescription className="text-white-85">
           Issue items to the event from IMS, and record returned, damaged and
           lost quantities when the event wraps up.
         </CardDescription>
@@ -1180,10 +1176,10 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                       <TableRow key={row.itemId}>
                         <TableCell>
                           <div className="leading-tight">
-                            <p className="text-sm font-medium text-foreground">
+                            <p className="text-sm font-medium text-white">
                               {record.item.itemName}
                             </p>
-                            <p className="font-mono text-xs text-muted-foreground">
+                            <p className="font-mono text-xs text-white/80">
                               {record.item.sku}
                             </p>
                           </div>
@@ -1319,7 +1315,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 exceeds issued). Fix them before completing the event.
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/80">
                 Tip: returned + damaged + lost should add up to the issued
                 quantity for each item.
               </p>
@@ -1336,9 +1332,9 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 }
               >
                 {event.isIssued ? (
-                  <Check />
+                  <CheckIcon animation="path" />
                 ) : (
-                  <PackagePlus />
+                  <PackagePlusIcon animateOnHover />
                 )}
                 {checkout.isPending
                   ? "Issuing…"
@@ -1357,7 +1353,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 }
               >
                 {event.isReturned ? (
-                  <Check />
+                  <CheckIcon animation="path" />
                 ) : (
                   <PackageCheck />
                 )}
@@ -1381,19 +1377,19 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
               </Button>
               {event.isReturned && !isCompleted ? (
                 <Button variant="default" onClick={() => setCompleteOpen(true)}>
-                  <Check />
+                  <CheckIcon animateOnHover />
                   Complete Event
                 </Button>
               ) : null}
             </div>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-white/80">
             Allocate inventory to the event to record returns.
           </p>
         )}
 
-        <Dialog
+        <AnimatedDialog
           open={completeOpen}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
@@ -1401,7 +1397,7 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
             }
           }}
         >
-          <DialogContent className="sm:max-w-sm">
+          <AnimatedDialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Complete Event</DialogTitle>
               <DialogDescription>
@@ -1421,8 +1417,8 @@ function ReturnSummarySection({ event }: { event: EventDetail }) {
                 {completeEvent.isPending ? "Completing…" : "Complete Event"}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </AnimatedDialogContent>
+        </AnimatedDialog>
       </CardContent>
     </Card>
   );

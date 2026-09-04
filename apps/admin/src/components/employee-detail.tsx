@@ -4,27 +4,27 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Banknote,
   CalendarDays,
   CalendarPlus,
-  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Circle,
-  FileText,
   Loader2,
-  Pencil,
-  Plus,
   RotateCw,
-  Trash2,
   TriangleAlert,
-  UploadCloud,
   User,
   Wallet,
 } from "lucide-react";
+import { ArrowLeft as ArrowLeftIcon } from "@/components/animate-ui/icons/arrow-left";
+import { CheckCircle2 as CheckCircle2Icon } from "@/components/animate-ui/icons/check-circle-2";
+import { FileText as FileTextIcon } from "@/components/animate-ui/icons/file-text";
+import { Pencil as PencilIcon } from "@/components/animate-ui/icons/pencil";
+import { Plus as PlusIcon } from "@/components/animate-ui/icons/plus";
+import { Trash2 as Trash2Icon } from "@/components/animate-ui/icons/trash-2";
+import { UploadCloud as UploadCloudIcon } from "@/components/animate-ui/icons/upload-cloud";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,14 +36,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
+  AnimatedDialog,
+  AnimatedDialogContent,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/animated-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -360,8 +360,8 @@ function InfoRow({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground">{value}</span>
+      <span className="text-xs text-white-85">{label}</span>
+      <span className="text-sm font-medium text-white">{value}</span>
     </div>
   );
 }
@@ -373,73 +373,73 @@ function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-sm font-semibold text-foreground">
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-sm font-semibold text-white">
             Paid leave ({monthYearLabel})
           </p>
           <dl className="mt-2 space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Carried from last month</dt>
-              <dd className="tabular-nums text-foreground">
+              <dt className="text-white-85">Carried from last month</dt>
+              <dd className="tabular-nums text-white">
                 {formatLeaveDays(paidLeave.opening)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Earned this month</dt>
-              <dd className="tabular-nums text-foreground">
+              <dt className="text-white-85">Earned this month</dt>
+              <dd className="tabular-nums text-white">
                 {formatLeaveDays(paidLeave.grantedThisMonth)}
               </dd>
             </div>
             {!breakdown.eligibleForLeaves ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white-85">
                 Paid-leave accrual starts {breakdown.eligibleFrom} — 3 months
                 after joining.
               </p>
             ) : null}
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Used this month</dt>
-              <dd className="tabular-nums text-foreground">
+              <dt className="text-white-85">Used this month</dt>
+              <dd className="tabular-nums text-white">
                 {formatLeaveDays(paidLeave.usedThisMonth)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Carried to next month</dt>
-              <dd className="tabular-nums font-semibold text-foreground">
+              <dt className="text-white-85">Carried to next month</dt>
+              <dd className="tabular-nums font-semibold text-white">
                 {formatLeaveDays(paidLeave.closing)}
               </dd>
             </div>
           </dl>
         </div>
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-sm font-semibold text-foreground">
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-sm font-semibold text-white">
             Short leave ({monthYearLabel})
           </p>
           <dl className="mt-2 space-y-1 text-sm">
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Free allowance</dt>
-              <dd className="tabular-nums text-foreground">
+              <dt className="text-white-85">Free allowance</dt>
+              <dd className="tabular-nums text-white">
                 {formatLeaveDays(shortLeave.allowance)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Used this month</dt>
-              <dd className="tabular-nums text-foreground">
+              <dt className="text-white-85">Used this month</dt>
+              <dd className="tabular-nums text-white">
                 {formatLeaveDays(shortLeave.usedThisMonth)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Remaining</dt>
-              <dd className="tabular-nums font-semibold text-foreground">
+              <dt className="text-white-85">Remaining</dt>
+              <dd className="tabular-nums font-semibold text-white">
                 {formatLeaveDays(shortLeave.remaining)}
               </dd>
             </div>
             {!breakdown.eligibleForLeaves || shortLeave.allowance === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white-85">
                 Short-leave allowance starts {breakdown.eligibleFrom} — 3 months
                 after joining.
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white-85">
                 Short leave does not carry forward — resets to 3 each month.
               </p>
             )}
@@ -448,49 +448,49 @@ function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Base Salary</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Base Salary</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-white">
             {formatSalary(breakdown.baseSalary)}
           </p>
         </div>
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Daily Wage</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Daily Wage</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-white">
             {formatSalary(breakdown.dailyWage)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-xs text-white-85">
             × {breakdown.daysInMonth} days
           </p>
         </div>
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Deductions</p>
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Deductions</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-rose-600">
             − {formatSalary(breakdown.deductionAmount)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-xs text-white-85">
             {paidLeave.overageDays} paid + {shortLeave.overageDays} short leave
             overage
           </p>
         </div>
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Holiday / Sunday Work</p>
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Holiday / Sunday Work</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600">
             + {formatSalary(breakdown.extraEarnings)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-xs text-white-85">
             on {holidayWork.extraDays} extra days
           </p>
         </div>
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-xs text-muted-foreground">Extra Expenses</p>
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Extra Expenses</p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600">
             + {formatSalary(breakdown.extraExpenses)}
           </p>
         </div>
-        <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
-          <p className="text-xs text-muted-foreground">Final Total</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
+        <div className="rounded-lg border border-white/30 bg-white/10 p-4">
+          <p className="text-xs text-white-85">Final Total</p>
+          <p className="mt-1 text-lg font-bold tabular-nums text-white">
             {formatSalary(breakdown.finalAmount)}
           </p>
         </div>
@@ -498,14 +498,14 @@ function SalaryBreakdownView({ breakdown }: { breakdown: SalaryBreakdown }) {
 
       <SalaryCalculation data={breakdown} />
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-white-85">
         {attendance.PRESENT} present · {attendance.ABSENT} absent (
         {attendance.sundayAbsences} on Sundays, {attendance.holidayAbsences} on
         holidays) · {attendance.ON_LEAVE} on leave · {attendance.HALF_DAY}{" "}
         half days · {attendance.SHORT_LEAVE} short leaves
       </p>
       {!breakdown.eligibleForLeaves ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-white-85">
           Leave accrual starts {breakdown.eligibleFrom}.
         </p>
       ) : null}
@@ -547,14 +547,14 @@ function SalaryHistoryRow({
   return (
     <>
       <TableRow>
-        <TableCell className="text-foreground">
+        <TableCell className="text-white">
           {MONTH_NAMES[salary.month - 1]}
         </TableCell>
-        <TableCell className="tabular-nums text-muted-foreground">
+        <TableCell className="tabular-nums text-white/80">
           {salary.year}
         </TableCell>
         <TableCell>
-          <div className="text-right tabular-nums text-foreground">
+          <div className="text-right tabular-nums text-white">
             {formatSalary(salary.amount)}
           </div>
         </TableCell>
@@ -564,7 +564,7 @@ function SalaryHistoryRow({
               variant="outline"
               className="border-transparent bg-emerald-100 text-emerald-700"
             >
-              <CheckCircle2 />
+              <CheckCircle2Icon animation="path" />
               PAID
             </Badge>
           ) : (
@@ -577,7 +577,7 @@ function SalaryHistoryRow({
             </Badge>
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="text-white/80">
           {salary.paidDate ? formatDate(salary.paidDate) : "—"}
         </TableCell>
         <TableCell>
@@ -588,11 +588,11 @@ function SalaryHistoryRow({
                 onClick={() => onMarkPaid(salary)}
                 disabled={savingPaid}
               >
-                <CheckCircle2 />
+                <CheckCircle2Icon animateOnHover />
                 Mark Paid
               </Button>
             ) : (
-              <span className="text-xs text-muted-foreground">Completed</span>
+              <span className="text-xs text-white/80">Completed</span>
             )}
             <Button
               variant={expanded ? "secondary" : "outline"}
@@ -611,20 +611,20 @@ function SalaryHistoryRow({
         </TableCell>
       </TableRow>
       {expanded ? (
-        <TableRow className="bg-muted/30">
+        <TableRow className="bg-white/5">
           <TableCell colSpan={6} className="p-4">
             {isPending ? (
-              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 py-6 text-sm text-white/80">
                 <Loader2 className="size-4 animate-spin" />
                 Loading calculation…
               </div>
             ) : isError || !breakdown ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
+              <p className="py-6 text-center text-sm text-white/80">
                 Unable to load the salary calculation.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
                   Absent: {breakdown.attendance.ABSENT} ·{" "}
                   {MONTH_NAMES[salary.month - 1]} {salary.year}
                 </p>
@@ -1366,7 +1366,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
   if (employeeQuery.isPending) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 py-10 text-sm text-white-85">
           <Loader2 className="size-4 animate-spin" />
           Loading employee details…
         </div>
@@ -1378,10 +1378,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-medium text-white">
             Unable to load employee details
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-white-85 text-sm">
             Make sure the API is running and try again.
           </p>
           <Button variant="outline" size="sm" onClick={() => employeeQuery.refetch()}>
@@ -1409,20 +1409,20 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             nativeButton={false}
             render={<Link href="/office/employees" />}
           >
-            <ArrowLeft />
+            <ArrowLeftIcon animateOnHover />
             Back
           </Button>
           <div className="space-y-0.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {employee.name}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-slate-600 text-sm">
               {employee.employeeId} ·{" "}
               {DESIGNATION_LABELS[employee.designation] ?? employee.designation}
             </p>
           </div>
         </div>
-        <div className="flex gap-1 rounded-xl border bg-card p-1">
+        <div className="flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -1440,8 +1440,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
               >
                 <Icon className="size-4" />
@@ -1454,11 +1454,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
       {activeTab === "profile" ? (
         <div className="flex flex-col gap-4">
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <div>
-                <CardTitle>Employee Information</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white font-bold">Employee Information</CardTitle>
+                <CardDescription className="text-white-85">
                   Basic details and joining information.
                 </CardDescription>
               </div>
@@ -1468,7 +1468,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 onClick={openEditModal}
                 className="shrink-0"
               >
-                <Pencil />
+                <PencilIcon animateOnHover />
                 Edit Profile
               </Button>
             </CardHeader>
@@ -1503,7 +1503,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         variant="outline"
                         className="border-transparent bg-emerald-100 text-emerald-700"
                       >
-                        <CheckCircle2 />
+                        <CheckCircle2Icon animation="path" />
                         Active
                       </Badge>
                     )
@@ -1538,10 +1538,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader>
-              <CardTitle>Documents</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white font-bold">Documents</CardTitle>
+              <CardDescription className="text-white-85">
                 Upload any missing documents (Aadhar, PAN, Offer Letter, Bond).
               </CardDescription>
             </CardHeader>
@@ -1558,8 +1558,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                       className="flex items-center justify-between gap-3 rounded-lg border p-3"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <FileText className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">
+                        <FileTextIcon className="size-4 shrink-0 text-white/80" />
+                        <span className="text-sm font-medium text-white">
                           {doc.label}
                         </span>
                       </div>
@@ -1569,7 +1569,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             variant="outline"
                             className="border-transparent bg-emerald-100 text-emerald-700"
                           >
-                            <CheckCircle2 />
+                            <CheckCircle2Icon animation="path" />
                             Uploaded
                           </Badge>
                         ) : null}
@@ -1587,7 +1587,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                           </Button>
                         ) : null}
                         {url ? (
-                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-xs font-medium text-white-85 transition-colors hover:border-white/50 hover:text-white">
                             {isUploading ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
@@ -1605,11 +1605,11 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             />
                           </label>
                         ) : (
-                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-xs font-medium text-white-85 transition-colors hover:border-white/50 hover:text-white">
                             {isUploading ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
-                              <UploadCloud className="size-3.5" />
+                              <UploadCloudIcon animateOnHover className="size-3.5" />
                             )}
                             {isUploading ? "Uploading…" : "Upload"}
                             <input
@@ -1634,7 +1634,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                             {isDeleting ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
-                              <Trash2 className="size-3.5" />
+                              <Trash2Icon animateOnHover className="size-3.5" />
                             )}
                             {isDeleting ? "Deleting…" : "Delete"}
                           </Button>
@@ -1652,81 +1652,81 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
       {activeTab === "attendance" ? (
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Total Present Days
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                   {attendanceHistoryQuery.isPending ? "…" : statPresentDays}
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">Total Half Days</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                <p className="text-xs text-white-85">Total Half Days</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                   {attendanceHistoryQuery.isPending ? "…" : statHalfDays}
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Total Short Leaves
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                   {attendanceHistoryQuery.isPending ? "…" : statShortLeaves}
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Total Absent Days
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                   {attendanceHistoryQuery.isPending
                     ? "…"
                     : monthStatusCounts.ABSENT}
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Total On Leave
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                   {attendanceHistoryQuery.isPending
                     ? "…"
                     : monthStatusCounts.ON_LEAVE}
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Remaining Paid Leave Balance
                 </p>
                 {leaveBalanceQuery.isPending ? (
-                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-muted" />
+                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-white/15" />
                 ) : (
-                  <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                     {leaveBalanceQuery.data?.paidLeave?.closing ?? "—"}
                   </p>
                 )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="glass-card-global">
               <CardContent>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white-85">
                   Short Leave Remaining
                 </p>
                 {leaveBalanceQuery.isPending ? (
-                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-muted" />
+                  <div className="mt-2 h-7 w-16 animate-pulse rounded bg-white/15" />
                 ) : (
-                  <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-white">
                     {leaveBalanceQuery.data?.shortLeave?.remaining ?? "—"}
                   </p>
                 )}
@@ -1734,17 +1734,17 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </Card>
           </div>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <CardTitle>
+                  <CardTitle className="text-white font-bold">
                     <span className="inline-flex items-center gap-2">
                       <CalendarDays className="size-4 text-primary" />
                       Attendance Calendar
                     </span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-white-85">
                     Click a date to assign work on a holiday (FORCE_WORK) or
                     grant a leave (FORCE_LEAVE). Ringed dates have overrides;
                     dots show attendance records.
@@ -1772,7 +1772,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     </Button>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-foreground">
+                    <label className="text-sm font-medium text-white">
                       Month
                     </label>
                     <Select
@@ -1796,7 +1796,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     </Select>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-foreground">
+                    <label className="text-sm font-medium text-white">
                       Year
                     </label>
                     <Input
@@ -1818,7 +1818,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                     <div
                       key={day}
-                      className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-white-85"
                     >
                       {day}
                     </div>
@@ -1879,7 +1879,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                           "relative flex aspect-square min-h-7 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
                           record || isHolidayCell
                             ? "text-white shadow-sm"
-                            : "bg-muted/60 text-muted-foreground",
+                            : "bg-white/10 text-white-85",
                           override
                             ? "ring-2 ring-indigo-500/70 ring-offset-1 ring-offset-background"
                             : isToday
@@ -1926,29 +1926,29 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-xs font-medium text-white-85">
                   Overrides:
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-white-85">
                   <span className="size-2.5 rounded-full bg-indigo-500" />
                   Force Work
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-white-85">
                   <span className="size-2.5 rounded-full bg-sky-500" />
                   Force Leave
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-white-85">
                   <span className="size-2.5 rounded-full bg-teal-500" />
                   Work From Home
                 </span>
-                <span className="ml-2 text-xs font-medium text-muted-foreground">
+                <span className="ml-2 text-xs font-medium text-white-85">
                   Attendance:
                 </span>
                 {(["PRESENT", "HALF_DAY", "SHORT_LEAVE", "ON_LEAVE", "ABSENT"] as const).map(
                   (status) => (
                     <span
                       key={status}
-                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                      className="inline-flex items-center gap-1.5 text-xs text-white-85"
                     >
                       <span
                         className="size-2.5 rounded-full"
@@ -1959,14 +1959,14 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     </span>
                   ),
                 )}
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-white-85">
                   <span
                     className="size-2.5 rounded-full"
                     style={{ backgroundColor: HOLIDAY_COLOR }}
                   />
                   Holiday
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs text-white-85">
                   <span className="size-2.5 rounded-full bg-amber-400" />
                   Corrected by admin
                 </span>
@@ -1974,12 +1974,12 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <CardTitle>Attendance History</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-white font-bold">Attendance History</CardTitle>
+                  <CardDescription className="text-white-85">
                     Daily check-in and check-out times. Red highlights mark a
                     late check-in (after 10:45 AM) or an early departure (before
                     6:00 PM).
@@ -1993,16 +1993,16 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   {Array.from({ length: 4 }).map((_, index) => (
                     <div
                       key={index}
-                      className="h-10 w-full animate-pulse rounded bg-muted"
+                      className="h-10 w-full animate-pulse rounded bg-white/15"
                     />
                   ))}
                 </div>
               ) : attendanceHistoryQuery.isError ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   Unable to load attendance history.
                 </p>
               ) : (attendanceHistoryQuery.data ?? []).length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   No attendance records for this month.
                 </p>
               ) : (
@@ -2108,10 +2108,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>Assigned Dates</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white font-bold">Assigned Dates</CardTitle>
+              <CardDescription className="text-white-85">
                 All attendance overrides for this employee.
               </CardDescription>
             </CardHeader>
@@ -2121,17 +2121,17 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   {Array.from({ length: 3 }).map((_, index) => (
                     <div
                       key={index}
-                      className="h-10 w-full animate-pulse rounded bg-muted"
+                      className="h-10 w-full animate-pulse rounded bg-white/15"
                     />
                   ))}
                 </div>
               ) : workingOverridesQuery.isError ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   Unable to load overrides.
                 </p>
               ) : (workingOverridesQuery.data ?? []).length === 0 &&
                 (wfhDaysQuery.data ?? []).length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   No overrides assigned yet. Click a day on the calendar to add
                   one.
                 </p>
@@ -2180,7 +2180,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               onClick={() => deleteOverride.mutate(override.id)}
                               aria-label="Remove override"
                             >
-                              <Trash2 />
+                              <Trash2Icon animateOnHover />
                             </Button>
                           </div>
                         </TableCell>
@@ -2212,7 +2212,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                               onClick={() => deleteWfh.mutate(wfh.id)}
                               aria-label="Remove work-from-home day"
                             >
-                              <Trash2 />
+                              <Trash2Icon animateOnHover />
                             </Button>
                           </div>
                         </TableCell>
@@ -2226,7 +2226,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </div>
       ) : null}
 
-      <Dialog
+      <AnimatedDialog
         open={overrideDialogDate !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -2237,7 +2237,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
           }
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-md">
+        <AnimatedDialogContent className="max-h-[85vh] overflow-y-auto overflow-x-hidden sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Attendance Day</DialogTitle>
             <DialogDescription>
@@ -2347,7 +2347,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     disabled={deleteOverride.isPending}
                     onClick={() => deleteOverride.mutate(selectedOverride.id)}
                   >
-                    <Trash2 />
+                    <Trash2Icon animateOnHover />
                     Remove
                   </Button>
                 ) : null}
@@ -2396,7 +2396,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     disabled={deleteWfh.isPending}
                     onClick={handleWfhRemove}
                   >
-                    <Trash2 />
+                    <Trash2Icon animateOnHover />
                     Remove
                   </Button>
                 ) : null}
@@ -2420,14 +2420,14 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               Cancel
             </DialogClose>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
 
       {activeTab === "bank" ? (
-        <Card>
+        <Card className="glass-card-global">
           <CardHeader>
-            <CardTitle>Bank Details</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-white font-bold">Bank Details</CardTitle>
+            <CardDescription className="text-white-85">
               Update the employee&apos;s bank account information.
             </CardDescription>
           </CardHeader>
@@ -2479,7 +2479,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 onClick={handleBankSave}
                 disabled={updateEmployee.isPending}
               >
-                <Pencil />
+                <PencilIcon animateOnHover />
                 {updateEmployee.isPending ? "Saving…" : "Save Bank Details"}
               </Button>
             </div>
@@ -2489,10 +2489,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
 
       {activeTab === "salary" ? (
         <div className="flex flex-col gap-4">
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>Salary Breakdown</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white font-bold">Salary Breakdown</CardTitle>
+              <CardDescription className="text-white-85">
                 Automatic calculation using the actual number of days in the
                 month and the paid leave balance.
               </CardDescription>
@@ -2500,7 +2500,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             <CardContent className="pt-4">
               <div className="mb-4 flex flex-wrap items-end gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-foreground">
+                  <label className="text-sm font-medium text-white">
                     Month
                   </label>
                   <Select
@@ -2524,7 +2524,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   </Select>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-foreground">
+                  <label className="text-sm font-medium text-white">
                     Year
                   </label>
                   <Input
@@ -2551,13 +2551,13 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   {Array.from({ length: 4 }).map((_, index) => (
                     <div
                       key={index}
-                      className="h-20 w-full animate-pulse rounded-lg bg-muted"
+                      className="h-20 w-full animate-pulse rounded-lg bg-white/15"
                     />
                   ))}
                 </div>
               ) : salaryBreakdownQuery.isError ||
                 !salaryBreakdownQuery.data ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   Unable to load the salary breakdown.
                 </p>
               ) : (
@@ -2566,10 +2566,10 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>Extra Expenses</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white font-bold">Extra Expenses</CardTitle>
+              <CardDescription className="text-white-85">
                 Approved expenses are added to the employee&apos;s salary for the
                 month of the selected date.
               </CardDescription>
@@ -2581,7 +2581,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               >
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-foreground">
+                    <label className="text-sm font-medium text-white">
                       Amount
                     </label>
                     <Input
@@ -2594,7 +2594,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-foreground">
+                    <label className="text-sm font-medium text-white">
                       Description
                     </label>
                     <Input
@@ -2606,7 +2606,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-foreground">
+                    <label className="text-sm font-medium text-white">
                       Date
                     </label>
                     <Input
@@ -2618,7 +2618,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                 </div>
                 <div className="flex justify-end">
                   <Button type="submit" disabled={createExpense.isPending}>
-                    <Plus />
+                    <PlusIcon animateOnHover />
                     {createExpense.isPending ? "Adding…" : "Add Expense"}
                   </Button>
                 </div>
@@ -2630,16 +2630,16 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     {Array.from({ length: 3 }).map((_, index) => (
                       <div
                         key={index}
-                        className="h-10 w-full animate-pulse rounded bg-muted"
+                        className="h-10 w-full animate-pulse rounded bg-white/15"
                       />
                     ))}
                   </div>
                 ) : approvedExpensesQuery.isError ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
+                  <p className="py-4 text-center text-sm text-white-85">
                     Unable to load expenses.
                   </p>
                 ) : (approvedExpensesQuery.data ?? []).length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
+                  <p className="py-4 text-center text-sm text-white-85">
                     No extra expenses added yet.
                   </p>
                 ) : (
@@ -2676,12 +2676,12 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader>
-              <CardTitle>
+              <CardTitle className="text-white font-bold">
                 {currentMonthSalary ? "Current Month Salary" : "Current Month Estimate"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-white-85">
                 {currentMonthSalary
                   ? `Published salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear}.`
                   : `Estimated salary for ${MONTH_NAMES[currentMonth - 1]} ${currentYear} using the actual number of days in the month, paid leave balance and approved expenses.`}
@@ -2690,7 +2690,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             <CardContent>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                  <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
                     {formatSalary(
                       currentMonthSalary
                         ? currentMonthSalary.amount
@@ -2698,7 +2698,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     )}
                   </p>
                   {currentMonthSalary ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-white-85">
                       {currentMonthSalary.status === "PAID"
                         ? currentMonthSalary.paidDate
                           ? `Paid on ${formatDate(currentMonthSalary.paidDate)}`
@@ -2706,7 +2706,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         : "Published, payment pending"}
                     </p>
                   ) : currentSalaryBreakdownQuery.isPending ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-white-85">
                       Calculating from attendance…
                     </p>
                   ) : (
@@ -2715,7 +2715,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         const b = currentSalaryBreakdownQuery.data;
                         if (!b) return null;
                         return (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-white-85">
                             {b.attendance.PRESENT} present · {b.attendance.HALF_DAY}{" "}
                             half · {b.attendance.SHORT_LEAVE} short ·{" "}
                             {b.attendance.ON_LEAVE} on leave ·{" "}
@@ -2728,7 +2728,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                         const b = currentSalaryBreakdownQuery.data;
                         if (!b || b.eligibleForLeaves) return null;
                         return (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-white-85">
                             Leave accrual starts {b.eligibleFrom}
                           </p>
                         );
@@ -2741,7 +2741,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     variant="outline"
                     className="border-transparent bg-emerald-100 text-emerald-700"
                   >
-                    <CheckCircle2 />
+                    <CheckCircle2Icon animation="path" />
                     Paid
                   </Badge>
                 ) : (
@@ -2749,7 +2749,7 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                     onClick={handleMarkCurrentMonthPaid}
                     disabled={saveSalary.isPending || currentSalaryBreakdownQuery.isPending}
                   >
-                    <CheckCircle2 />
+                    <CheckCircle2Icon animateOnHover />
                     {saveSalary.isPending ? "Saving…" : "Mark as Paid"}
                   </Button>
                 )}
@@ -2757,9 +2757,9 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="glass-card-global">
             <CardHeader className="border-b">
-              <CardTitle>Salary History</CardTitle>
+              <CardTitle className="text-white font-bold">Salary History</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               {salariesQuery.isPending ? (
@@ -2767,16 +2767,16 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
                   {Array.from({ length: 4 }).map((_, index) => (
                     <div
                       key={index}
-                      className="h-10 w-full animate-pulse rounded bg-muted"
+                      className="h-10 w-full animate-pulse rounded bg-white/15"
                     />
                   ))}
                 </div>
               ) : salariesQuery.isError ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   Unable to load salary records.
                 </p>
               ) : salaries.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
+                <p className="py-6 text-center text-sm text-white-85">
                   No salary records yet. Mark the current month as paid to get
                   started.
                 </p>
@@ -2815,8 +2815,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
         </div>
       ) : null}
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-md">
+      <AnimatedDialog open={editOpen} onOpenChange={setEditOpen}>
+        <AnimatedDialogContent className="flex max-h-[85vh] flex-col gap-4 p-4 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
@@ -2963,8 +2963,8 @@ export function EmployeeDetail({ employeeId }: { employeeId: string }) {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </AnimatedDialogContent>
+      </AnimatedDialog>
     </div>
   );
 }

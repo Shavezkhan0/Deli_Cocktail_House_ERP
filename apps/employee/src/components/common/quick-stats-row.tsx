@@ -58,42 +58,60 @@ type ExtraDaysRecord = {
 export type StatCardProps = {
   label: string;
   icon: LucideIcon;
-  accent: string;
+  accent?: string;
   children: React.ReactNode;
   sub?: React.ReactNode;
   loading?: boolean;
   onClick?: () => void;
   active?: boolean;
+  barClass?: string;
 };
 
-export function StatCard({ label, icon: Icon, accent, children, sub, loading, onClick, active }: StatCardProps) {
+export function StatCard({
+  label,
+  icon: Icon,
+  children,
+  sub,
+  loading,
+  onClick,
+  active,
+  barClass = "from-sky-400 to-sky-600",
+}: StatCardProps) {
   const classes = cn(
-    "rounded-xl bg-card p-5 ring-1 ring-foreground/10",
+    "glass-card-global group relative overflow-hidden",
     active && "ring-2 ring-primary/40",
     onClick &&
-      "w-full cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-2 hover:ring-primary/20",
+      "w-full cursor-pointer text-left transition-all duration-200 hover:-translate-y-0.5",
   );
 
   const body = (
-    <div className="flex items-center gap-4">
-      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", accent)}>
-        <Icon className="size-5" />
-      </span>
-
+    <div className="relative flex items-start justify-between gap-4 p-5">
       {loading ? (
-        <div className="w-full space-y-2">
-          <div className="h-3 w-24 animate-pulse rounded-md bg-muted" />
-          <div className="h-4 w-16 animate-pulse rounded-md bg-muted" />
+        <div className="w-full space-y-2.5">
+          <div className="h-3 w-28 animate-pulse rounded bg-white/15" />
+          <div className="h-8 w-16 animate-pulse rounded bg-white/15" />
+          <div className="h-3 w-36 animate-pulse rounded bg-white/15" />
         </div>
       ) : (
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-white-85">{label}</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums text-white">
+            {children}
           </p>
-          <div className="mt-1 text-lg font-semibold text-foreground">{children}</div>
-          {sub ? <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div> : null}
+          {sub ? (
+            <div className="text-xs text-white-85">{sub}</div>
+          ) : null}
         </div>
       )}
+      <span className="gold-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl">
+        <Icon className="size-5" />
+      </span>
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r opacity-70",
+          barClass,
+        )}
+      />
     </div>
   );
 
@@ -154,35 +172,28 @@ export function QuickStatsRow() {
   });
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
         label="Today's Attendance"
         icon={CalendarCheck}
-        accent={
-          attendance.data?.marked
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-amber-100 text-amber-700"
-        }
         loading={attendance.isPending}
+        barClass="from-emerald-400 to-emerald-600"
       >
         {attendance.isError
           ? "Unavailable"
           : attendance.data?.marked
             ? "Present"
             : "Not marked"}
-        {attendance.data?.marked ? (
-          <span className="text-xs font-medium text-emerald-700">{todayLabel}</span>
-        ) : null}
       </StatCard>
 
       <StatCard
         label="Leave Balance"
         icon={CalendarRange}
-        accent="bg-emerald-100 text-emerald-700"
         loading={leaveBalance.isPending}
+        barClass="from-sky-400 to-sky-600"
         sub={
           leaveBalance.data ? (
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs text-white-85">
               Earned {leaveBalance.data.earnedLeaves} · Used{" "}
               {leaveBalance.data.usedLeaves}
             </span>
@@ -201,12 +212,12 @@ export function QuickStatsRow() {
       <StatCard
         label="Extra Days"
         icon={CalendarClock}
-        accent="bg-violet-100 text-violet-700"
         loading={extraDays.isPending}
         onClick={() => router.push("/common/extra-days")}
+        barClass="from-violet-400 to-violet-600"
         sub={
           extraDays.data && extraDays.data.entries.length > 0 ? (
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-xs text-white-85">
               {extraDays.data.entries.filter((e) => !e.banked).length} pending ·{" "}
               {extraDays.data.entries.filter((e) => e.banked).length} banked
             </span>
@@ -225,18 +236,11 @@ export function QuickStatsRow() {
       <StatCard
         label="Current Month Salary"
         icon={Wallet}
-        accent="bg-indigo-100 text-indigo-700"
         loading={salary.isPending}
+        barClass="from-indigo-400 to-indigo-600"
         sub={
           salary.data ? (
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                salary.data.status === "PAID"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-amber-100 text-amber-700",
-              )}
-            >
+            <span className="inline-flex rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
               {salary.data.status}
             </span>
           ) : null
@@ -252,8 +256,8 @@ export function QuickStatsRow() {
       <StatCard
         label="Weekly Score"
         icon={Star}
-        accent="bg-amber-100 text-amber-700"
         loading={score.isPending}
+        barClass="from-amber-400 to-amber-600"
       >
         {score.isError
           ? "Unavailable"
