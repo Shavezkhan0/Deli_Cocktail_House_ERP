@@ -101,8 +101,10 @@ export async function apiFetch<T>(
     let message = `Request failed with status ${res.status}`;
     let code: string | undefined;
     try {
-      const data = (await res.json()) as { message?: string; error?: string };
-      if (data.message) {
+      const data = (await res.json()) as { message?: string; error?: string; detail?: string };
+      if (data.detail) {
+        message = data.detail;
+      } else if (data.message) {
         message = data.message;
       }
       code = data.error;

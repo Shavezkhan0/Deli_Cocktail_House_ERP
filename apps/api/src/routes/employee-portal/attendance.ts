@@ -195,7 +195,7 @@ router.post("/attendance/mark", async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { latitude, longitude } = req.body ?? {};
+    const { latitude, longitude, accuracy } = req.body ?? {};
 
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return res.status(400).json({ message: "Latitude and longitude are required" });
@@ -205,11 +205,26 @@ router.post("/attendance/mark", async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        employeeId,
+        date: { gte: today, lt: tomorrow },
+      },
+    });
+
+    const isCheckIn = !existing || existing.checkInTime === null;
+
+    // Guard: Prevent double check-out before location check
+    if (!isCheckIn && existing.checkOutTime !== null) {
+      return res.status(409).json({ message: "Already checked out for today" });
+    }
+
+    // Location validation is strictly enforced for BOTH check-in and check-out (unless WFH is approved for today)
     const wfhToday = await prisma.workFromHomeDay.findFirst({
       where: { employeeId, date: { gte: today, lt: tomorrow } },
     });
 
-    // Get the effective check-in location for this employee's designation
+    // Get the effective location for this employee's designation
     const location = await getEffectiveLocation(designation);
     if (
       !wfhToday &&
@@ -224,11 +239,17 @@ router.post("/attendance/mark", async (req, res) => {
         location.latitude,
         location.longitude,
       );
-      if (distance > location.radiusMeters) {
+
+      // Account for device GPS accuracy (margin of error) if provided, capped at 100m to prevent indoor false-rejections
+      const accuracyBuffer = typeof accuracy === "number" && accuracy > 0 ? Math.min(accuracy, 100) : 0;
+      const effectiveDistance = Math.max(0, distance - accuracyBuffer);
+
+      if (effectiveDistance > location.radiusMeters) {
+        const actionName = isCheckIn ? "check in" : "check out";
         return res.status(403).json({
           error: "LOCATION_NOT_ALLOWED",
           message: "Location not allowed",
-          detail: `You must be within ${Math.round(location.radiusMeters)} m of ${location.locationName} to mark attendance. You are ${Math.round(distance)} m away.`,
+          detail: `You must be within ${Math.round(location.radiusMeters)} m of ${location.locationName} to ${actionName}. You are ${Math.round(distance)} m away${accuracyBuffer > 0 ? ` (GPS accuracy: ±${Math.round(accuracy)}m)` : ""}.`,
           distanceMeters: Math.round(distance),
           requiredRadiusMeters: location.radiusMeters,
           locationName: location.locationName,
@@ -236,17 +257,10 @@ router.post("/attendance/mark", async (req, res) => {
       }
     }
 
-    const existing = await prisma.attendance.findFirst({
-      where: {
-        employeeId,
-        date: { gte: today, lt: tomorrow },
-      },
-    });
-
     const now = new Date();
 
     // --- Check-in ---
-    if (!existing || existing.checkInTime === null) {
+    if (isCheckIn) {
       const isSunday = istDayOfWeek(now) === 0;
       const holiday = await prisma.holiday.findFirst({
         where: { date: { gte: today, lt: tomorrow } },

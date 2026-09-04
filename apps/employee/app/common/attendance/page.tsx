@@ -247,6 +247,7 @@ export default function AttendancePage() {
   const [position, setPosition] = useState<GeoCoords | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locationBlocked, setLocationBlocked] = useState(false);
+  const [locationBlockedDetail, setLocationBlockedDetail] = useState<string | null>(null);
   const [historyMonth, setHistoryMonth] = useState(() => new Date().getMonth());
   const [historyYear, setHistoryYear] = useState(() => new Date().getFullYear());
   const [pageSize, setPageSize] = useState<number | null>(null);
@@ -313,6 +314,7 @@ export default function AttendancePage() {
     onError: (error) => {
       setGeoState("error");
       if (error instanceof ApiError && error.code === "LOCATION_NOT_ALLOWED") {
+        setLocationBlockedDetail(error.message);
         setLocationBlocked(true);
         return;
       }
@@ -364,19 +366,64 @@ export default function AttendancePage() {
     setPosition(null);
     submittingRef.current = true;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
+    let bestCoords: GeoCoords | null = null;
+    let watchId: number | null = null;
+    let fallbackTimer: NodeJS.Timeout | null = null;
+
+    const finalizeAndSubmit = (coords: GeoCoords) => {
+      if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      if (fallbackTimer !== null) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      setPosition(coords);
+      markMutation.mutate(coords);
+    };
+
+    // Wait up to 3.5s for GPS satellites to settle if initial accuracy is coarse
+    fallbackTimer = setTimeout(() => {
+      if (bestCoords) {
+        finalizeAndSubmit(bestCoords);
+      }
+    }, 3500);
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
         const coords = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
         };
-        setPosition(coords);
-        markMutation.mutate(coords);
+
+        if (
+          !bestCoords ||
+          (coords.accuracy && coords.accuracy < (bestCoords.accuracy ?? Infinity))
+        ) {
+          bestCoords = coords;
+          setPosition(coords);
+        }
+
+        // If accuracy is high (within 50 meters), submit immediately
+        if (pos.coords.accuracy && pos.coords.accuracy <= 50) {
+          finalizeAndSubmit(coords);
+        }
       },
       (err) => {
-        navigator.geolocation.clearWatch(watchId);
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        if (fallbackTimer !== null) {
+          clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+        }
+        if (bestCoords) {
+          finalizeAndSubmit(bestCoords);
+          return;
+        }
         submittingRef.current = false;
         setGeoState("error");
         const message =
@@ -493,6 +540,9 @@ export default function AttendancePage() {
   const calendarTodayKey = dateKey(new Date());
 
   const markedPosition: GeoCoords | null = useMemo(() => {
+    if (position) {
+      return position;
+    }
     const record = todayQuery.data?.attendance;
     if (
       record &&
@@ -505,7 +555,7 @@ export default function AttendancePage() {
         accuracy: 0,
       };
     }
-    return position;
+    return null;
   }, [todayQuery.data?.attendance, position]);
 
   const distanceFromOffice = useMemo(() => {
@@ -714,7 +764,7 @@ export default function AttendancePage() {
               {officeQuery.data ? (
                 <p className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
                   <MapPin className="size-3.5 shrink-0 text-sky-400" />
-                  Check-in location:{" "}
+                  Allowed location:{" "}
                   <strong className="font-semibold text-white">
                     {officeQuery.data.locationName ?? "Office"}
                   </strong>
@@ -1112,9 +1162,16 @@ export default function AttendancePage() {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Action Failed</DialogTitle>
+            <DialogTitle>
+              {hasCheckedIn && !hasCheckedOut
+                ? "Check-Out Location Not Allowed"
+                : "Check-In Location Not Allowed"}
+            </DialogTitle>
             <DialogDescription>
-              You are outside the allowed location radius for check-in/out.
+              {locationBlockedDetail ||
+                (hasCheckedIn && !hasCheckedOut
+                  ? "You are outside the allowed location radius for check-out."
+                  : "You are outside the allowed location radius for check-in.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
