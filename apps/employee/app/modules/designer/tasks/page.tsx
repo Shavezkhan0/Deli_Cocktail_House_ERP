@@ -311,7 +311,7 @@ export default function DesignerTasksPage() {
                             </span>
                           )}
                           {due ? (
-                            <Badge tone={due.tone} dot={false}>
+                            <Badge variant={String(due.tone) === "danger" ? "destructive" : String(due.tone) === "warning" ? "secondary" : String(due.tone) === "success" ? "default" : "outline"}>
                               {due.label}
                             </Badge>
                           ) : null}

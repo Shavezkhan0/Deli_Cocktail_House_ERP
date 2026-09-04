@@ -6,7 +6,7 @@ import { Banknote, Download, Loader2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { ErrorState, EmptyState, LoadingCards } from "@/components/common/states";
 import {
   SalaryCalculation,
@@ -355,34 +355,42 @@ export default function SalaryPage() {
             <div className="flex gap-2">
               <div className="flex-1 sm:w-40">
                 <Select
-                  aria-label="Month"
-                  value={month}
-                  onChange={(event) => setMonth(Number(event.target.value))}
+                  value={String(month)}
+                  onValueChange={(value) => setMonth(Number(value))}
                 >
-                  {Array.from({ length: 12 }, (_, index) => {
-                    const m = index + 1;
-                    return (
-                      <option key={m} value={m}>
-                        {monthLabel(m, year)}
-                      </option>
-                    );
-                  })}
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, index) => {
+                      const m = index + 1;
+                      return (
+                        <SelectItem key={m} value={String(m)}>
+                          {monthLabel(m, year)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="w-24 shrink-0">
                 <Select
-                  aria-label="Year"
-                  value={year}
-                  onChange={(event) => setYear(Number(event.target.value))}
+                  value={String(year)}
+                  onValueChange={(value) => setYear(Number(value))}
                 >
-                  {Array.from({ length: 5 }, (_, index) => {
-                    const y = currentYear - 2 + index;
-                    return (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    );
-                  })}
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, index) => {
+                      const y = currentYear - 2 + index;
+                      return (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
               </div>
             </div>

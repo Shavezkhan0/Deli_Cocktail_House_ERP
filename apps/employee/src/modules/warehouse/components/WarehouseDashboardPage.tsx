@@ -48,17 +48,17 @@ type WarehouseEvent = {
 type EventStatus = "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED";
 
 const STATUS_STYLES: Record<EventStatus, string> = {
-  UPCOMING: "bg-sky-100 text-sky-700",
-  ONGOING: "bg-emerald-100 text-emerald-700",
-  COMPLETED: "bg-violet-100 text-violet-700",
-  CANCELLED: "bg-rose-100 text-rose-700",
+  UPCOMING: "bg-white/15 text-white",
+  ONGOING: "bg-emerald-500/25 text-emerald-300",
+  COMPLETED: "bg-violet-500/25 text-violet-300",
+  CANCELLED: "bg-rose-500/25 text-rose-300",
 };
 
 const STATUS_DOTS: Record<EventStatus, string> = {
-  UPCOMING: "bg-sky-500",
-  ONGOING: "bg-emerald-500",
-  COMPLETED: "bg-violet-500",
-  CANCELLED: "bg-rose-500",
+  UPCOMING: "bg-sky-400",
+  ONGOING: "bg-emerald-400",
+  COMPLETED: "bg-violet-400",
+  CANCELLED: "bg-rose-400",
 };
 
 function formatEventDate(value: string): string {
@@ -100,74 +100,76 @@ function WarehouseEventCard({ event }: { event: WarehouseEvent }) {
     event.pendingDispatchCount > 0
       ? {
           label: `${event.pendingDispatchCount} to load`,
-          pillClass: "bg-orange-100 text-orange-700",
-          dotClass: "bg-orange-500",
+          pillClass: "bg-orange-500/25 text-orange-300",
+          dotClass: "bg-orange-400",
         }
       : event.pendingReturnCount > 0
         ? {
             label: `${event.pendingReturnCount} to return`,
-            pillClass: "bg-sky-100 text-sky-700",
-            dotClass: "bg-sky-500",
+            pillClass: "bg-sky-500/25 text-sky-300",
+            dotClass: "bg-sky-400",
           }
         : {
             label: "All clear",
-            pillClass: "bg-emerald-100 text-emerald-700",
-            dotClass: "bg-emerald-500",
+            pillClass: "bg-emerald-500/25 text-emerald-300",
+            dotClass: "bg-emerald-400",
           };
 
   return (
     <Link
       href={`/modules/warehouse/events/${event.id}`}
-      className="group flex flex-col rounded-xl bg-card p-6 ring-1 ring-foreground/10 transition-all duration-300 hover:-translate-y-0.5 hover:ring-orange-500/40 hover:shadow-[0_8px_40px_rgba(249,115,22,0.15)]"
+      className="glass-card-global group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-orange-600">
+      <div className="flex items-center justify-between gap-3 p-6 pb-0">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-orange-300">
           {event.eventCode}
         </span>
         <EventStatusBadge status={event.status} />
       </div>
 
-      <h3 className="mt-4 line-clamp-2 text-lg font-semibold tracking-tight text-foreground">
-        {event.eventName}
-      </h3>
+      <div className="flex flex-1 flex-col p-6">
+        <h3 className="line-clamp-2 text-lg font-semibold tracking-tight text-white">
+          {event.eventName}
+        </h3>
 
-      <div className="mt-3 flex flex-col gap-2 text-xs text-muted-foreground">
-        <p className="flex items-center gap-2">
-          <CalendarDays className="size-3.5 shrink-0 text-orange-500" />
-          <span className="truncate">{formatEventDate(event.eventDate)}</span>
-          {event.startTime ? (
-            <>
-              <span className="text-muted-foreground/50">·</span>
-              <span>{event.startTime}</span>
-            </>
-          ) : null}
-        </p>
-        <p className="flex items-center gap-2">
-          <MapPin className="size-3.5 shrink-0 text-orange-500" />
-          <span className="truncate">{event.venue}</span>
-        </p>
-        <p className="flex items-center gap-2">
-          <Users className="size-3.5 shrink-0 text-orange-500" />
-          <span>{event.pax} PAX</span>
-        </p>
-      </div>
+        <div className="mt-3 flex flex-col gap-2 text-xs text-white-85">
+          <p className="flex items-center gap-2">
+            <CalendarDays className="size-3.5 shrink-0 text-orange-300" />
+            <span className="truncate">{formatEventDate(event.eventDate)}</span>
+            {event.startTime ? (
+              <>
+                <span className="text-white/30">·</span>
+                <span>{event.startTime}</span>
+              </>
+            ) : null}
+          </p>
+          <p className="flex items-center gap-2">
+            <MapPin className="size-3.5 shrink-0 text-orange-300" />
+            <span className="truncate">{event.venue}</span>
+          </p>
+          <p className="flex items-center gap-2">
+            <Users className="size-3.5 shrink-0 text-orange-300" />
+            <span>{event.pax} PAX</span>
+          </p>
+        </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
-            actionState.pillClass,
-          )}
-        >
+        <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-4">
           <span
-            className={cn("size-1.5 rounded-full", actionState.dotClass)}
-            aria-hidden
-          />
-          {actionState.label}
-        </span>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-all duration-300 group-hover:border-orange-500/40 group-hover:bg-orange-100 group-hover:text-orange-700">
-          <ChevronRight className="size-3.5" />
-        </span>
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+              actionState.pillClass,
+            )}
+          >
+            <span
+              className={cn("size-1.5 rounded-full", actionState.dotClass)}
+              aria-hidden
+            />
+            {actionState.label}
+          </span>
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white-85 transition-all duration-300 group-hover:border-orange-400/40 group-hover:bg-orange-500/20 group-hover:text-orange-300">
+            <ChevronRight className="size-3.5" />
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -190,22 +192,22 @@ export function WarehouseDashboardPage() {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className="h-64 animate-pulse rounded-xl bg-muted"
+            className="glass-card-global h-64 animate-pulse"
           />
         ))}
       </div>
     );
   } else if (isError) {
     content = (
-      <div className="flex flex-col items-center gap-3 rounded-xl bg-card py-12 text-center ring-1 ring-foreground/10">
-        <AlertTriangle className="size-8 text-rose-500" />
-        <p className="text-sm font-medium text-foreground">
+      <div className="glass-card-global flex flex-col items-center gap-3 py-12 text-center">
+        <AlertTriangle className="size-8 text-rose-400" />
+        <p className="text-sm font-medium text-white">
           Could not load events
         </p>
         <button
           type="button"
           onClick={() => refetch()}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+          className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
         >
           Try again
         </button>
@@ -216,12 +218,13 @@ export function WarehouseDashboardPage() {
     const toDispatchCount = events.filter((event) => event.pendingDispatchCount > 0).length;
     const toReturnCount = events.filter((event) => event.pendingReturnCount > 0).length;
 
-    const stats: (Pick<StatCardProps, "label" | "icon" | "accent" | "onClick" | "active"> & { count: number })[] = [
+    const stats: (Pick<StatCardProps, "label" | "icon" | "accent" | "onClick" | "active"> & { count: number; barClass: string })[] = [
       {
         label: "Events to Dispatch",
         icon: Send,
         accent: "bg-orange-100 text-orange-700",
         count: toDispatchCount,
+        barClass: "from-orange-400 to-orange-600",
         onClick: () =>
           setStatFilter((prev) => (prev === "dispatch" ? null : "dispatch")),
         active: statFilter === "dispatch",
@@ -231,6 +234,7 @@ export function WarehouseDashboardPage() {
         icon: PackageCheck,
         accent: "bg-sky-100 text-sky-700",
         count: toReturnCount,
+        barClass: "from-sky-400 to-sky-600",
         onClick: () =>
           setStatFilter((prev) => (prev === "return" ? null : "return")),
         active: statFilter === "return",
@@ -269,9 +273,9 @@ export function WarehouseDashboardPage() {
               key={stat.label}
               label={stat.label}
               icon={stat.icon}
-              accent={stat.accent}
               onClick={stat.onClick}
               active={stat.active}
+              barClass={stat.barClass}
             >
               {stat.count}
             </StatCard>
@@ -281,7 +285,7 @@ export function WarehouseDashboardPage() {
         <section className="flex flex-col gap-4">
           {statFilter ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-sm font-medium text-white-85">
                 {statFilter === "dispatch"
                   ? "Showing events that need dispatch"
                   : "Showing events with pending returns"}
@@ -289,7 +293,7 @@ export function WarehouseDashboardPage() {
               <button
                 type="button"
                 onClick={() => setStatFilter(null)}
-                className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
               >
                 Clear filter
               </button>
@@ -306,8 +310,8 @@ export function WarehouseDashboardPage() {
                     className={cn(
                       "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-orange-600 text-white shadow-sm"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                        ? "bg-orange-500 text-white shadow-sm"
+                        : "bg-white/10 text-white-85 hover:bg-white/15 hover:text-white",
                     )}
                   >
                     <Warehouse className="size-4" />
@@ -329,18 +333,18 @@ export function WarehouseDashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
-              <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <div className="glass-card-global flex flex-col items-center gap-2 px-6 py-10 text-center">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-white-85">
                 <Warehouse className="size-5" />
               </span>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 {statFilter === "dispatch"
                   ? "Nothing needs dispatch right now"
                   : statFilter === "return"
                     ? "No pending returns right now"
                     : "No events yet"}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white-85">
                 {statFilter
                   ? "Check back later or clear the filter."
                   : "Events will appear here when they are scheduled."}

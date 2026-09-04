@@ -50,14 +50,12 @@ export function ConfirmDialog({
           ) : null}
         </DialogHeader>
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline" type="button">
-              {cancelLabel}
-            </Button>
+          <DialogClose render={<Button variant="outline" type="button" />}>
+            {cancelLabel}
           </DialogClose>
           <Button
             type="button"
-            variant={confirmVariant}
+            variant={confirmVariant === "danger" ? "destructive" : "default"}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >

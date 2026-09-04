@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardPen, Star } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ErrorState, EmptyState, LoadingCards } from "@/components/common/states";
 import { apiFetch } from "@/lib/api";
 
@@ -115,11 +115,10 @@ export default function ScorePage() {
       <>
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="flex flex-col">
-            <CardHeader
-              title="This Week"
-              subtitle="Score for the current week"
-              icon={<Star className="size-4.5" />}
-            />
+            <CardHeader>
+              <CardTitle>This Week</CardTitle>
+              <CardDescription>Score for the current week</CardDescription>
+            </CardHeader>
             <div className="mt-6 flex flex-1 items-center justify-center">
               {data.current ? (
                 <ScoreRing score={data.current.score} />
@@ -133,11 +132,10 @@ export default function ScorePage() {
           </Card>
 
           <Card className="flex flex-col">
-            <CardHeader
-              title="Score History"
-              subtitle="Last 4 weeks"
-              icon={<ClipboardPen className="size-4.5" />}
-            />
+            <CardHeader>
+              <CardTitle>Score History</CardTitle>
+              <CardDescription>Last 4 weeks</CardDescription>
+            </CardHeader>
             <div className="mt-6 flex flex-1 flex-col justify-center">
               {data.history.length > 0 ? (
                 <div className="pt-2">
@@ -154,11 +152,10 @@ export default function ScorePage() {
         </div>
 
         <Card className="flex flex-col">
-          <CardHeader
-            title="Manager Notes"
-            subtitle="Feedback for this week"
-            icon={<ClipboardPen className="size-4.5" />}
-          />
+          <CardHeader>
+            <CardTitle>Manager Notes</CardTitle>
+            <CardDescription>Feedback for this week</CardDescription>
+          </CardHeader>
           <textarea
             readOnly
             rows={4}

@@ -70,15 +70,15 @@ type TabKey = "out" | "in" | "damage";
 function statusBadge(status: string) {
   switch (status) {
     case "UPCOMING":
-      return <Badge tone="info">{status}</Badge>;
+      return <Badge variant="outline">{status}</Badge>;
     case "ONGOING":
-      return <Badge tone="success">{status}</Badge>;
+      return <Badge variant="default">{status}</Badge>;
     case "COMPLETED":
-      return <Badge tone="violet">{status}</Badge>;
+      return <Badge variant="secondary">{status}</Badge>;
     case "CANCELLED":
-      return <Badge tone="danger">{status}</Badge>;
+      return <Badge variant="destructive">{status}</Badge>;
     default:
-      return <Badge>{status}</Badge>;
+      return <Badge variant="outline">{status}</Badge>;
   }
 }
 
@@ -1049,10 +1049,8 @@ export default function WarehouseEventDetailPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" type="button">
-                      Cancel
-                    </Button>
+                  <DialogClose render={<Button variant="outline" type="button" />}>
+                    Cancel
                   </DialogClose>
                   <Button
                     disabled={

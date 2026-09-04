@@ -4,8 +4,8 @@ import { useEffect, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { Header } from "@/components/common/header";
 import { RoleSidebar } from "@/components/layout/role-sidebar";
-import { BottomNav } from "@/components/layout/bottom-nav";
 import { CrmDashboardPage } from "@/modules/crm/components/CrmDashboardPage";
 import { GraphicDesignerDashboardPage } from "@/modules/graphic-designer/components/GraphicDesignerDashboardPage";
 import { OperationCoordinatorDashboardPage } from "@/modules/operation-coordinator/components/OperationCoordinatorDashboardPage";
@@ -37,7 +37,7 @@ const DESIGNATION_DASHBOARDS: Record<string, ComponentType> = {
 
 function DashboardLoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-screen items-center justify-center theme-gradient-bg">
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="size-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Loading your dashboard…</p>
@@ -67,16 +67,18 @@ export default function DashboardPage() {
   const Dashboard = DESIGNATION_DASHBOARDS[user.designation] ?? DefaultDashboard;
 
   return (
-    <div className="flex min-h-screen bg-muted/20">
-      <RoleSidebar />
+    <div className="flex min-h-screen flex-col theme-gradient-bg">
+      <Header />
 
-      <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6">
-          <Dashboard />
-        </div>
-      </main>
+      <div className="flex flex-1">
+        <RoleSidebar />
 
-      <BottomNav />
+        <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">
+          <div className="mx-auto flex max-w-6xl flex-col gap-6">
+            <Dashboard />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

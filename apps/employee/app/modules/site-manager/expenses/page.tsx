@@ -5,11 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Receipt, Send } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ErrorState, EmptyState } from "@/components/common/states";
@@ -88,7 +88,10 @@ export default function ExpensesPage() {
     >
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-2 lg:h-fit">
-          <CardHeader title="New Expense" subtitle="Record an expense claim" />
+          <CardHeader>
+            <CardTitle>New Expense</CardTitle>
+            <CardDescription>Record an expense claim</CardDescription>
+          </CardHeader>
           <form
             className="mt-5 flex flex-col gap-4"
             onSubmit={(event) => {
@@ -126,16 +129,20 @@ export default function ExpensesPage() {
             <div>
               <Label htmlFor="expense-event">Related Event (optional)</Label>
               <Select
-                id="expense-event"
                 value={eventId}
-                onChange={(event) => setEventId(event.target.value)}
+                onValueChange={(value) => setEventId(value ?? "")}
               >
-                <option value="">None</option>
-                {events?.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.eventName} — {event.eventCode}
-                  </option>
-                ))}
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {events?.map((event) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.eventName} — {event.eventCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 
@@ -209,7 +216,7 @@ export default function ExpensesPage() {
                           {formatCurrency(expense.amount)}
                         </td>
                         <td className="px-6 py-4">
-                          <Badge tone={STATUS_TONE[expense.status] ?? "neutral"}>
+                          <Badge variant={STATUS_TONE[expense.status] === "danger" ? "destructive" : STATUS_TONE[expense.status] === "success" ? "default" : "secondary"}>
                             {expense.status}
                           </Badge>
                         </td>
