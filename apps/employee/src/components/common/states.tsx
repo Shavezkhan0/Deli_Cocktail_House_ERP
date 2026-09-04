@@ -1,5 +1,4 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,8 +14,14 @@ export function LoadingCards({
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="h-44 animate-pulse rounded-2xl border border-border bg-muted"
-        />
+          className="glass-card-global h-44 animate-pulse rounded-2xl border border-white/10 p-6 flex flex-col justify-between"
+        >
+          <div className="space-y-3">
+            <div className="h-4 w-32 rounded-lg bg-white/15" />
+            <div className="h-8 w-48 rounded-lg bg-white/15" />
+          </div>
+          <div className="h-3 w-40 rounded-lg bg-white/10" />
+        </div>
       ))}
     </div>
   );
@@ -30,16 +35,21 @@ export function ErrorState({
   onRetry: () => void;
 }) {
   return (
-    <Card className="flex flex-col items-center gap-3 py-10 text-center">
-      <AlertCircle className="size-8 text-destructive" />
-      <p className="text-sm font-medium text-foreground">
+    <div className="glass-card-global flex flex-col items-center gap-3 rounded-2xl border border-white/10 py-10 text-center">
+      <AlertCircle className="size-8 text-rose-400" />
+      <p className="text-sm font-medium text-white">
         {message ?? "Something went wrong"}
       </p>
-      <Button variant="outline" size="sm" onClick={onRetry}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        className="border-white/15 bg-white/10 text-white hover:bg-white/20"
+      >
         <RefreshCw className="size-3.5" />
         Try again
       </Button>
-    </Card>
+    </div>
   );
 }
 
@@ -51,9 +61,10 @@ export function EmptyState({
   sub?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 px-6 py-10 text-center">
-      <p className="text-sm font-medium text-foreground">{message}</p>
-      {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
+    <div className="glass-card-global flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/5 px-6 py-10 text-center">
+      <p className="text-sm font-medium text-white">{message}</p>
+      {sub ? <p className="text-xs text-white/60">{sub}</p> : null}
     </div>
   );
 }
+

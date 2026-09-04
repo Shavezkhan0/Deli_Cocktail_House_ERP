@@ -15,11 +15,11 @@ import {
   LogOut,
   MapPin,
   Satellite,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { AppShell } from "@/components/layout/app-shell";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { apiFetch, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -115,11 +116,31 @@ const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; badge: string; dot: string }
 > = {
-  PRESENT: { label: "Present", badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  ABSENT: { label: "Absent", badge: "bg-rose-100 text-rose-700", dot: "bg-rose-500" },
-  HALF_DAY: { label: "Half Day", badge: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
-  SHORT_LEAVE: { label: "Short Leave", badge: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
-  ON_LEAVE: { label: "On Leave", badge: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
+  PRESENT: {
+    label: "Present",
+    badge: "border-emerald-400/30 bg-emerald-500/15 text-emerald-300",
+    dot: "bg-emerald-400",
+  },
+  ABSENT: {
+    label: "Absent",
+    badge: "border-rose-400/30 bg-rose-500/15 text-rose-300",
+    dot: "bg-rose-400",
+  },
+  HALF_DAY: {
+    label: "Half Day",
+    badge: "border-amber-400/30 bg-amber-500/15 text-amber-300",
+    dot: "bg-amber-400",
+  },
+  SHORT_LEAVE: {
+    label: "Short Leave",
+    badge: "border-yellow-400/30 bg-yellow-500/15 text-yellow-300",
+    dot: "bg-yellow-400",
+  },
+  ON_LEAVE: {
+    label: "On Leave",
+    badge: "border-blue-400/30 bg-blue-500/15 text-blue-300",
+    dot: "bg-blue-400",
+  },
 };
 
 const STATUS_ORDER: AttendanceStatus[] = [
@@ -152,6 +173,13 @@ function formatMeters(meters: number): string {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+function formatElapsedMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function fireConfetti() {
   const colors = ["#6366f1", "#8b5cf6", "#22c55e", "#f59e0b", "#3b82f6"];
   confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 }, colors });
@@ -166,7 +194,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide backdrop-blur-sm",
         config.badge,
       )}
     >
@@ -182,14 +210,31 @@ function MapPreview({ position }: { position: GeoCoords }) {
   const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${position.latitude}%2C${position.longitude}`;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <iframe
         title="Marked location on OpenStreetMap"
         src={src}
-        className="h-56 w-full"
+        className="h-52 w-full"
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
       />
+    </div>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="glass-card-global flex flex-col items-center gap-5 p-8 sm:flex-row sm:items-start">
+        <div className="size-36 animate-pulse rounded-full bg-white/10" />
+        <div className="flex flex-1 flex-col gap-3">
+          <div className="h-6 w-48 animate-pulse rounded-lg bg-white/10" />
+          <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
+          <div className="h-4 w-64 animate-pulse rounded bg-white/10" />
+        </div>
+      </div>
+      <div className="glass-card-global h-64 animate-pulse p-6" />
+      <div className="glass-card-global h-48 animate-pulse p-6" />
     </div>
   );
 }
@@ -380,17 +425,17 @@ export default function AttendancePage() {
   };
 
   const historySummaryChips = [
-    { label: "Present", value: historySummary.PRESENT, dot: "bg-emerald-500" },
+    { label: "Present", value: historySummary.PRESENT, dot: "bg-emerald-400" },
     {
       label: "Leave",
       value: historySummary.ABSENT + historySummary.ON_LEAVE,
-      dot: "bg-blue-500",
+      dot: "bg-blue-400",
     },
-    { label: "Half Day", value: historySummary.HALF_DAY, dot: "bg-amber-500" },
+    { label: "Half Day", value: historySummary.HALF_DAY, dot: "bg-amber-400" },
     {
       label: "Short Leave",
       value: historySummary.SHORT_LEAVE,
-      dot: "bg-yellow-500",
+      dot: "bg-yellow-400",
     },
   ];
 
@@ -486,18 +531,18 @@ export default function AttendancePage() {
   let content: React.ReactNode;
 
   if (todayQuery.isPending || historyQuery.isPending || holidaysQuery.isPending) {
-    content = (
-      <div className="flex flex-col gap-6">
-        <div className="h-72 animate-pulse rounded-xl bg-muted" />
-        <div className="h-64 animate-pulse rounded-xl bg-muted" />
-      </div>
-    );
+    content = <ProfileSkeleton />;
   } else if (todayQuery.isError || historyQuery.isError || holidaysQuery.isError) {
     content = (
-      <div className="flex flex-col items-center gap-3 rounded-xl bg-card py-12 text-center ring-1 ring-foreground/10">
-        <AlertTriangle className="size-8 text-rose-500" />
-        <p className="text-sm font-medium text-foreground">
+      <div className="glass-card-global flex flex-col items-center gap-4 py-16 text-center">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-red-500/15">
+          <AlertTriangle className="size-7 text-red-400" />
+        </div>
+        <p className="text-base font-semibold text-white">
           Could not load your attendance data.
+        </p>
+        <p className="text-sm text-white/60">
+          Something went wrong while fetching your records.
         </p>
         <button
           type="button"
@@ -507,7 +552,7 @@ export default function AttendancePage() {
             holidaysQuery.refetch();
             officeQuery.refetch();
           }}
-          className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+          className="mt-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-white/15"
         >
           Try again
         </button>
@@ -516,9 +561,11 @@ export default function AttendancePage() {
   } else {
     content = (
       <div className="flex flex-col gap-6">
-        <section className="rounded-xl bg-card p-6 ring-1 ring-foreground/10 sm:p-8">
+        {/* ─── Check-In / Check-Out Hero Card ─── */}
+        <section className="glass-card-global p-6 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex flex-col items-center gap-5 text-center">
+            <div className="flex flex-1 flex-col items-center gap-5 text-center">
+              {/* Punch Button */}
               <button
                 type="button"
                 onClick={handleMarkClick}
@@ -529,16 +576,14 @@ export default function AttendancePage() {
                   (!hasCheckedIn && isPastCheckInWindow)
                 }
                 className={cn(
-                  "group relative flex size-44 flex-col items-center justify-center gap-3 rounded-full text-white shadow-xl transition-all duration-200",
+                  "group relative flex size-40 flex-col items-center justify-center gap-3 rounded-full text-primary-foreground shadow-xl transition-all duration-300 sm:size-44",
                   hasCheckedOut
-                    ? "cursor-not-allowed bg-emerald-600 shadow-emerald-600/30"
+                    ? "cursor-not-allowed bg-primary opacity-80 shadow-primary/20"
                     : isCheckOutLocked
-                      ? "cursor-not-allowed bg-gradient-to-br from-emerald-600 to-teal-700 opacity-90 shadow-emerald-600/20"
-                      : hasCheckedIn
-                        ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-500/30"
-                        : "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 shadow-indigo-500/30",
+                      ? "cursor-not-allowed bg-primary opacity-85 shadow-primary/20"
+                      : "bg-primary shadow-primary/30 hover:shadow-primary/50",
                   !hasCheckedOut && !isCheckOutLocked && !isAcquiring
-                    ? "hover:scale-105 hover:shadow-2xl hover:shadow-indigo-500/40 active:scale-95"
+                    ? "hover:scale-105 active:scale-95"
                     : isAcquiring
                       ? "cursor-wait"
                       : "",
@@ -546,23 +591,23 @@ export default function AttendancePage() {
               >
                 {isAcquiring ? (
                   <>
-                    <span className="absolute inset-0 animate-ping rounded-full bg-indigo-400/40" />
-                    <span className="absolute -inset-3 animate-pulse rounded-full bg-indigo-400/20" />
+                    <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
+                    <span className="absolute -inset-4 animate-pulse rounded-full bg-primary/20" />
                   </>
                 ) : null}
                 <span className="relative flex flex-col items-center gap-2">
                   {isAcquiring ? (
-                    <Loader2 className="size-9 animate-spin" />
+                    <Loader2 className="size-9 animate-spin text-primary-foreground" />
                   ) : isCheckOutLocked ? (
-                    <CheckCircle2 className="size-9" />
+                    <CheckCircle2 className="size-9 text-primary-foreground" />
                   ) : hasCheckedIn ? (
-                    <LogOut className="size-9" />
+                    <LogOut className="size-9 text-primary-foreground" />
                   ) : (
-                    <LogIn className="size-9" />
+                    <LogIn className="size-9 text-primary-foreground" />
                   )}
-                  <span className="text-sm font-semibold">
+                  <span className="text-sm font-bold tracking-wide text-primary-foreground">
                     {isAcquiring
-                      ? "Acquiring GPS…"
+                      ? "Acquiring GPS..."
                       : hasCheckedOut
                         ? "Checked Out"
                         : isCheckOutLocked
@@ -572,104 +617,115 @@ export default function AttendancePage() {
                             : "Check In"}
                   </span>
                   {isCheckOutLocked ? (
-                    <span className="text-[11px] font-normal opacity-90">
+                    <span className="flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
+                      <Clock className="size-3" />
                       Unlocks in {checkoutUnlockMinutes}m
                     </span>
                   ) : null}
                 </span>
               </button>
 
-              {!hasCheckedIn && isPastCheckInWindow ? (
-                <p className="text-xs text-muted-foreground">
-                  Attendance window closed for today. Check-in closes at 2:30 PM.
-                </p>
-              ) : null}
-
-              {hasCheckedIn ? (
-                <div className="flex flex-col items-center gap-1">
-                  <p className="text-sm text-muted-foreground">
-                    Checked in at{" "}
-                    <span className="font-semibold text-foreground">
-                      {todayRecord?.checkInTime
-                        ? formatTime(todayRecord.checkInTime)
-                        : "—"}
+              {/* Checked-in live timer / timestamp */}
+              {hasCheckedIn && !hasCheckedOut && !isAcquiring && todayRecord?.checkInTime ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                    <span className="size-2 animate-pulse rounded-full bg-emerald-400" />
+                    <span className="text-sm font-semibold text-white">
+                      Elapsed: {formatElapsedMinutes(minutesSinceCheckIn)}
                     </span>
-                  </p>
-                  {hasCheckedOut ? (
-                    <p className="text-sm text-muted-foreground">
-                      Checked out at{" "}
-                      <span className="font-semibold text-foreground">
-                        {todayRecord?.checkOutTime
-                          ? formatTime(todayRecord.checkOutTime)
-                          : "—"}
-                      </span>
-                    </p>
-                  ) : isCheckOutLocked ? (
-                    <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  </div>
+                  {isCheckOutLocked ? (
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
                       <Clock className="size-3.5" />
-                      Check-out is locked for 15 minutes after check-in (unlocks in {checkoutUnlockMinutes} min).
-                    </p>
+                      Check-out is locked for 15 minutes after check-in.
+                    </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="max-w-xs text-xs text-white/60">
                       {isPastCheckOutTime
-                        ? "You\u2019re past checkout time \u2014 check out now to close today\u2019s attendance."
-                        : "Check out after 6:00 PM for a full Present day \u2014 checking out earlier may mark today as Half Day or Short Leave."}
+                        ? "You're past checkout time — check out now to close today's attendance."
+                        : "Check out after 6:00 PM for a full Present day — checking out earlier may mark today as Half Day or Short Leave."}
                     </p>
                   )}
                 </div>
+              ) : null}
+
+              {hasCheckedIn && hasCheckedOut && !isAcquiring ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <p className="text-sm text-white/70">
+                    Checked in at{" "}
+                    <span className="font-bold text-white">
+                      {todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : "—"}
+                    </span>
+                  </p>
+                  <p className="text-sm text-white/70">
+                    Checked out at{" "}
+                    <span className="font-bold text-white">
+                      {todayRecord?.checkOutTime ? formatTime(todayRecord.checkOutTime) : "—"}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+
+              {!hasCheckedIn && isPastCheckInWindow ? (
+                <p className="max-w-xs text-xs text-white/50">
+                  Attendance window closed for today. Check-in closes at 2:30 PM.
+                </p>
               ) : null}
 
               {todayRecord ? (
                 <StatusBadge status={todayRecord.status} />
               ) : null}
 
+              {/* GPS acquiring status */}
               {isAcquiring ? (
-                <div className="flex flex-col items-center gap-1">
-                  <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Satellite className="size-3.5 animate-pulse text-indigo-500" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/70">
+                    <Satellite className="size-3.5 animate-pulse text-indigo-400" />
                     {markMutation.isPending
-                      ? "Validating your location…"
-                      : "Locating your position…"}
+                      ? "Validating your location..."
+                      : "Locating your position..."}
                   </p>
                   {position ? (
-                    <p className="font-mono text-xs text-muted-foreground">
+                    <p className="font-mono text-[11px] text-white/50">
                       {position.latitude.toFixed(6)},{" "}
                       {position.longitude.toFixed(6)}
                       {position.accuracy
-                        ? ` · ±${Math.round(position.accuracy)}m`
+                        ? ` +/-${Math.round(position.accuracy)}m`
                         : ""}
                     </p>
                   ) : null}
                 </div>
               ) : null}
 
+              {/* Geo error */}
               {geoError ? (
-                <div className="flex w-full items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm text-rose-700">
+                <div className="flex w-full max-w-sm items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-left text-sm text-red-300">
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                   <div>
                     <p className="font-medium">{geoError}</p>
-                    <p className="mt-0.5 text-xs text-rose-600/80">
+                    <p className="mt-0.5 text-xs text-red-400/70">
                       You can try again.
                     </p>
                   </div>
                 </div>
               ) : null}
 
+              {/* Office location pill */}
               {officeQuery.data ? (
-                <p className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                  <MapPin className="size-3.5 shrink-0 text-primary" />
+                <p className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+                  <MapPin className="size-3.5 shrink-0 text-sky-400" />
                   Check-in location:{" "}
-                  <strong className="font-semibold text-foreground">
+                  <strong className="font-semibold text-white">
                     {officeQuery.data.locationName ?? "Office"}
                   </strong>
-                  <span>
+                  <span className="text-white/50">
                     (within {formatMeters(officeQuery.data.radiusMeters)})
                   </span>
                 </p>
               ) : null}
 
               {officeQuery.isSuccess && !officeQuery.data ? (
-                <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
+                <p className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
                   <Info className="size-3.5" />
                   Geo validation is disabled — attendance can be marked from
                   anywhere.
@@ -677,81 +733,86 @@ export default function AttendancePage() {
               ) : null}
             </div>
 
+            {/* Map preview */}
             {markedPosition ? (
               <div className="flex w-full flex-col gap-3 lg:max-w-sm">
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/50">
                   Marked location
                 </p>
                 <MapPreview position={markedPosition} />
                 {distanceFromOffice !== null ? (
-                  <p className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
-                    <span className="text-muted-foreground">
+                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                    <span className="text-xs text-white/60">
                       Distance from{" "}
                       {officeQuery.data?.locationName ?? "office"}
                     </span>
-                    <span className="font-semibold text-foreground">
+                    <span className="rounded-full border border-sky-400/30 bg-sky-500/15 px-2.5 py-0.5 text-xs font-bold text-sky-300">
                       {formatMeters(distanceFromOffice)}
                     </span>
-                  </p>
+                  </div>
                 ) : null}
               </div>
             ) : null}
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+        {/* ─── Attendance Calendar Widget ─── */}
+        <section className="glass-card-global overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
             <div>
-              <h2 className="text-base font-semibold tracking-tight text-foreground">
+              <h2 className="text-lg font-bold text-white">
                 Attendance Calendar
               </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-white/60">
                 Your day-by-day attendance for the month.
               </p>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
                 onClick={goToPreviousMonth}
                 disabled={historyQuery.isPending}
                 aria-label="Previous month"
-                className="px-2 sm:px-3"
+                className="flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-white/15 disabled:opacity-40"
               >
-                <ChevronLeft className="size-4" />
-                <span className="hidden sm:inline">Previous Month</span>
-              </Button>
-              <span className="min-w-20 whitespace-nowrap text-center text-sm font-semibold text-foreground sm:min-w-32">
+                <ChevronLeft className="size-3.5" />
+                <span className="hidden sm:inline">Prev</span>
+              </button>
+              <span className="min-w-24 whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-center text-sm font-bold text-white sm:min-w-36">
                 {historyMonthLabel}
               </span>
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={goToNextMonth}
                 disabled={historyQuery.isPending}
                 aria-label="Next month"
-                className="px-2 sm:px-3"
+                className="flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-white/15 disabled:opacity-40"
               >
-                <span className="hidden sm:inline">Next Month</span>
-                <ChevronRight className="size-4" />
-              </Button>
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="size-3.5" />
+              </button>
             </div>
           </div>
 
-          <div className="px-4 py-5 sm:px-6">
+          <div className="px-5 py-6 sm:px-6">
             <div className="mx-auto w-full max-w-xl">
-              <div className="grid grid-cols-7 gap-1">
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 gap-1.5">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                   <div
                     key={day}
-                    className="py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-white/40"
                   >
                     {day}
                   </div>
                 ))}
+
+                {/* Leading blanks */}
                 {Array.from({ length: calendarLeadingBlanks }).map((_, index) => (
                   <div key={`blank-${index}`} />
                 ))}
+
+                {/* Day cells */}
                 {Array.from({ length: calendarDaysInMonth }).map((_, index) => {
                   const day = index + 1;
                   const cellDate = new Date(historyYear, historyMonth, day);
@@ -781,17 +842,18 @@ export default function AttendancePage() {
                         ? `${label} — Holiday (${holiday.name})`
                         : `${label} — Sunday`
                       : `${label} — No record`;
+
                   return (
                     <div
                       key={key}
                       title={title}
                       className={cn(
-                        "relative flex aspect-square min-h-9 flex-col items-center justify-center gap-1 rounded-lg text-xs font-semibold transition-transform hover:scale-105",
+                        "relative flex aspect-square min-h-9 flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold transition-all duration-200 hover:scale-110",
                         record || isHolidayCell
                           ? "text-white shadow-sm"
-                          : "bg-muted/60 text-muted-foreground",
+                          : "border border-white/5 bg-white/5 text-white/30",
                         isToday
-                          ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-background"
+                          ? "ring-2 ring-sky-400/60 ring-offset-2 ring-offset-[#1e3a8a] shadow-lg shadow-sky-500/20"
                           : "",
                       )}
                       style={
@@ -804,7 +866,9 @@ export default function AttendancePage() {
                     >
                       <span className="text-sm font-bold leading-none">{day}</span>
                       {record?.correctedByAdmin ? (
-                        <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-400 ring-1 ring-white/70" />
+                        <span className="absolute top-0.5 right-0.5 flex size-3.5 items-center justify-center rounded-full bg-amber-400 shadow-sm">
+                          <ShieldCheck className="size-2 text-amber-900" />
+                        </span>
                       ) : null}
                     </div>
                   );
@@ -812,41 +876,43 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+            {/* Status legend */}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               {STATUS_ORDER.map((status) => (
                 <span
                   key={status}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70"
                 >
                   <span
-                    className="size-2.5 rounded-full"
+                    className="size-2 rounded-full"
                     style={{ backgroundColor: STATUS_COLORS[status] }}
                   />
                   {STATUS_CONFIG[status].label}: {historySummary[status]}
                 </span>
               ))}
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70">
                 <span
-                  className="size-2.5 rounded-full"
+                  className="size-2 rounded-full"
                   style={{ backgroundColor: HOLIDAY_COLOR }}
                 />
                 Holiday
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <span className="size-2.5 rounded-full bg-amber-400" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-white/70">
+                <ShieldCheck className="size-3 text-amber-400" />
                 Corrected by admin
               </span>
             </div>
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+        {/* ─── Attendance History Table ─── */}
+        <section className="glass-card-global overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
             <div>
-              <h2 className="text-base font-semibold tracking-tight text-foreground">
+              <h2 className="text-lg font-bold text-white">
                 Attendance History
               </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-white/60">
                 Detailed records for {historyMonthLabel}.
               </p>
             </div>
@@ -869,11 +935,12 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3 sm:px-6">
+          {/* Summary stat badges */}
+          <div className="flex flex-wrap gap-2 border-b border-white/10 px-5 py-3 sm:px-6">
             {historySummaryChips.map((chip) => (
               <span
                 key={chip.label}
-                className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/70"
               >
                 <span className={cn("size-2 rounded-full", chip.dot)} />
                 {chip.label}: {chip.value}
@@ -882,8 +949,8 @@ export default function AttendancePage() {
             {leaveBalanceQuery.isSuccess &&
             leaveBalanceQuery.data?.shortLeave &&
             leaveBalanceQuery.data.shortLeave.allowance > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                <span className="size-2 rounded-full bg-yellow-500" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/20 bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-300">
+                <span className="size-2 rounded-full bg-yellow-400" />
                 Short leave remaining:{" "}
                 {leaveBalanceQuery.data.shortLeave.remaining} /{" "}
                 {leaveBalanceQuery.data.shortLeave.allowance} ({monthLabel(
@@ -894,37 +961,39 @@ export default function AttendancePage() {
             ) : null}
           </div>
 
+          {/* Table */}
           {historyQuery.data && allRecords.length > 0 ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wider text-white/60">
                       <th className="px-6 py-3.5 font-semibold">Date</th>
                       <th className="px-6 py-3.5 font-semibold">Check In</th>
                       <th className="px-6 py-3.5 font-semibold">Check Out</th>
                       <th className="px-6 py-3.5 font-semibold">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody>
                     {visibleRecords.map((record) => (
                       <tr
                         key={record.id}
-                        className="transition-colors hover:bg-muted/40"
+                        className="border-b border-white/5 transition-all duration-150 hover:bg-white/[0.06]"
                       >
-                        <td className="px-6 py-4 font-medium text-foreground">
+                        <td className="px-6 py-4 font-medium text-white">
                           {formatDate(record.date)}
                         </td>
-                        <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                        <td className="px-6 py-4 tabular-nums text-white/70">
                           {record.checkInTime ? formatTime(record.checkInTime) : "—"}
                         </td>
-                        <td className="px-6 py-4 tabular-nums text-muted-foreground">
+                        <td className="px-6 py-4 tabular-nums text-white/70">
                           {record.checkOutTime ? formatTime(record.checkOutTime) : "—"}
                         </td>
                         <td className="px-6 py-4">
                           <StatusBadge status={record.status} />
                           {record.correctedByAdmin ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
+                            <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-400/80">
+                              <ShieldCheck className="size-3" />
                               Admin corrected:{" "}
                               {record.previousStatus
                                 ? STATUS_CONFIG[record.previousStatus].label
@@ -940,17 +1009,18 @@ export default function AttendancePage() {
               </div>
 
               {pageSize !== null && totalPages > 1 ? (
-                <div className="flex items-center justify-center gap-4 border-t border-border px-4 py-3">
+                <div className="flex items-center justify-center gap-4 border-t border-white/10 px-4 py-3">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
                     disabled={pageIndex === 0}
+                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
                   >
                     <ChevronLeft className="size-4" />
                     Previous
                   </Button>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-white/50">
                     Page {pageIndex + 1} of {totalPages}
                   </span>
                   <Button
@@ -958,6 +1028,7 @@ export default function AttendancePage() {
                     size="sm"
                     onClick={() => setPageIndex((p) => Math.min(totalPages - 1, p + 1))}
                     disabled={pageIndex >= totalPages - 1}
+                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
                   >
                     Next
                     <ChevronRight className="size-4" />
@@ -966,11 +1037,14 @@ export default function AttendancePage() {
               ) : null}
             </>
           ) : (
-            <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-              <p className="text-sm font-medium text-foreground">
+            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/5">
+                <CalendarCheck className="size-6 text-white/30" />
+              </div>
+              <p className="text-sm font-semibold text-white/80">
                 No attendance records for this month
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white/40">
                 Mark your attendance to see it here.
               </p>
             </div>
@@ -1004,7 +1078,7 @@ export default function AttendancePage() {
               </span>
               {!isPastCheckOutTime ? (
                 <span className="rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
-                  ⚠️ <strong>Early Check-Out Warning:</strong> Checking out before 6:00 PM may reduce today&apos;s attendance to <strong>Half Day</strong> or <strong>Short Leave</strong>.
+                  <strong>Early Check-Out Warning:</strong> Checking out before 6:00 PM may reduce today&apos;s attendance to <strong>Half Day</strong> or <strong>Short Leave</strong>.
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">

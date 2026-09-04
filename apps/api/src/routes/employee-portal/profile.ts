@@ -19,6 +19,8 @@ router.get("/profile", async (req, res) => {
     }
 
     return res.json({
+      id: employee.id,
+      employeeId: employee.employeeId,
       name: employee.name,
       designation: employee.designation,
       email: employee.email,
