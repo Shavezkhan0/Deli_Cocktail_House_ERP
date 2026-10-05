@@ -1,6 +1,6 @@
 /**
  * Script: fix-short-leave-16sep2026.js
- * Purpose: Update attendance record for DCH-005 on 16 Sept 2026:
+ * Purpose: Update attendance record for DCH-005 on 1 Oct 2026:
  *          - checkInTime: 11:29 AM IST (11:29:00 IST)
  *          - status: SHORT_LEAVE (changed from HALF_DAY)
  *          - clear Admin Corrected flags
@@ -36,8 +36,8 @@ const prisma = new PrismaClient();
 
 const EMPLOYEE_ID_VALUE = "DCH-005";
 const TARGET_YEAR = 2026;
-const TARGET_MONTH = 9; // September
-const TARGET_DAY = 16;
+const TARGET_MONTH = 10; // October
+const TARGET_DAY = 1;
 
 // IST is UTC+5:30
 function istInstant(year, month, day, hour, minute, second = 0) {
@@ -63,7 +63,7 @@ async function main() {
 
   console.log("==================================================");
   console.log(`Employee        : ${employee.name} (${employee.employeeId})`);
-  console.log(`Target Date     : 16 Sept 2026`);
+  console.log(`Target Date     : 1 Oct 2026`);
   console.log(`New Check-In    : ${newCheckInTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`);
   console.log(`New Status      : SHORT_LEAVE`);
   console.log("==================================================\n");
@@ -76,7 +76,7 @@ async function main() {
   });
 
   if (!existing) {
-    console.error(`❌ No attendance record found for ${employee.name} (${EMPLOYEE_ID_VALUE}) on 16 Sept 2026.`);
+    console.error(`❌ No attendance record found for ${employee.name} (${EMPLOYEE_ID_VALUE}) on 1 Oct 2026.`);
     return;
   }
 
