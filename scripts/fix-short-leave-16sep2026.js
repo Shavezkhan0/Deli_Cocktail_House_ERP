@@ -1,8 +1,8 @@
 /**
  * Script: fix-short-leave-16sep2026.js
  * Purpose: Update attendance record for DCH-005 on 1 Oct 2026:
- *          - checkInTime: 11:29 AM IST (11:29:00 IST)
- *          - status: SHORT_LEAVE (changed from HALF_DAY)
+ *          - checkInTime: 10:13 AM IST (10:13:00 IST)
+ *          - status: PRESENT (changed from SHORT_LEAVE)
  *          - clear Admin Corrected flags
  *
  * Usage:
@@ -48,8 +48,8 @@ async function main() {
   const dayStart = istInstant(TARGET_YEAR, TARGET_MONTH, TARGET_DAY, 0, 0, 0);
   const dayEnd = new Date(istInstant(TARGET_YEAR, TARGET_MONTH, TARGET_DAY + 1, 0, 0, 0).getTime() - 1);
 
-  // Target Check-In time: 11:29 AM IST
-  const newCheckInTime = istInstant(TARGET_YEAR, TARGET_MONTH, TARGET_DAY, 11, 29, 0);
+  // Target Check-In time: 10:13 AM IST
+  const newCheckInTime = istInstant(TARGET_YEAR, TARGET_MONTH, TARGET_DAY, 10, 13, 0);
 
   const employee = await prisma.employee.findUnique({
     where: { employeeId: EMPLOYEE_ID_VALUE },
@@ -65,7 +65,7 @@ async function main() {
   console.log(`Employee        : ${employee.name} (${employee.employeeId})`);
   console.log(`Target Date     : 1 Oct 2026`);
   console.log(`New Check-In    : ${newCheckInTime.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`);
-  console.log(`New Status      : SHORT_LEAVE`);
+  console.log(`New Status      : PRESENT`);
   console.log("==================================================\n");
 
   const existing = await prisma.attendance.findFirst({
@@ -93,7 +93,7 @@ async function main() {
     where: { id: existing.id },
     data: {
       checkInTime: newCheckInTime,
-      status: "SHORT_LEAVE",
+      status: "PRESENT",
       correctedByAdmin: false,
       previousStatus: null,
       correctedAt: null,
